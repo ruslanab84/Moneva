@@ -1,0 +1,20 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Home" },
+    { "file": "HomeDark.dc.html", "x": 470, "y": 0, "w": 390, "h": 844, "title": "Home — dark" },
+    { "file": "VoiceCapture.dc.html", "x": 940, "y": 0, "w": 390, "h": 844, "title": "Voice expense" },
+    { "file": "ReceiptScan.dc.html", "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Receipt scan" },
+    { "file": "Transactions.dc.html", "x": 0, "y": 964, "w": 390, "h": 844, "title": "Transactions" },
+    { "file": "Budget.dc.html", "x": 470, "y": 964, "w": 390, "h": 844, "title": "Budget" },
+    { "file": "Goals.dc.html", "x": 940, "y": 964, "w": 390, "h": 844, "title": "Savings goals" },
+    { "file": "Assistant.dc.html", "x": 1410, "y": 964, "w": 390, "h": 844, "title": "AI assistant" },
+    { "file": "Subscriptions.dc.html", "x": 0, "y": 1928, "w": 390, "h": 844, "title": "Subscriptions" },
+    { "file": "Privacy.dc.html", "x": 470, "y": 1928, "w": 390, "h": 844, "title": "Privacy & data" },
+    { "file": "Foundations.dc.html", "x": 940, "y": 1928, "w": 900, "h": 980, "title": "Foundations" }
+  ],
+  "annotations": [
+    { "id": "capture", "x": 940, "y": -128, "w": 860, "text": "Capture paths. Both end in the same review card: the model drafts, Swift saves. Nothing is written before the user taps Save." },
+    { "id": "scope", "x": 0, "y": -128, "w": 860, "text": "Personal / Shared is a scope switch present on every money screen, not a separate section of the app." }
+  ],
+  "launch": { "view": "canvas" }
+}

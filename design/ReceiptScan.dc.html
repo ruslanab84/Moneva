@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #F6F4F0; color: #1C1A17; font-family: "Schibsted Grotesk", system-ui, -apple-system, "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #24544A; text-decoration: none; } a:hover { color: #173832; }
+    .screen { width: 390px; height: 844px; background: #F6F4F0; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+    .body { display: flex; flex-direction: column; gap: 14px; padding: 58px 20px 0; }
+    .serif { font-family: "Instrument Serif", Georgia, "Times New Roman", serif; font-weight: 400; }
+    .amount { font-family: "Instrument Serif", Georgia, serif; font-size: 50px; line-height: 1.02; letter-spacing: -0.012em; }
+    .card { background: #FFFFFF; border-radius: 24px; padding: 18px; box-shadow: 0 1px 2px rgba(28,26,23,.05), 0 14px 30px -20px rgba(28,26,23,.35); }
+    .muted { color: #6E6860; }
+    .eyebrow { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #726C61; font-weight: 600; }
+    .row { display: flex; align-items: center; gap: 12px; }
+    .col { display: flex; flex-direction: column; gap: 4px; }
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+    .grow { flex-grow: 1; }
+    .tile { width: 44px; height: 44px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex: none; }
+    .bar { height: 8px; border-radius: 99px; background: #E8E4DC; overflow: hidden; }
+    .bar > i { display: block; height: 100%; border-radius: 99px; background: #24544A; }
+    .nav { position: absolute; left: 20px; right: 20px; bottom: 26px; height: 64px; border-radius: 24px; background: rgba(255,255,255,.9); backdrop-filter: blur(20px); border: 1px solid #E8E4DC; display: flex; align-items: center; justify-content: space-around; box-shadow: 0 18px 40px -22px rgba(28,26,23,.55); }
+    .navitem { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #726C61; }
+    .navitem.on { color: #24544A; background: #EAF0ED; }
+    .fab { position: absolute; right: 24px; bottom: 104px; width: 60px; height: 60px; border-radius: 21px; background: #24544A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 16px 30px -14px rgba(36,84,74,.75); }
+    .btn { height: 52px; border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 600; }
+    .btn-p { background: #24544A; color: #FFFFFF; }
+    .btn-s { background: #EFEBE4; color: #1C1A17; }
+    .chip { height: 36px; padding: 0 14px; border-radius: 12px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; background: #EFEBE4; color: #57524A; }
+    .chip.on { background: #24544A; color: #FFFFFF; }
+    .seg { display: flex; gap: 4px; padding: 4px; background: #EAE6DF; border-radius: 16px; }
+    .seg > div { flex-grow: 1; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: #6E6860; }
+    .seg > div.on { background: #FFFFFF; color: #1C1A17; box-shadow: 0 1px 3px rgba(28,26,23,.12); }
+    .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #FFFFFF; border-radius: 30px 30px 0 0; padding: 12px 20px 30px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -24px 60px -30px rgba(28,26,23,.7); }
+    .grip { width: 38px; height: 5px; border-radius: 99px; background: #DDD8CF; align-self: center; }
+    .divide { height: 1px; background: #EDE9E1; }
+    .field { background: #F6F4F0; border: 1px solid #E8E4DC; border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+    .lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #726C61; font-weight: 600; }
+    .val { font-size: 16px; font-weight: 600; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div class="screen">
+  <div style="height: 356px; background: #211F1B; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden">
+    <div style="position: absolute; top: 58px; left: 20px; right: 20px; display: flex; align-items: center; gap: 12px; color: #F2EFE9">
+      <div class="eyebrow grow" style="color: #A9A296">Scan receipt</div>
+      <div style="font-size: 13px; font-weight: 600; color: #9DCFBD">Cancel</div>
+    </div>
+    <div style="width: 196px; background: #F7F5F0; border-radius: 6px; padding: 18px 16px; transform: rotate(-2.2deg); display: flex; flex-direction: column; gap: 9px; box-shadow: 0 24px 50px -18px rgba(0,0,0,.8)">
+      <div style="height: 11px; width: 62%; background: #2B2823; border-radius: 3px"></div>
+      <div style="height: 6px; width: 84%; background: #CFC9BE; border-radius: 3px"></div>
+      <div style="height: 6px; width: 74%; background: #CFC9BE; border-radius: 3px"></div>
+      <div style="height: 6px; width: 90%; background: #CFC9BE; border-radius: 3px"></div>
+      <div style="height: 6px; width: 68%; background: #CFC9BE; border-radius: 3px"></div>
+      <div style="height: 1px; background: #DAD4C8"></div>
+      <div style="height: 9px; width: 56%; background: #2B2823; border-radius: 3px; align-self: flex-end"></div>
+    </div>
+    <div style="position: absolute; left: 62px; top: 130px; width: 266px; height: 190px; border: 2px solid rgba(159,207,189,.85); border-radius: 18px"></div>
+    <div style="position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 13px; color: #B9B2A6">Hold steady — text is read on device</div>
+  </div>
+
+  <div class="body" style="padding-top: 18px; gap: 12px">
+    <div class="row">
+      <div style="color: #24544A; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c.7 4.2 1.6 5.1 5.8 5.8-4.2.7-5.1 1.6-5.8 5.8-.7-4.2-1.6-5.1-5.8-5.8 4.2-.7 5.1-1.6 5.8-5.8z"/><path d="M18 16.2c.3 1.9.7 2.3 2.6 2.6-1.9.3-2.3.7-2.6 2.6-.3-1.9-.7-2.3-2.6-2.6 1.9-.3 2.3-.7 2.6-2.6z"/></svg></div>
+      <div class="eyebrow grow">Draft from receipt</div>
+      <div class="chip" style="height: 26px; padding: 0 10px; font-size: 12px">Not saved yet</div>
+    </div>
+
+    <div class="card" style="display: flex; flex-direction: column; gap: 14px">
+      <div class="row">
+        <div class="col grow" style="gap: 2px">
+          <div style="font-size: 17px; font-weight: 600">Bravo Market — 28 May küç.</div>
+          <div class="muted" style="font-size: 13px">3 Sep 2026, 19:12 · 6 items</div>
+        </div>
+        <div class="chip" style="background: #F0E6D6; color: #8A5C22"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9h15l-1.4 9.2a2 2 0 0 1-2 1.8H7.9a2 2 0 0 1-2-1.8z"/><path d="M9 9V6.6a3 3 0 0 1 6 0V9"/></svg> Food</div>
+      </div>
+      <div class="divide"></div>
+      <div class="stack" style="gap: 9px">
+        <div class="row" style="font-size: 14px"><div class="grow">Süd 2.5% · 1 L</div><div class="muted">3.20 ₼</div></div>
+        <div class="row" style="font-size: 14px"><div class="grow">Çörək · 2</div><div class="muted">1.60 ₼</div></div>
+        <div class="row" style="font-size: 14px"><div class="grow">Toyuq filesi · 0.9 kg</div><div class="muted">12.15 ₼</div></div>
+        <div class="row" style="font-size: 14px; color: #726C61"><div class="grow">+ 3 more items</div><div>25.05 ₼</div></div>
+      </div>
+      <div class="divide"></div>
+      <div class="row" style="align-items: baseline">
+        <div class="eyebrow grow">Total</div>
+        <div class="serif" style="font-size: 30px">42.00 ₼</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+      <div style="color: #57524A; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg></div>
+      <div class="col grow" style="gap: 2px">
+        <div style="font-size: 14px; font-weight: 600">Delete image after extraction</div>
+        <div class="muted" style="font-size: 12px">Only the text values are kept</div>
+      </div>
+      <div style="width: 50px; height: 30px; border-radius: 99px; background: #24544A; display: flex; align-items: center; justify-content: flex-end; padding: 3px">
+        <div style="width: 24px; height: 24px; border-radius: 99px; background: #FFFFFF"></div>
+      </div>
+    </div>
+
+    <div class="row" style="gap: 10px; margin-top: 2px">
+      <div class="btn btn-s" style="width: 128px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/></svg> Edit</div>
+      <div class="btn btn-p grow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg> Save transaction</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

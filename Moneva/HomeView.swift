@@ -1,0 +1,129 @@
+import SwiftUI
+import SwiftData
+
+struct HomeView: View {
+    @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
+    // ponytail: fetch-all then filter in memory. Fine for a personal ledger;
+    // move to a predicate #Query if a month ever holds thousands of rows.
+    @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
+    @Query private var budgets: [Budget]
+
+    private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
+    private var range: Range<Date> { Budgeting.monthRange(for: .now) }
+    private var spent: Decimal { Budgeting.spent(transactions, in: range, scope: scope) }
+    private var budget: Budget? {
+        budgets.first { $0.scope == scope && $0.monthStart == range.lowerBound }
+    }
+    private var today: [Transaction] {
+        transactions.filter { $0.scope == scope && Calendar.current.isDateInToday($0.date) }
+    }
+
+    var body: some View {
+        ScreenScroll(title: greeting, eyebrow: range.lowerBound.formatted(.dateTime.month(.wide).year())) {
+            ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
+
+            if let budget {
+                budgetCard(budget)
+            } else {
+                EmptyHint(
+                    title: "No budget for this month",
+                    message: "Set a monthly limit and Moneva will track what is left of it.",
+                    symbol: "chart.pie"
+                )
+            }
+
+            HStack {
+                Eyebrow("Today")
+                Spacer()
+                Text(todayTotal.money())
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Palette.inkMuted)
+            }
+            .padding(.top, 4)
+
+            if today.isEmpty {
+                EmptyHint(
+                    title: "Nothing today",
+                    message: "Tap the plus button to add an expense or income.",
+                    symbol: "tray"
+                )
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(today.enumerated()), id: \.element.persistentModelID) { index, transaction in
+                        if index > 0 { Divider().overlay(Palette.line) }
+                        TransactionRow(transaction: transaction)
+                    }
+                }
+                .monevaCard(padding: 16)
+            }
+        }
+    }
+
+    private var greeting: String {
+        switch Calendar.current.component(.hour, from: .now) {
+        case ..<5, 22...: "Good night"
+        case ..<12: "Good morning"
+        case ..<18: "Good afternoon"
+        default: "Good evening"
+        }
+    }
+
+    private var todayTotal: Decimal {
+        today.filter { $0.kind == .expense }.reduce(Decimal.zero) { $0 + $1.amount }
+    }
+
+    @ViewBuilder
+    private func budgetCard(_ budget: Budget) -> some View {
+        let progress = Budgeting.progress(spent: spent, limit: budget.total)
+        let state = Budgeting.LimitState(progress: progress)
+        let remaining = max(budget.total - spent, 0)
+
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Eyebrow("Spent this month")
+                Spacer()
+                Text("\(Int(progress * 100))% used")
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Palette.line.opacity(0.6), in: .capsule)
+                    .foregroundStyle(Palette.inkMuted)
+            }
+
+            Text(spent.money())
+                .font(.money(.largeTitle))
+                .foregroundStyle(Palette.ink)
+
+            ProgressBar(progress: progress, tint: tint(for: state))
+
+            HStack {
+                Text("\(remaining.money()) left of \(budget.total.money())")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.inkMuted)
+                Spacer()
+                Text(stateText(state))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(tint(for: state))
+            }
+        }
+        .monevaCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Spent \(spent.money()) of \(budget.total.money()), \(Int(progress * 100)) percent, \(stateText(state))")
+    }
+
+    private func tint(for state: Budgeting.LimitState) -> Color {
+        switch state {
+        case .ok: Palette.accent
+        case .nearingLimit: Palette.warning
+        case .atLimit: Palette.over
+        }
+    }
+
+    private func stateText(_ state: Budgeting.LimitState) -> String {
+        switch state {
+        case .ok: "On track"
+        case .nearingLimit: "Nearing the limit"
+        case .atLimit: "Limit reached"
+        }
+    }
+}
