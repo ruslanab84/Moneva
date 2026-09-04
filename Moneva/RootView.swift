@@ -11,6 +11,7 @@ struct RootView: View {
             Tab("Transactions", systemImage: "list.bullet") { TransactionsView() }
             Tab("Budget", systemImage: "chart.pie") { BudgetView() }
             Tab("Goals", systemImage: "flag") { GoalsView() }
+            Tab("Subs", systemImage: "arrow.triangle.2.circlepath") { SubscriptionsView() }
         }
         .tint(Palette.accent)
         .overlay(alignment: .bottomTrailing) {

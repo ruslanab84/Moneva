@@ -18,7 +18,7 @@ enum TransactionKind: String, Codable, CaseIterable, Identifiable {
 /// How a transaction got in. Voice and receipt drafts land here only after the
 /// user confirms them.
 enum EntrySource: String, Codable {
-    case manual, voice, receipt
+    case manual, voice, receipt, subscription
 }
 
 @Model
@@ -29,17 +29,33 @@ final class SpendingCategory {
     var softHex: String = "E4E2DB"
     var monthlyLimit: Decimal?
     var isBuiltIn: Bool = false
+    /// Archived categories leave the picker but keep every transaction they
+    /// ever held. Nothing is deleted.
+    var isArchived: Bool = false
+    /// Stored as a raw string. SwiftData cannot fill an enum column that rows
+    /// written before this property existed never had, and reading the empty
+    /// value force-casts and crashes.
+    var scopeRaw: String?
+    /// Manual order in the picker. Ties fall back to name.
+    var sortIndex: Int = 0
+
+    var scope: Scope {
+        get { scopeRaw.flatMap(Scope.init(rawValue:)) ?? .personal }
+        set { scopeRaw = newValue.rawValue }
+    }
 
     @Relationship(deleteRule: .nullify, inverse: \Transaction.category)
     var transactions: [Transaction] = []
 
-    init(name: String, symbol: String, tintHex: String, softHex: String, monthlyLimit: Decimal? = nil, isBuiltIn: Bool = false) {
+    init(name: String, symbol: String, tintHex: String, softHex: String, monthlyLimit: Decimal? = nil, isBuiltIn: Bool = false, scope: Scope = .personal, sortIndex: Int = 0) {
         self.name = name
         self.symbol = symbol
         self.tintHex = tintHex
         self.softHex = softHex
         self.monthlyLimit = monthlyLimit
         self.isBuiltIn = isBuiltIn
+        self.scopeRaw = scope.rawValue
+        self.sortIndex = sortIndex
     }
 
     var tint: Color { Color(hex: tintHex) }
@@ -127,3 +143,97 @@ final class Goal {
     var remaining: Decimal { max(target - saved, 0) }
 }
 
+
+enum BillingFrequency: String, Codable, CaseIterable, Identifiable {
+    /// Monthly is the whole MVP. The stored raw value leaves room for more.
+    case monthly
+    var id: String { rawValue }
+    var title: String { "Every month" }
+}
+
+enum SubscriptionStatus: String, Codable, CaseIterable, Identifiable {
+    case active, paused
+    var id: String { rawValue }
+    var title: String { self == .active ? "Active" : "Paused" }
+}
+
+/// What happens on the payment date. `ask` never writes on its own — it queues
+/// a confirmation the user answers.
+enum PaymentMode: String, Codable, CaseIterable, Identifiable {
+    case autoAdd, ask
+    var id: String { rawValue }
+    var title: String { self == .autoAdd ? "Auto-add transaction" : "Ask before adding" }
+}
+
+@Model
+final class Subscription {
+    /// Stable across launches and devices, so a scheduled reminder can still
+    /// find its subscription. `persistentModelID` is not a string.
+    var id: UUID = UUID()
+    var name: String = ""
+    var amount: Decimal = Decimal.zero
+    var currency: String = "AZN"
+    var frequency: BillingFrequency = BillingFrequency.monthly
+    var nextPaymentDate: Date = Date.now
+    /// Day of the month the charge lands on, kept separately so a short month
+    /// never drags the date backwards for good.
+    var anchorDay: Int = 1
+    /// Days before the payment to remind, or nil for no reminder.
+    var reminderDays: Int?
+    var paymentMode: PaymentMode = PaymentMode.autoAdd
+    var note: String = ""
+    var scope: Scope = Scope.personal
+    var status: SubscriptionStatus = SubscriptionStatus.active
+    var createdAt: Date = Date.now
+    var category: SpendingCategory?
+
+    @Relationship(deleteRule: .cascade, inverse: \SubscriptionPayment.subscription)
+    var payments: [SubscriptionPayment] = []
+
+    init(
+        name: String,
+        amount: Decimal,
+        currency: String = Money.code,
+        nextPaymentDate: Date,
+        reminderDays: Int? = nil,
+        paymentMode: PaymentMode = .autoAdd,
+        note: String = "",
+        scope: Scope = .personal,
+        category: SpendingCategory?,
+        calendar: Calendar = .current
+    ) {
+        self.name = name
+        self.amount = amount
+        self.currency = currency
+        self.nextPaymentDate = nextPaymentDate
+        self.anchorDay = calendar.component(.day, from: nextPaymentDate)
+        self.reminderDays = reminderDays
+        self.paymentMode = paymentMode
+        self.note = note
+        self.scope = scope
+        self.category = category
+    }
+
+    var monthlyCost: Decimal { status == .active ? amount : 0 }
+}
+
+/// One charge that has already been handled. Its billing period is what stops
+/// a subscription being charged twice for the same month.
+@Model
+final class SubscriptionPayment {
+    /// "2026-09" — the month the charge belongs to, not when it was processed.
+    var billingPeriod: String = ""
+    var processedDate: Date = Date.now
+    var subscription: Subscription?
+    /// Nullified when the user deletes the transaction; the payment stays as
+    /// the record that this period was already handled.
+    @Relationship(deleteRule: .nullify)
+    var transaction: Transaction?
+
+    init(billingPeriod: String, processedDate: Date = .now, subscription: Subscription?, transaction: Transaction?) {
+        self.billingPeriod = billingPeriod
+        self.processedDate = processedDate
+        self.subscription = subscription
+        self.transaction = transaction
+    }
+}

@@ -151,6 +151,61 @@ func monevaSelfCheck() {
     assert(ReceiptText.ordered(scanned) == "Bravo Market\nTotal  42.00", "receipt text reads top-down, left-right")
     assert(ReceiptText.ordered([]).isEmpty, "an empty scan is empty text, not a crash")
 
+    // Recurring payments: the day of the month is an anchor, not a stride, so
+    // a short February must not drag every later charge back with it.
+    let jan31 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 31))!
+    let feb = Subscriptions.nextDate(after: jan31, anchorDay: 31, calendar: calendar)
+    assert(calendar.component(.day, from: feb) == 28, "the 31st clamps to the end of February")
+    let mar = Subscriptions.nextDate(after: feb, anchorDay: 31, calendar: calendar)
+    assert(calendar.component(.day, from: mar) == 31, "and comes back to the 31st in March")
+    assert(Subscriptions.billingPeriod(for: feb, calendar: calendar) == "2026-02", "a period is the month the charge belongs to")
+
+    // Two months went by with the app closed: both are owed, once each.
+    let due = Subscriptions.duePeriods(
+        nextPaymentDate: calendar.date(from: DateComponents(year: 2026, month: 7, day: 5))!,
+        anchorDay: 5,
+        processed: [],
+        now: calendar.date(from: DateComponents(year: 2026, month: 9, day: 3))!,
+        calendar: calendar
+    )
+    assert(due.map(\.period) == ["2026-07", "2026-08"], "every missed month is owed exactly once")
+
+    let deduped = Subscriptions.duePeriods(
+        nextPaymentDate: calendar.date(from: DateComponents(year: 2026, month: 7, day: 5))!,
+        anchorDay: 5,
+        processed: ["2026-07"],
+        now: calendar.date(from: DateComponents(year: 2026, month: 9, day: 3))!,
+        calendar: calendar
+    )
+    assert(deduped.map(\.period) == ["2026-08"], "a month already on file is never charged twice")
+
+    assert(Subscriptions.reminderDate(paymentDate: sept, daysBefore: nil, calendar: calendar) == nil, "no reminder, no date")
+    assert(Subscriptions.reminderDate(paymentDate: sept, daysBefore: 3, calendar: calendar) == calendar.date(from: DateComponents(year: 2026, month: 8, day: 29))!, "a 3 day reminder fires 3 days before")
+
+    let netflix = Subscription(name: "Netflix", amount: 12, nextPaymentDate: sept, category: food, calendar: calendar)
+    let gym = Subscription(name: "Gym", amount: 45, nextPaymentDate: sept, category: food, calendar: calendar)
+    gym.status = .paused
+    assert(Subscriptions.monthlyTotal([netflix, gym]) == 12, "a paused subscription costs nothing this month")
+
+    // A detected day of the month resolves forward, never into the past.
+    let mid = calendar.date(from: DateComponents(year: 2026, month: 9, day: 17))!
+    assert(calendar.component(.month, from: SubscriptionResolver.nextDate(dayOfMonth: 25, now: mid, calendar: calendar)) == 9, "a day still to come stays in this month")
+    assert(calendar.component(.month, from: SubscriptionResolver.nextDate(dayOfMonth: 3, now: mid, calendar: calendar)) == 10, "a day already past moves to next month")
+
+    // Categories: names are unique per scope, archived ones leave the picker.
+    let shared = SpendingCategory(name: "Rent", symbol: "house", tintHex: "7A5B86", softHex: "E7DEE8", scope: .shared)
+    let archivedCategory = SpendingCategory(name: "Old", symbol: "circle", tintHex: "78746A", softHex: "E4E2DB")
+    archivedCategory.isArchived = true
+    let library = catalogue + [shared, archivedCategory]
+    assert(!CategoryLibrary.isNameAvailable("food", scope: .personal, in: library), "a name is taken whatever its case")
+    assert(CategoryLibrary.isNameAvailable("Food", scope: .shared, in: library), "the same name is free in the other scope")
+    assert(CategoryLibrary.isNameAvailable("Food", scope: .personal, in: library, excluding: food), "renaming a category does not collide with itself")
+    assert(!CategoryLibrary.isNameAvailable("  ", scope: .personal, in: library), "a blank name is never valid")
+    assert(!CategoryLibrary.visible(library, scope: .personal).contains { $0 === archivedCategory }, "archived categories leave the picker")
+    assert(!CategoryLibrary.visible(library, scope: .personal).contains { $0 === shared }, "shared categories stay out of a personal budget")
+    assert(CategoryLibrary.visible(library, scope: .shared).last === shared, "in a shared budget, personal comes first and shared last")
+    assert(CategoryLibrary.search(library, for: "tran").map(\.name) == ["Transport"], "search matches part of a name")
+
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")
     assert(Budgeting.projectedCompletion(remaining: 100, monthlyRate: 0, from: sept, calendar: calendar) == nil, "no rate, no date")

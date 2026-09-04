@@ -14,6 +14,7 @@ struct AddTransactionView: View {
     @State private var date: Date
     @State private var category: SpendingCategory?
     @State private var scope: Scope
+    @State private var isPickingCategory = false
 
     /// A voice or receipt draft arrives here prefilled; the form is still the
     /// thing that saves it.
@@ -53,18 +54,13 @@ struct AddTransactionView: View {
 
                 if kind == .expense {
                     Section("Category") {
-                        ForEach(categories, id: \.persistentModelID) { candidate in
-                            Button {
-                                category = candidate
-                            } label: {
-                                HStack(spacing: 12) {
-                                    CategoryBadge(category: candidate, size: 32)
-                                    Text(candidate.name).foregroundStyle(Palette.ink)
-                                    Spacer()
-                                    if category?.persistentModelID == candidate.persistentModelID {
-                                        Image(systemName: "checkmark").foregroundStyle(Palette.accent)
-                                    }
-                                }
+                        Button { isPickingCategory = true } label: {
+                            HStack(spacing: 12) {
+                                CategoryBadge(category: category, size: 32)
+                                Text(category?.name ?? "Choose a category")
+                                    .foregroundStyle(category == nil ? Palette.inkMuted : Palette.ink)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(Palette.inkFaint)
                             }
                         }
                     }
@@ -85,7 +81,10 @@ struct AddTransactionView: View {
             .onAppear {
                 guard !isPrefilled else { return }
                 scope = Scope(rawValue: scopeRaw) ?? .personal
-                if category == nil { category = categories.first }
+                if category == nil { category = CategoryLibrary.visible(categories, scope: scope).first }
+            }
+            .sheet(isPresented: $isPickingCategory) {
+                CategoryPickerView(selection: $category, scope: scope)
             }
         }
     }
