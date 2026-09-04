@@ -128,13 +128,20 @@ struct ScreenScroll<Content: View>: View {
 struct AmountField: View {
     let title: String
     @Binding var value: Decimal
+    /// Read once per field so the symbol matches whatever the settings say.
+    var currencyCode: String = Money.code
     @State private var text = ""
 
     var body: some View {
-        TextField(title, text: $text)
-            .keyboardType(.decimalPad)
-            .onAppear { if value > 0 { text = AmountField.display(value) } }
-            .onChange(of: text) { _, new in value = AmountField.parse(new) }
+        HStack(spacing: 6) {
+            TextField(title, text: $text)
+                .keyboardType(.decimalPad)
+                .onAppear { if value > 0 { text = AmountField.display(value) } }
+                .onChange(of: text) { _, new in value = AmountField.parse(new) }
+            Text(Money.symbol(for: currencyCode))
+                .foregroundStyle(Palette.inkMuted)
+                .accessibilityHidden(true)
+        }
     }
 
     /// Accepts both decimal separators — the keypad shows whichever the

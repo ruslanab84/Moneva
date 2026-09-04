@@ -4,6 +4,7 @@ import SwiftData
 struct GoalsView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
+    @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
     @State private var isAdding = false
     @State private var topUpTarget: Goal?
@@ -68,14 +69,14 @@ struct GoalsView: View {
                     .foregroundStyle(Palette.ink)
             }
 
-            Text("\(goal.saved.money()) of \(goal.target.money())")
+            Text("\(goal.saved.money(currencyCode)) of \(goal.target.money(currencyCode))")
                 .font(.money(.title))
                 .foregroundStyle(Palette.ink)
 
             ProgressBar(progress: progress, tint: Color(hex: goal.tintHex), height: 10)
 
             HStack {
-                Text("\(goal.remaining.money()) to go")
+                Text("\(goal.remaining.money(currencyCode)) to go")
                     .font(.footnote)
                     .foregroundStyle(Palette.inkMuted)
                 Spacer()
@@ -92,7 +93,7 @@ struct GoalsView: View {
             Button("Delete goal", systemImage: "trash", role: .destructive) { context.delete(goal) }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(goal.name), \(goal.saved.money()) of \(goal.target.money()), \(Int(progress * 100)) percent saved")
+        .accessibilityLabel("\(goal.name), \(goal.saved.money(currencyCode)) of \(goal.target.money(currencyCode)), \(Int(progress * 100)) percent saved")
     }
 
     private func subtitle(_ goal: Goal) -> String {

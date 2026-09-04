@@ -3,6 +3,7 @@ import SwiftData
 
 struct BudgetView: View {
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
+    @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query private var budgets: [Budget]
     @State private var isEditing = false
@@ -56,12 +57,12 @@ struct BudgetView: View {
         let remaining = max(budget.total - spent, 0)
 
         VStack(alignment: .leading, spacing: 13) {
-            Text("\(remaining.money()) left")
+            Text("\(remaining.money(currencyCode)) left")
                 .font(.money(.largeTitle))
                 .foregroundStyle(Palette.ink)
             ProgressBar(progress: progress, tint: color(state), height: 10)
             HStack {
-                Text("\(spent.money()) spent of \(budget.total.money())")
+                Text("\(spent.money(currencyCode)) spent of \(budget.total.money(currencyCode))")
                     .font(.footnote)
                     .foregroundStyle(Palette.inkMuted)
                 Spacer()
@@ -71,7 +72,7 @@ struct BudgetView: View {
             }
             if let projection = Budgeting.projectedMonthTotal(spent: spent, now: .now) {
                 Divider().overlay(Palette.line)
-                Label("On this pace you finish the month around \(projection.money()).", systemImage: "info.circle")
+                Label("On this pace you finish the month around \(projection.money(currencyCode)).", systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(Palette.inkMuted)
             }
@@ -94,14 +95,14 @@ struct BudgetView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.ink)
                 Spacer()
-                Text("\(used.money()) / \(limit.amount.money())")
+                Text("\(used.money(currencyCode)) / \(limit.amount.money(currencyCode))")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(state == .ok ? Palette.inkMuted : color(state))
             }
             ProgressBar(progress: progress, tint: color(state))
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(limit.category?.name ?? "Uncategorised"), \(used.money()) of \(limit.amount.money()), \(Int(progress * 100)) percent")
+        .accessibilityLabel("\(limit.category?.name ?? "Uncategorised"), \(used.money(currencyCode)) of \(limit.amount.money(currencyCode)), \(Int(progress * 100)) percent")
     }
 
     private func color(_ state: Budgeting.LimitState) -> Color {
@@ -122,6 +123,8 @@ struct BudgetEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \SpendingCategory.name) private var categories: [SpendingCategory]
 
+    /// Local until Save — Cancel must leave the setting alone.
+    @State private var currencyCode = Money.code
     @State private var total: Decimal = 0
     @State private var limits: [PersistentIdentifier: Decimal] = [:]
 
@@ -129,8 +132,17 @@ struct BudgetEditor: View {
         NavigationStack {
             Form {
                 Section("Monthly total") {
-                    AmountField(title: "Total limit", value: $total)
+                    AmountField(title: "Total limit", value: $total, currencyCode: currencyCode)
                         .font(.money(.title2))
+                }
+                Section {
+                    Picker("Currency", selection: $currencyCode) {
+                        ForEach(Money.pickerCodes, id: \.self) { code in
+                            Text(Money.label(for: code)).tag(code)
+                        }
+                    }
+                } footer: {
+                    Text("Moneva shows every amount in this currency. Past transactions keep the code they were saved with.")
                 }
                 Section("Category limits") {
                     ForEach(categories, id: \.persistentModelID) { category in
@@ -138,7 +150,7 @@ struct BudgetEditor: View {
                             CategoryBadge(category: category, size: 30)
                             Text(category.name)
                             Spacer()
-                            AmountField(title: "None", value: binding(for: category))
+                            AmountField(title: "None", value: binding(for: category), currencyCode: currencyCode)
                                 .multilineTextAlignment(.trailing)
                                 .frame(width: 90)
                         }
@@ -176,6 +188,7 @@ struct BudgetEditor: View {
             context.insert(fresh)
             return fresh
         }()
+        Money.code = currencyCode
         target.total = total
 
         // Rebuild the limit set from the form: simpler than diffing, and the

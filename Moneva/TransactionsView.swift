@@ -4,6 +4,7 @@ import SwiftData
 struct TransactionsView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
+    @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
@@ -40,7 +41,7 @@ struct TransactionsView: View {
                 HStack {
                     Eyebrow(dayTitle(group.day))
                     Spacer()
-                    Text(dayTotal(group.items).money())
+                    Text(dayTotal(group.items).money(currencyCode))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Palette.inkMuted)
                 }
@@ -65,7 +66,7 @@ struct TransactionsView: View {
     private func totals(_ title: String, _ value: Decimal, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Eyebrow(title)
-            Text(value.money())
+            Text(value.money(currencyCode))
                 .font(.money(.title2))
                 .foregroundStyle(color)
         }

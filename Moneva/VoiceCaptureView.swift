@@ -7,14 +7,25 @@ struct VoiceCaptureView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
+    @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \SpendingCategory.name) private var categories: [SpendingCategory]
 
     @State private var speech = SpeechCapture()
     @State private var drafter = TransactionDrafter()
-    @State private var draft: TransactionDraft?
     @State private var isEditing = false
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
+
+    /// Rebuilt from the model's latest snapshot, so the card fills in as the
+    /// draft streams rather than appearing whole at the end.
+    private var draft: TransactionDraft? {
+        drafter.partial.map { DraftResolver.resolve($0, categories: categories, scope: scope) }
+    }
+
+    private var isFinal: Bool {
+        if case .ready = drafter.phase { return true }
+        return false
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,22 +50,22 @@ struct VoiceCaptureView: View {
                 switch drafter.phase {
                 case .idle:
                     EmptyView()
-                case .drafting:
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        Text("Reading that…").font(.footnote).foregroundStyle(Palette.inkMuted)
-                    }
-                    .monevaCard()
                 case .failed(let message):
                     Text(message).font(.footnote).foregroundStyle(Palette.over).monevaCard()
-                case .ready:
+                case .drafting, .ready:
                     if let draft {
                         draftCard(draft)
-                        Text("Moneva only drafts. Nothing is written to your data until you tap Save.")
-                            .font(.caption)
-                            .foregroundStyle(Palette.inkFaint)
-                        actions(for: draft)
+                    } else {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Reading that…").font(.footnote).foregroundStyle(Palette.inkMuted)
+                        }
+                        .monevaCard()
                     }
+                    Text("Moneva only drafts. Nothing is written to your data until you tap Save.")
+                        .font(.caption)
+                        .foregroundStyle(Palette.inkFaint)
+                    if isFinal, let draft { actions(for: draft) }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -96,8 +107,9 @@ struct VoiceCaptureView: View {
 
     private func draftCard(_ draft: TransactionDraft) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Eyebrow("Draft — on-device model")
+            HStack(spacing: 8) {
+                Eyebrow(isFinal ? "Draft — on-device model" : "Drafting on device")
+                if !isFinal { ProgressView().controlSize(.mini) }
                 Spacer()
                 Text("Not saved yet")
                     .font(.caption2.weight(.semibold))
@@ -106,14 +118,14 @@ struct VoiceCaptureView: View {
 
             HStack(spacing: 12) {
                 CategoryBadge(category: draft.category)
-                Text((draft.kind == .income ? "+" : "−") + draft.amount.money())
+                Text((draft.kind == .income ? "+" : "−") + draft.amount.money(currencyCode))
                     .font(.money(.largeTitle))
                     .foregroundStyle(Palette.ink)
             }
 
             VStack(spacing: 0) {
                 field("Merchant", draft.merchant.isEmpty ? "—" : draft.merchant)
-                field("Category", draft.category?.name ?? "Income")
+                field("Category", draft.category?.name ?? (draft.kind == .income ? "Income" : "—"))
                 field("Date", draft.date.formatted(date: .abbreviated, time: .omitted))
                 field("Scope", draft.scope.title)
                 if !draft.note.isEmpty { field("Note", draft.note) }
@@ -153,11 +165,7 @@ struct VoiceCaptureView: View {
         if speech.isRecording {
             await speech.stop()
             await drafter.draft(from: speech.text, categories: categories)
-            if case .ready(let drafted) = drafter.phase {
-                draft = DraftResolver.resolve(drafted, categories: categories, scope: scope)
-            }
         } else {
-            draft = nil
             drafter.reset()
             await speech.start()
         }

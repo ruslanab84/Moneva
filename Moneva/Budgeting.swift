@@ -120,13 +120,26 @@ func monevaSelfCheck() {
     assert(DraftResolver.date(daysAgo: 1, now: today, calendar: calendar) == calendar.date(from: DateComponents(year: 2026, month: 9, day: 2))!, "yesterday is one day back")
     assert(DraftResolver.date(daysAgo: -4, now: today, calendar: calendar) == today, "the model cannot draft the future")
 
-    let spoken = DraftedTransaction(kind: .expense, amount: 42, merchant: " Bravo ", category: "Food", daysAgo: 1, note: "groceries")
-    let resolved = DraftResolver.resolve(spoken, categories: catalogue, scope: .shared, now: today)
+    let resolved = DraftResolver.resolve(kind: .expense, amount: 42, merchant: " Bravo ", category: "Food", daysAgo: 1, note: "groceries", categories: catalogue, scope: .shared, now: today)
     assert(resolved.amount == 42 && resolved.merchant == "Bravo" && resolved.category === food, "the drafted sentence resolves to app types")
     assert(resolved.scope == .shared, "scope comes from the app, never from the model")
 
-    let paycheck = DraftedTransaction(kind: .income, amount: 2400, merchant: "Work", category: "Food", daysAgo: 0, note: "")
-    assert(DraftResolver.resolve(paycheck, categories: catalogue, scope: .personal, now: today).category == nil, "income carries no category")
+    let paycheck = DraftResolver.resolve(kind: .income, amount: 2400, merchant: "Work", category: "Food", daysAgo: 0, note: "", categories: catalogue, scope: .personal, now: today)
+    assert(paycheck.category == nil, "income carries no category")
+
+    // Mid-stream: only the first fields have arrived.
+    let streaming = DraftResolver.resolve(kind: .expense, amount: 42, merchant: nil, category: nil, daysAgo: nil, note: nil, categories: catalogue, scope: .personal, now: today)
+    assert(streaming.amount == 42, "an amount shows as soon as the model streams it")
+    assert(streaming.merchant.isEmpty && streaming.category == nil, "a field the model has not reached yet stays empty, never guessed")
+    assert(streaming.date == today, "an unsent day means today, not a made-up date")
+
+    // The exact glyph is the locale's business — "$", "US$" and "USD" are all
+    // correct answers. Only the shape is asserted.
+    for code in ["USD", "AZN", "EUR"] {
+        let symbol = Money.symbol(for: code)
+        assert(!symbol.isEmpty, "\(code) must print something to put beside the field")
+        assert(symbol.allSatisfy { !$0.isNumber && !$0.isWhitespace }, "\(code) symbol must carry no digits or spaces")
+    }
 
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")

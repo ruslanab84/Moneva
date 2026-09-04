@@ -3,6 +3,7 @@ import SwiftData
 
 struct HomeView: View {
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
+    @AppStorage(Money.storageKey) private var currencyCode = Money.code
     // ponytail: fetch-all then filter in memory. Fine for a personal ledger;
     // move to a predicate #Query if a month ever holds thousands of rows.
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
@@ -35,7 +36,7 @@ struct HomeView: View {
             HStack {
                 Eyebrow("Today")
                 Spacer()
-                Text(todayTotal.money())
+                Text(todayTotal.money(currencyCode))
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Palette.inkMuted)
             }
@@ -90,14 +91,14 @@ struct HomeView: View {
                     .foregroundStyle(Palette.inkMuted)
             }
 
-            Text(spent.money())
+            Text(spent.money(currencyCode))
                 .font(.money(.largeTitle))
                 .foregroundStyle(Palette.ink)
 
             ProgressBar(progress: progress, tint: tint(for: state))
 
             HStack {
-                Text("\(remaining.money()) left of \(budget.total.money())")
+                Text("\(remaining.money(currencyCode)) left of \(budget.total.money(currencyCode))")
                     .font(.footnote)
                     .foregroundStyle(Palette.inkMuted)
                 Spacer()
@@ -108,7 +109,7 @@ struct HomeView: View {
         }
         .monevaCard()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Spent \(spent.money()) of \(budget.total.money()), \(Int(progress * 100)) percent, \(stateText(state))")
+        .accessibilityLabel("Spent \(spent.money(currencyCode)) of \(budget.total.money(currencyCode)), \(Int(progress * 100)) percent, \(stateText(state))")
     }
 
     private func tint(for state: Budgeting.LimitState) -> Color {

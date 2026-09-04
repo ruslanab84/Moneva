@@ -36,8 +36,42 @@ extension Font {
     static func money(_ style: Font.TextStyle) -> Font { .system(style, design: .serif) }
 }
 
+/// The one currency the app displays in. Amounts keep their own code on the
+/// transaction, so switching this never rewrites what already happened.
+enum Money {
+    static let storageKey = "currency"
+
+    static var code: String {
+        get { UserDefaults.standard.string(forKey: storageKey) ?? Locale.current.currency?.identifier ?? "AZN" }
+        set { UserDefaults.standard.set(newValue, forKey: storageKey) }
+    }
+
+    /// What the current locale prints in front of a number — "₼", "$", "CHF".
+    /// Derived from a formatted zero so it follows the same rules as every
+    /// amount on screen.
+    static func symbol(for code: String) -> String {
+        Decimal.zero
+            .formatted(.currency(code: code).precision(.fractionLength(0)))
+            .filter { !$0.isNumber && !$0.isWhitespace }
+    }
+
+    /// "USD $", but plain "AED" where the locale has no distinct symbol —
+    /// repeating the code twice reads like a bug.
+    static func label(for code: String) -> String {
+        let symbol = self.symbol(for: code)
+        return symbol == code ? code : "\(code) \(symbol)"
+    }
+
+    /// Codes offered in the picker: the device's own first, then the rest.
+    static var pickerCodes: [String] {
+        let mine = Locale.current.currency?.identifier
+        let rest = Locale.commonISOCurrencyCodes.filter { $0 != mine }
+        return ([mine].compactMap { $0 }) + rest
+    }
+}
+
 extension Decimal {
-    func money(_ code: String = "AZN") -> String {
+    func money(_ code: String = Money.code) -> String {
         formatted(.currency(code: code).precision(.fractionLength(2)))
     }
 

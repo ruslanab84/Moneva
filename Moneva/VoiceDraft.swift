@@ -64,16 +64,42 @@ enum DraftResolver {
             ?? categories.first
     }
 
-    static func resolve(_ drafted: DraftedTransaction, categories: [SpendingCategory], scope: Scope, now: Date = .now) -> TransactionDraft {
-        let kind: TransactionKind = drafted.kind == .income ? .income : .expense
+    /// Fields arrive one at a time while the model streams, so every one is
+    /// optional here. A missing field shows as empty, never as a guess.
+    static func resolve(
+        kind: DraftKind?,
+        amount rawAmount: Double?,
+        merchant: String?,
+        category categoryName: String?,
+        daysAgo: Int?,
+        note: String?,
+        categories: [SpendingCategory],
+        scope: Scope,
+        now: Date = .now
+    ) -> TransactionDraft {
+        let resolvedKind: TransactionKind = kind == .income ? .income : .expense
         return TransactionDraft(
-            kind: kind,
-            amount: amount(drafted.amount),
-            merchant: drafted.merchant.trimmingCharacters(in: .whitespacesAndNewlines),
-            note: drafted.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            date: date(daysAgo: drafted.daysAgo, now: now),
-            category: kind == .expense ? category(named: drafted.category, in: categories) : nil,
+            kind: resolvedKind,
+            amount: rawAmount.map(amount) ?? 0,
+            merchant: merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+            note: note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+            date: daysAgo.map { date(daysAgo: $0, now: now) } ?? now,
+            category: resolvedKind == .expense ? categoryName.flatMap { category(named: $0, in: categories) } : nil,
             scope: scope
+        )
+    }
+
+    static func resolve(_ partial: DraftedTransaction.PartiallyGenerated, categories: [SpendingCategory], scope: Scope, now: Date = .now) -> TransactionDraft {
+        resolve(
+            kind: partial.kind,
+            amount: partial.amount,
+            merchant: partial.merchant,
+            category: partial.category,
+            daysAgo: partial.daysAgo,
+            note: partial.note,
+            categories: categories,
+            scope: scope,
+            now: now
         )
     }
 
@@ -89,10 +115,13 @@ enum DraftResolver {
 @Observable
 final class TransactionDrafter {
     enum Phase {
-        case idle, drafting, ready(DraftedTransaction), failed(String)
+        case idle, drafting, ready, failed(String)
     }
 
     private(set) var phase: Phase = .idle
+    /// The draft as it fills in. The view reads this on every snapshot, so the
+    /// card grows field by field instead of appearing all at once.
+    private(set) var partial: DraftedTransaction.PartiallyGenerated?
     private var session: LanguageModelSession?
 
     /// Why the feature is off, or nil when it is on.
@@ -132,12 +161,18 @@ final class TransactionDrafter {
         guard !session.isResponding else { return }
 
         phase = .drafting
+        partial = nil
         do {
-            let response = try await session.respond(
+            let stream = session.streamResponse(
                 to: "Sentence: \(spoken)",
                 generating: DraftedTransaction.self
             )
-            phase = .ready(response.content)
+            for try await snapshot in stream {
+                partial = snapshot.content
+            }
+            phase = partial == nil
+                ? .failed("The model returned nothing. Try again or add it by hand.")
+                : .ready
         } catch {
             phase = .failed("Could not read that as a transaction. Try again or add it by hand.")
         }
@@ -145,6 +180,7 @@ final class TransactionDrafter {
 
     func reset() {
         phase = .idle
+        partial = nil
         session = nil
     }
 

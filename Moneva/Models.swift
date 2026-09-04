@@ -58,7 +58,7 @@ final class Transaction {
     var source: EntrySource = EntrySource.manual
     var category: SpendingCategory?
 
-    init(amount: Decimal, date: Date = .now, merchant: String, note: String = "", kind: TransactionKind = .expense, scope: Scope = .personal, source: EntrySource = .manual, category: SpendingCategory?, currency: String = "AZN") {
+    init(amount: Decimal, date: Date = .now, merchant: String, note: String = "", kind: TransactionKind = .expense, scope: Scope = .personal, source: EntrySource = .manual, category: SpendingCategory?, currency: String = Money.code) {
         self.amount = amount
         self.date = date
         self.merchant = merchant
