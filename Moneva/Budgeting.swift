@@ -141,6 +141,16 @@ func monevaSelfCheck() {
         assert(symbol.allSatisfy { !$0.isNumber && !$0.isWhitespace }, "\(code) symbol must carry no digits or spaces")
     }
 
+    // Vision hands text back in detection order; a receipt only reads correctly
+    // top to bottom, then left to right within a line.
+    let scanned: [(text: String, rect: CGRect)] = [
+        ("42.00", CGRect(x: 300, y: 200, width: 60, height: 20)),
+        ("Bravo Market", CGRect(x: 20, y: 10, width: 200, height: 22)),
+        ("Total", CGRect(x: 20, y: 202, width: 60, height: 20))
+    ]
+    assert(ReceiptText.ordered(scanned) == "Bravo Market\nTotal  42.00", "receipt text reads top-down, left-right")
+    assert(ReceiptText.ordered([]).isEmpty, "an empty scan is empty text, not a crash")
+
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")
     assert(Budgeting.projectedCompletion(remaining: 100, monthlyRate: 0, from: sept, calendar: calendar) == nil, "no rate, no date")

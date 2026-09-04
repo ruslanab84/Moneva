@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @State private var isAdding = false
     @State private var isSpeaking = false
+    @State private var isScanning = false
 
     var body: some View {
         TabView {
@@ -14,6 +15,16 @@ struct RootView: View {
         .tint(Palette.accent)
         .overlay(alignment: .bottomTrailing) {
             VStack(spacing: 12) {
+                Button { isScanning = true } label: {
+                    Image(systemName: "doc.viewfinder")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Palette.accent)
+                        .frame(width: 46, height: 46)
+                        .background(Palette.card, in: .circle)
+                        .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 5)
+                }
+                .accessibilityLabel("Scan a receipt")
+
                 Button { isSpeaking = true } label: {
                     Image(systemName: "mic.fill")
                         .font(.body.weight(.semibold))
@@ -39,5 +50,6 @@ struct RootView: View {
         }
         .sheet(isPresented: $isAdding) { AddTransactionView() }
         .sheet(isPresented: $isSpeaking) { VoiceCaptureView() }
+        .sheet(isPresented: $isScanning) { ReceiptScanView() }
     }
 }

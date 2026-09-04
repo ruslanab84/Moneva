@@ -155,3 +155,74 @@ struct AmountField: View {
         value.formatted(.number.precision(.fractionLength(0...2)).grouping(.never).locale(Locale(identifier: "en_US_POSIX")))
     }
 }
+
+/// The confirm-before-save card. Voice and receipt drafts are the same shape,
+/// so both screens show the same thing and the same warning.
+struct DraftCard: View {
+    let draft: TransactionDraft
+    /// False while the model is still streaming fields in.
+    let isFinal: Bool
+    var currencyCode: String = Money.code
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Eyebrow(isFinal ? "Draft — on-device model" : "Drafting on device")
+                if !isFinal { ProgressView().controlSize(.mini) }
+                Spacer()
+                Text("Not saved yet")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Palette.warning)
+            }
+
+            HStack(spacing: 12) {
+                CategoryBadge(category: draft.category)
+                Text((draft.kind == .income ? "+" : "−") + draft.amount.money(currencyCode))
+                    .font(.money(.largeTitle))
+                    .foregroundStyle(Palette.ink)
+            }
+
+            VStack(spacing: 0) {
+                field("Merchant", draft.merchant.isEmpty ? "—" : draft.merchant)
+                field("Category", draft.category?.name ?? (draft.kind == .income ? "Income" : "—"))
+                field("Date", draft.date.formatted(date: .abbreviated, time: .omitted))
+                field("Scope", draft.scope.title)
+                if !draft.note.isEmpty { field("Note", draft.note) }
+            }
+        }
+        .monevaCard()
+    }
+
+    private func field(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).font(.footnote).foregroundStyle(Palette.inkMuted)
+            Spacer(minLength: 12)
+            Text(value).font(.subheadline).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
+        }
+        .padding(.vertical, 9)
+        .overlay(alignment: .bottom) { Rectangle().fill(Palette.line).frame(height: 1) }
+    }
+}
+
+struct DraftActions: View {
+    let draft: TransactionDraft
+    var edit: () -> Void
+    var save: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button("Edit", action: edit)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(Palette.card, in: .rect(cornerRadius: 16))
+
+            Button("Save transaction", action: save)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Palette.card)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(Palette.accent, in: .rect(cornerRadius: 16))
+                .disabled(draft.amount <= 0)
+        }
+    }
+}

@@ -118,6 +118,15 @@ final class TransactionDrafter {
         case idle, drafting, ready, failed(String)
     }
 
+    /// What the untrusted text is. Only the instructions differ — the shape
+    /// the model fills in, and every check on it, stay the same.
+    enum Input {
+        case spoken, receipt
+    }
+
+    let input: Input
+    init(_ input: Input = .spoken) { self.input = input }
+
     private(set) var phase: Phase = .idle
     /// The draft as it fills in. The view reads this on every snapshot, so the
     /// card grows field by field instead of appearing all at once.
@@ -132,7 +141,7 @@ final class TransactionDrafter {
                 ? nil
                 : "Apple Intelligence does not support your language yet."
         case .unavailable(.appleIntelligenceNotEnabled):
-            return "Turn on Apple Intelligence in Settings to draft by voice."
+            return "Turn on Apple Intelligence in Settings to draft transactions."
         case .unavailable(.modelNotReady):
             return "Apple Intelligence is still getting ready. Try again shortly."
         case .unavailable(.deviceNotEligible):
@@ -149,9 +158,9 @@ final class TransactionDrafter {
         session.prewarm()
     }
 
-    func draft(from transcript: String, categories: [SpendingCategory]) async {
-        let spoken = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !spoken.isEmpty else { return }
+    func draft(from text: String, categories: [SpendingCategory]) async {
+        let source = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { return }
         if let reason = Self.unavailableReason {
             phase = .failed(reason)
             return
@@ -164,7 +173,7 @@ final class TransactionDrafter {
         partial = nil
         do {
             let stream = session.streamResponse(
-                to: "Sentence: \(spoken)",
+                to: input == .spoken ? "Sentence: \(source)" : "Receipt text:\n\(source)",
                 generating: DraftedTransaction.self
             )
             for try await snapshot in stream {
@@ -185,14 +194,32 @@ final class TransactionDrafter {
     }
 
     /// Category names are app data, so they belong in the instructions. The
-    /// spoken sentence is untrusted and stays in the prompt.
+    /// spoken sentence or scanned receipt is untrusted and stays in the prompt.
     private func makeSession(categories: [SpendingCategory]) -> LanguageModelSession {
         let names = categories.map(\.name).joined(separator: ", ")
         return LanguageModelSession {
-            "You turn one spoken sentence about money into a single transaction draft."
+            Self.rules(for: input)
             "Choose the category from exactly this list: \(names)."
-            "Money going out is an expense. Salary, refunds and gifts received are income."
-            "Only use amounts, names and days that the sentence actually says. Never invent them."
+        }
+    }
+
+    private static func rules(for input: Input) -> String {
+        switch input {
+        case .spoken:
+            return [
+                "You turn one spoken sentence about money into a single transaction draft.",
+                "Money going out is an expense. Salary, refunds and gifts received are income.",
+                "Only use amounts, names and days that the sentence actually says. Never invent them."
+            ].joined(separator: " ")
+        case .receipt:
+            return [
+                "You turn the text scanned from one paper receipt into a single transaction draft.",
+                "A paid receipt is always an expense.",
+                "The amount is the final total paid — never a line item, a subtotal, the tax, the cash tendered or the change.",
+                "The merchant is the shop name, usually on the first lines.",
+                "The receipt is scanned on the day of purchase, so daysAgo is 0.",
+                "Only use values actually printed on the receipt. Never invent them."
+            ].joined(separator: " ")
         }
     }
 }

@@ -256,6 +256,7 @@
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Moneva uses the camera only while you scan a receipt. The photo is read on this iPhone and never stored or sent anywhere.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Moneva listens only while you hold the voice screen open, so you can speak a transaction instead of typing it.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech is transcribed on this iPhone to turn what you say into a transaction draft. Nothing is sent to a server.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -290,6 +291,7 @@
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Moneva uses the camera only while you scan a receipt. The photo is read on this iPhone and never stored or sent anywhere.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Moneva listens only while you hold the voice screen open, so you can speak a transaction instead of typing it.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech is transcribed on this iPhone to turn what you say into a transaction draft. Nothing is sent to a server.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

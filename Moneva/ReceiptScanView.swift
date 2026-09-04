@@ -1,23 +1,23 @@
 import SwiftUI
 import SwiftData
 
-/// Speak a transaction, read the draft, then decide. Nothing reaches the store
-/// until Save — the model only ever fills a form.
-struct VoiceCaptureView: View {
+/// Scan a paper receipt, read the draft, then decide. Same contract as voice:
+/// the model only fills a form, Save is the only thing that writes.
+struct ReceiptScanView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
     @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \SpendingCategory.name) private var categories: [SpendingCategory]
 
-    @State private var speech = SpeechCapture()
-    @State private var drafter = TransactionDrafter()
+    @State private var drafter = TransactionDrafter(.receipt)
+    @State private var isScanning = false
     @State private var isEditing = false
+    @State private var isReading = false
+    @State private var scanError: String?
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
 
-    /// Rebuilt from the model's latest snapshot, so the card fills in as the
-    /// draft streams rather than appearing whole at the end.
     private var draft: TransactionDraft? {
         drafter.partial.map { DraftResolver.resolve($0, categories: categories, scope: scope) }
     }
@@ -29,22 +29,23 @@ struct VoiceCaptureView: View {
 
     var body: some View {
         NavigationStack {
-            ScreenScroll(title: "Voice expense", eyebrow: "On device") {
+            ScreenScroll(title: "Scan receipt", eyebrow: "On device") {
                 if let reason = TransactionDrafter.unavailableReason {
                     EmptyHint(title: "Drafting is off", message: reason, symbol: "sparkles.slash")
                 }
 
-                microphone
+                camera
 
-                if !speech.text.isEmpty {
-                    Text("“\(speech.text)”")
-                        .font(.body)
-                        .foregroundStyle(Palette.ink)
-                        .monevaCard()
+                if let scanError {
+                    Text(scanError).font(.footnote).foregroundStyle(Palette.over).monevaCard()
                 }
 
-                if let message = speech.error {
-                    Text(message).font(.footnote).foregroundStyle(Palette.over)
+                if isReading {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Reading the receipt…").font(.footnote).foregroundStyle(Palette.inkMuted)
+                    }
+                    .monevaCard()
                 }
 
                 switch drafter.phase {
@@ -55,14 +56,8 @@ struct VoiceCaptureView: View {
                 case .drafting, .ready:
                     if let draft {
                         DraftCard(draft: draft, isFinal: isFinal, currencyCode: currencyCode)
-                    } else {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                            Text("Reading that…").font(.footnote).foregroundStyle(Palette.inkMuted)
-                        }
-                        .monevaCard()
                     }
-                    Text("Moneva only drafts. Nothing is written to your data until you tap Save.")
+                    Text("The photo is never stored — only the text values you see, and only after you tap Save.")
                         .font(.caption)
                         .foregroundStyle(Palette.inkFaint)
                     if isFinal, let draft {
@@ -73,33 +68,33 @@ struct VoiceCaptureView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        Task { await speech.stop(); dismiss() }
-                    }
+                    Button("Cancel") { dismiss() }
                 }
             }
             .onAppear { drafter.prewarm(categories: categories) }
+            .fullScreenCover(isPresented: $isScanning) {
+                DocumentScanner { image in Task { await read(image) } }
+                    .ignoresSafeArea()
+            }
             .sheet(isPresented: $isEditing, onDismiss: { dismiss() }) {
                 if let draft { AddTransactionView(draft: draft) }
             }
         }
     }
 
-    private var microphone: some View {
+    private var camera: some View {
         VStack(spacing: 12) {
-            Button {
-                Task { await toggleRecording() }
-            } label: {
-                Image(systemName: speech.isRecording ? "stop.fill" : "mic.fill")
+            Button { isScanning = true } label: {
+                Image(systemName: "doc.viewfinder")
                     .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(Palette.card)
                     .frame(width: 96, height: 96)
-                    .background(speech.isRecording ? Palette.over : Palette.accent, in: .circle)
+                    .background(Palette.accent, in: .circle)
                     .shadow(color: Palette.accent.opacity(0.35), radius: 18, x: 0, y: 10)
             }
-            .accessibilityLabel(speech.isRecording ? "Stop listening" : "Start listening")
+            .accessibilityLabel("Scan a receipt")
 
-            Text(speech.isRecording ? "Listening — tap to stop" : "Speech stays on this iPhone")
+            Text("Hold steady — text is read on device")
                 .font(.footnote)
                 .foregroundStyle(Palette.inkMuted)
         }
@@ -107,13 +102,16 @@ struct VoiceCaptureView: View {
         .padding(.vertical, 8)
     }
 
-    private func toggleRecording() async {
-        if speech.isRecording {
-            await speech.stop()
-            await drafter.draft(from: speech.text, categories: categories)
-        } else {
-            drafter.reset()
-            await speech.start()
+    private func read(_ image: UIImage) async {
+        scanError = nil
+        drafter.reset()
+        isReading = true
+        defer { isReading = false }
+        do {
+            let text = try await ReceiptText.read(image)
+            await drafter.draft(from: text, categories: categories)
+        } catch {
+            scanError = "No text was found on that scan. Try again in better light, or add it by hand."
         }
     }
 
@@ -125,7 +123,7 @@ struct VoiceCaptureView: View {
             note: draft.note,
             kind: draft.kind,
             scope: draft.scope,
-            source: .voice,
+            source: .receipt,
             category: draft.category
         ))
         dismiss()
