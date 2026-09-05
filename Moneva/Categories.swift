@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import FoundationModels
 
 /// The icons and colours a custom category can be built from. SF Symbols only —
 /// they carry accessibility labels, scale with Dynamic Type and render right in
@@ -52,12 +53,34 @@ enum CategoryLibrary {
         }
     }
 
+    static func isSelectable(_ category: SpendingCategory?, scope: Scope) -> Bool {
+        guard let category else { return false }
+        return !category.isArchived && (category.scope == .personal || scope == .shared)
+    }
+
+    static func ruleCategory(merchant: String, scope: Scope, rules: [MerchantCategoryRule]) -> SpendingCategory? {
+        rules.first { $0.merchant == fold(merchant) && $0.scopeRaw == scope.rawValue && isSelectable($0.category, scope: scope) }?.category
+    }
+
+    // ponytail: name containment catches obvious near-duplicates; add edit distance if users need typo matching.
+    static func similar(_ name: String, in categories: [SpendingCategory]) -> [SpendingCategory] {
+        let wanted = fold(name)
+        guard !wanted.isEmpty else { return [] }
+        return categories.filter { fold($0.name).contains(wanted) || wanted.contains(fold($0.name)) }
+    }
+
     static func nextSortIndex(in all: [SpendingCategory], scope: Scope) -> Int {
         (all.filter { $0.scope == scope }.map(\.sortIndex).max() ?? 0) + 1
     }
 
-    private static func fold(_ text: String) -> String {
+    static func fold(_ text: String) -> String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
     }
+}
+
+@Generable
+struct CategorySuggestion {
+    var name: String
+    var symbol: String
 }

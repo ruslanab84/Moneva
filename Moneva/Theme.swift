@@ -41,6 +41,29 @@ extension Font {
 enum Money {
     static let storageKey = "currency"
 
+    static func parse(_ text: String) -> Decimal? {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard text.range(of: #"^[0-9]+(\.[0-9]+)?$"#, options: .regularExpression) != nil,
+              let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")), !value.isNaN else { return nil }
+        return value
+    }
+
+    static func fractionDigits(_ currency: String) -> Int {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        return formatter.maximumFractionDigits
+    }
+
+    static func valid(_ amount: Decimal, currency: String) -> Bool {
+        guard !amount.isNaN, amount > 0, amount < Decimal(1_000_000_000_000), pickerCodes.contains(currency) else { return false }
+        var original = amount
+        var rounded = Decimal.zero
+        NSDecimalRound(&rounded, &original, fractionDigits(currency), .plain)
+        return rounded == amount
+    }
+
+
     static var code: String {
         get { UserDefaults.standard.string(forKey: storageKey) ?? Locale.current.currency?.identifier ?? "AZN" }
         set { UserDefaults.standard.set(newValue, forKey: storageKey) }
@@ -123,7 +146,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
 
 extension Decimal {
     func money(_ code: String = Money.code) -> String {
-        formatted(.currency(code: code).precision(.fractionLength(2)))
+        formatted(.currency(code: code))
     }
 
     var doubleValue: Double { NSDecimalNumber(decimal: self).doubleValue }

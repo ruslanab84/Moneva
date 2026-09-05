@@ -14,7 +14,7 @@ struct HomeView: View {
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
     private var spent: Decimal { Budgeting.spent(transactions, in: range, scope: scope) }
     private var budget: Budget? {
-        budgets.first { $0.scope == scope && $0.monthStart == range.lowerBound }
+        budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound }
     }
     private var today: [Transaction] {
         transactions.filter { $0.scope == scope && Calendar.current.isDateInToday($0.date) }
@@ -35,7 +35,7 @@ struct HomeView: View {
             }
 
             HStack {
-                Eyebrow("Today")
+                Eyebrow("Today · \(currencyCode)")
                 Spacer()
                 Text(todayTotal.money(currencyCode))
                     .font(.footnote.weight(.semibold))
@@ -84,7 +84,7 @@ struct HomeView: View {
     }
 
     private var todayTotal: Decimal {
-        today.filter { $0.kind == .expense }.reduce(Decimal.zero) { $0 + $1.amount }
+        today.filter { $0.kind == .expense && $0.currency == currencyCode }.reduce(Decimal.zero) { $0 + $1.amount }
     }
 
     @ViewBuilder

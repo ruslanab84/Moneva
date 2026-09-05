@@ -26,15 +26,15 @@ enum Budgeting {
         return start..<end
     }
 
-    static func spent(_ transactions: [Transaction], in range: Range<Date>, scope: Scope) -> Decimal {
+    static func spent(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> Decimal {
         transactions
-            .filter { $0.kind == .expense && $0.scope == scope && range.contains($0.date) }
+            .filter { $0.kind == .expense && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
             .reduce(Decimal.zero) { $0 + $1.amount }
     }
 
-    static func earned(_ transactions: [Transaction], in range: Range<Date>, scope: Scope) -> Decimal {
+    static func earned(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> Decimal {
         transactions
-            .filter { $0.kind == .income && $0.scope == scope && range.contains($0.date) }
+            .filter { $0.kind == .income && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
             .reduce(Decimal.zero) { $0 + $1.amount }
     }
 
@@ -50,7 +50,7 @@ enum Budgeting {
         let elapsed = now.timeIntervalSince(range.lowerBound)
         let full = range.upperBound.timeIntervalSince(range.lowerBound)
         guard elapsed >= 86_400, full > 0 else { return nil }
-        return spent * Decimal(full / elapsed)
+        return spent * Decimal(Int(full)) / Decimal(Int(elapsed))
     }
 
     /// When a goal completes at the given monthly contribution.
@@ -108,30 +108,15 @@ func monevaSelfCheck() {
     let other = SpendingCategory(name: "Other", symbol: "square.grid.2x2", tintHex: "78746A", softHex: "E4E2DB")
     let catalogue = [food, transport, other]
 
-    assert(DraftResolver.amount(42) == 42, "a whole amount survives the model round-trip")
-    assert(DraftResolver.amount(42.499) == Decimal(string: "42.50"), "money rounds to two places")
-    assert(DraftResolver.amount(-5) == 0, "a negative amount is not a refund, it is noise")
-    assert(DraftResolver.amount(.nan) == 0, "a broken number must not reach the store")
-
-    assert(DraftResolver.category(named: "food", in: catalogue) === food, "matching ignores case")
-    assert(DraftResolver.category(named: "Groceries", in: catalogue) === other, "an unknown name lands in Other")
-
+    assert(Money.parse("42.499") == Decimal(string: "42.499"), "exact model decimal survives without float conversion")
+    assert(Money.parse("-5") == nil && Money.parse("NaN") == nil && Money.parse("5abc") == nil && Money.parse("1.2.3") == nil, "malformed money is rejected, not partially parsed")
+    assert(!Money.valid(Decimal(string: "1.001")!, currency: "USD"), "invalid currency precision requires review")
+    assert(Money.valid(1, currency: "JPY") && !Money.valid(Decimal(string: "1.1")!, currency: "JPY"), "zero-decimal currencies stay exact")
+    assert(DraftResolver.category(named: "food", in: catalogue) === food)
+    assert(DraftResolver.category(named: "Unknown", in: catalogue) == nil, "unknown category requires review")
     let today = calendar.date(from: DateComponents(year: 2026, month: 9, day: 3))!
-    assert(DraftResolver.date(daysAgo: 1, now: today, calendar: calendar) == calendar.date(from: DateComponents(year: 2026, month: 9, day: 2))!, "yesterday is one day back")
-    assert(DraftResolver.date(daysAgo: -4, now: today, calendar: calendar) == today, "the model cannot draft the future")
-
-    let resolved = DraftResolver.resolve(kind: .expense, amount: 42, merchant: " Bravo ", category: "Food", daysAgo: 1, note: "groceries", categories: catalogue, scope: .shared, now: today)
-    assert(resolved.amount == 42 && resolved.merchant == "Bravo" && resolved.category === food, "the drafted sentence resolves to app types")
-    assert(resolved.scope == .shared, "scope comes from the app, never from the model")
-
-    let paycheck = DraftResolver.resolve(kind: .income, amount: 2400, merchant: "Work", category: "Food", daysAgo: 0, note: "", categories: catalogue, scope: .personal, now: today)
-    assert(paycheck.category == nil, "income carries no category")
-
-    // Mid-stream: only the first fields have arrived.
-    let streaming = DraftResolver.resolve(kind: .expense, amount: 42, merchant: nil, category: nil, daysAgo: nil, note: nil, categories: catalogue, scope: .personal, now: today)
-    assert(streaming.amount == 42, "an amount shows as soon as the model streams it")
-    assert(streaming.merchant.isEmpty && streaming.category == nil, "a field the model has not reached yet stays empty, never guessed")
-    assert(streaming.date == today, "an unsent day means today, not a made-up date")
+    assert(DraftResolver.date(DraftDate(offsetDays: -1, year: nil, month: nil, day: nil), now: today, calendar: calendar) == calendar.date(from: DateComponents(year: 2026, month: 9, day: 2))!)
+    assert(DraftResolver.date(DraftDate(offsetDays: nil, year: 2026, month: 2, day: 30), calendar: calendar) == nil, "invalid dates never normalize silently")
 
     // The exact glyph is the locale's business — "$", "US$" and "USD" are all
     // correct answers. Only the shape is asserted.
@@ -210,6 +195,8 @@ func monevaSelfCheck() {
     assert(!CategoryLibrary.visible(library, scope: .personal).contains { $0 === shared }, "shared categories stay out of a personal budget")
     assert(CategoryLibrary.visible(library, scope: .shared).last === shared, "in a shared budget, personal comes first and shared last")
     assert(CategoryLibrary.search(library, for: "tran").map(\.name) == ["Transport"], "search matches part of a name")
+
+    aiFeaturesSelfCheck()
 
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")

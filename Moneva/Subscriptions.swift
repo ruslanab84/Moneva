@@ -54,14 +54,20 @@ enum Subscriptions {
         return due
     }
 
+    static func firstFutureDate(_ subscription: Subscription, now: Date, calendar: Calendar = .current) -> Date {
+        if subscription.nextPaymentDate >= calendar.startOfDay(for: now) { return subscription.nextPaymentDate }
+        let candidate = dateInMonth(of: now, anchorDay: subscription.anchorDay, like: subscription.nextPaymentDate, calendar: calendar)
+        return candidate >= calendar.startOfDay(for: now) ? candidate : nextDate(after: candidate, anchorDay: subscription.anchorDay, calendar: calendar)
+    }
+
     /// Day the reminder fires, or nil when reminders are off.
     static func reminderDate(paymentDate: Date, daysBefore: Int?, calendar: Calendar = .current) -> Date? {
         guard let daysBefore else { return nil }
         return calendar.date(byAdding: .day, value: -daysBefore, to: paymentDate)
     }
 
-    static func monthlyTotal(_ subscriptions: [Subscription]) -> Decimal {
-        subscriptions.reduce(0) { $0 + $1.monthlyCost }
+    static func monthlyTotal(_ subscriptions: [Subscription], currency: String = Money.code) -> Decimal {
+        subscriptions.filter { $0.currency == currency }.reduce(0) { $0 + $1.monthlyCost }
     }
 }
 
@@ -79,42 +85,48 @@ enum SubscriptionEngine {
     /// Runs on launch and whenever the subscriptions screen appears. Returns
     /// the charges that still need an answer.
     @discardableResult
-    static func catchUp(in context: ModelContext, now: Date = .now, calendar: Calendar = .current) -> [Pending] {
-        let subscriptions = (try? context.fetch(FetchDescriptor<Subscription>())) ?? []
+    static func catchUp(in context: ModelContext, now: Date = .now, calendar: Calendar = .current) throws -> [Pending] {
+        let subscriptions = try context.fetch(FetchDescriptor<Subscription>())
         var pending: [Pending] = []
 
-        for subscription in subscriptions where subscription.status == .active {
-            let processed = Set(subscription.payments.map(\.billingPeriod))
-            let due = Subscriptions.duePeriods(
-                nextPaymentDate: subscription.nextPaymentDate,
-                anchorDay: subscription.anchorDay,
-                processed: processed,
-                now: now,
-                calendar: calendar
-            )
-            guard !due.isEmpty else { continue }
+        do {
+            for subscription in subscriptions where subscription.status == .active {
+                let processed = Set(subscription.payments.map(\.billingPeriod))
+                let due = Subscriptions.duePeriods(
+                    nextPaymentDate: subscription.nextPaymentDate,
+                    anchorDay: subscription.anchorDay,
+                    processed: processed,
+                    now: now,
+                    calendar: calendar
+                )
+                guard !due.isEmpty else { continue }
 
-            switch subscription.paymentMode {
-            case .autoAdd:
-                for charge in due { record(subscription, period: charge.period, date: charge.date, in: context, addTransaction: true, calendar: calendar) }
-            case .ask:
-                pending += due.map { Pending(subscription: subscription, period: $0.period, date: $0.date) }
+                switch subscription.paymentMode {
+                case .autoAdd:
+                    for charge in due { try record(subscription, period: charge.period, date: charge.date, in: context, addTransaction: true, calendar: calendar) }
+                case .ask:
+                    pending += due.map { Pending(subscription: subscription, period: $0.period, date: $0.date) }
+                }
             }
-        }
 
-        try? context.save()
+            try context.save()
+        } catch { context.rollback(); throw error }
         return pending.sorted { $0.date < $1.date }
     }
 
-    static func confirm(_ item: Pending, in context: ModelContext, calendar: Calendar = .current) {
-        record(item.subscription, period: item.period, date: item.date, in: context, addTransaction: true, calendar: calendar)
-        try? context.save()
+    static func confirm(_ item: Pending, in context: ModelContext, calendar: Calendar = .current) throws {
+        do {
+            try record(item.subscription, period: item.period, date: item.date, in: context, addTransaction: true, calendar: calendar)
+            try context.save()
+        } catch { context.rollback(); throw error }
     }
 
     /// Skipping still records the period, so the same month is never asked twice.
-    static func skip(_ item: Pending, in context: ModelContext, calendar: Calendar = .current) {
-        record(item.subscription, period: item.period, date: item.date, in: context, addTransaction: false, calendar: calendar)
-        try? context.save()
+    static func skip(_ item: Pending, in context: ModelContext, calendar: Calendar = .current) throws {
+        do {
+            try record(item.subscription, period: item.period, date: item.date, in: context, addTransaction: false, calendar: calendar)
+            try context.save()
+        } catch { context.rollback(); throw error }
     }
 
     private static func record(
@@ -124,11 +136,15 @@ enum SubscriptionEngine {
         in context: ModelContext,
         addTransaction: Bool,
         calendar: Calendar
-    ) {
-        guard !subscription.payments.contains(where: { $0.billingPeriod == period }) else { return }
+    ) throws {
+        guard subscription.modelContext != nil, subscription.status == .active,
+              date >= subscription.nextPaymentDate,
+              !subscription.payments.contains(where: { $0.billingPeriod == period }) else { return }
 
         var transaction: Transaction?
         if addTransaction {
+            guard Money.valid(subscription.amount, currency: subscription.currency),
+                  CategoryLibrary.isSelectable(subscription.category, scope: subscription.scope) else { throw DraftStore.Failure.invalid }
             let created = Transaction(
                 amount: subscription.amount,
                 date: date,
@@ -143,7 +159,9 @@ enum SubscriptionEngine {
             context.insert(created)
             transaction = created
         }
-        context.insert(SubscriptionPayment(billingPeriod: period, subscription: subscription, transaction: transaction))
+        let payment = SubscriptionPayment(billingPeriod: period, subscription: subscription, transaction: transaction)
+        context.insert(payment)
+        if !subscription.payments.contains(where: { $0 === payment }) { subscription.payments.append(payment) }
 
         // Only move the clock past a period that is now on file.
         if Subscriptions.billingPeriod(for: subscription.nextPaymentDate, calendar: calendar) == period {

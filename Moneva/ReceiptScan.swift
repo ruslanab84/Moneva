@@ -8,6 +8,7 @@ import VisionKit
 /// picture never leaves this struct.
 struct DocumentScanner: UIViewControllerRepresentable {
     var onScan: (UIImage) -> Void
+    var onError: (String) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
@@ -35,6 +36,7 @@ struct DocumentScanner: UIViewControllerRepresentable {
         }
 
         func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+            parent.onError("The camera could not scan the receipt. Import an image or enter it manually.")
             parent.dismiss()
         }
     }
@@ -46,7 +48,8 @@ enum ReceiptText {
     enum Failure: Error { case noImageData, noText }
 
     static func read(_ image: UIImage) async throws -> String {
-        guard let cgImage = image.cgImage else { throw Failure.noImageData }
+        let normalized = UIGraphicsImageRenderer(size: image.size).image { _ in image.draw(in: CGRect(origin: .zero, size: image.size)) }
+        guard let cgImage = normalized.cgImage else { throw Failure.noImageData }
 
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate

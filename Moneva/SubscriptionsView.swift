@@ -3,7 +3,7 @@ import SwiftData
 
 struct SubscriptionsView: View {
     enum Filter: String, CaseIterable, Identifiable {
-        case active, paused, shared
+        case active, paused
         var id: String { rawValue }
         var title: String { rawValue.capitalized }
     }
@@ -22,15 +22,16 @@ struct SubscriptionsView: View {
     @State private var editing: Subscription?
     @State private var creating: DetectedSubscription?
     @State private var isCreating = false
+    @State private var isSmartCreating = false
+    @State private var engineError: String?
     @State private var question = ""
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
 
     private var shown: [Subscription] {
         switch filter {
-        case .active: return subscriptions.filter { $0.status == .active }
-        case .paused: return subscriptions.filter { $0.status == .paused }
-        case .shared: return subscriptions.filter { $0.scope == .shared }
+        case .active: return subscriptions.filter { $0.scope == scope && $0.status == .active }
+        case .paused: return subscriptions.filter { $0.scope == scope && $0.status == .paused }
         }
     }
 
@@ -47,14 +48,17 @@ struct SubscriptionsView: View {
     var body: some View {
         NavigationStack {
             ScreenScroll(title: "Subscriptions", eyebrow: "Every month") {
+                ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
                 totals
+                Button("Add from text or voice", systemImage: "sparkles") { isSmartCreating = true }
+                if let engineError { Text(engineError).foregroundStyle(Palette.over) }
 
                 Picker("Filter", selection: $filter) {
                     ForEach(Filter.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
 
-                ForEach(pending) { item in confirmation(item) }
+                ForEach(pending.filter { $0.subscription.scope == scope }) { item in confirmation(item) }
                 detection
                 assistant
 
@@ -75,11 +79,12 @@ struct SubscriptionsView: View {
                     Button("Add", systemImage: "plus") { isCreating = true }
                 }
             }
-            .task { await refresh() }
+            .task(id: scope) { await refresh() }
             .onChange(of: scenePhase) { _, phase in
                 // Coming back after a few days is exactly when a charge is due.
                 if phase == .active { Task { await refresh() } }
             }
+            .sheet(isPresented: $isSmartCreating) { VoiceCaptureView(subscriptions: true) }
             .sheet(isPresented: $isCreating) { SubscriptionEditorView(scope: scope) }
             .sheet(item: $editing) { SubscriptionEditorView(editing: $0) }
             .sheet(item: $creating) { draft in
@@ -92,17 +97,19 @@ struct SubscriptionsView: View {
         switch filter {
         case .active: return "No active subscriptions"
         case .paused: return "Nothing is paused"
-        case .shared: return "No shared subscriptions"
         }
     }
 
     private var totals: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Eyebrow("Active total")
-            Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.status == .active }).money(currencyCode))
+            Eyebrow("Active total · \(currencyCode)")
+            ForEach(Set(subscriptions.filter { $0.scope == scope && $0.status == .active }.map(\.currency)).sorted().filter { $0 != currencyCode }, id: \.self) { code in
+                Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.scope == scope }, currency: code).money(code))
+            }
+            Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.scope == scope && $0.status == .active }, currency: currencyCode).money(currencyCode))
                 .font(.money(.largeTitle))
                 .foregroundStyle(Palette.ink)
-            Text("\(subscriptions.filter { $0.status == .active }.count) active · \(subscriptions.filter { $0.status == .paused }.count) paused")
+            Text("\(subscriptions.filter { $0.scope == scope && $0.status == .active }.count) active · \(subscriptions.filter { $0.scope == scope && $0.status == .paused }.count) paused")
                 .font(.footnote)
                 .foregroundStyle(Palette.inkMuted)
         }
@@ -119,7 +126,7 @@ struct SubscriptionsView: View {
                 .foregroundStyle(Palette.ink)
             HStack(spacing: 12) {
                 Button("Skip this month") {
-                    SubscriptionEngine.skip(item, in: context)
+                    do { try SubscriptionEngine.skip(item, in: context) } catch { engineError = error.localizedDescription; return }
                     Task { await refresh() }
                 }
                 .font(.subheadline.weight(.semibold))
@@ -128,7 +135,7 @@ struct SubscriptionsView: View {
                 .background(Palette.ground, in: .rect(cornerRadius: 14))
 
                 Button("Add it") {
-                    SubscriptionEngine.confirm(item, in: context)
+                    do { try SubscriptionEngine.confirm(item, in: context) } catch { engineError = error.localizedDescription; return }
                     Task { await refresh() }
                 }
                 .font(.subheadline.weight(.semibold))
@@ -155,14 +162,14 @@ struct SubscriptionsView: View {
             EmptyView()
         }
 
-        ForEach(advisor.detected) { item in
+        ForEach(advisor.detected.filter { $0.scope == scope }) { item in
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Eyebrow("Spotted on device")
                     Spacer()
                     Text("Draft").font(.caption2.weight(.semibold)).foregroundStyle(Palette.warning)
                 }
-                Text("\(item.reason.isEmpty ? "This looks like it repeats." : item.reason) Track \(item.name) at \(item.amount.money(currencyCode)) a month?")
+                Text("\(item.reason.isEmpty ? "This looks like it repeats." : item.reason) Track \(item.name) at \(item.amount.money(item.currency)) a month?")
                     .font(.subheadline)
                     .foregroundStyle(Palette.ink)
                 HStack(spacing: 12) {
@@ -185,7 +192,7 @@ struct SubscriptionsView: View {
 
     @ViewBuilder
     private var assistant: some View {
-        if !subscriptions.isEmpty {
+        if subscriptions.contains(where: { $0.scope == scope }) {
             VStack(alignment: .leading, spacing: 10) {
                 Eyebrow("Ask about these")
                 HStack(spacing: 10) {
@@ -193,14 +200,15 @@ struct SubscriptionsView: View {
                         .font(.subheadline)
                         .submitLabel(.send)
                     Button("Ask") {
-                        Task { await advisor.ask(question, subscriptions: subscriptions) }
+                        Task { await advisor.ask(question, subscriptions: subscriptions.filter { $0.scope == scope }, scope: scope) }
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.accent)
                     .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                if !advisor.answer.isEmpty {
+                if !advisor.answer.isEmpty && advisor.answerScope == scope {
                     Text(advisor.answer).font(.subheadline).foregroundStyle(Palette.ink)
+                    Text("Source: the schedules listed below. Payment history does not show service usage.").font(.caption)
                 }
                 if let reason = SubscriptionAdvisor.unavailableReason {
                     Text(reason).font(.caption).foregroundStyle(Palette.inkFaint)
@@ -251,7 +259,8 @@ struct SubscriptionsView: View {
     }
 
     private func refresh() async {
-        pending = SubscriptionEngine.catchUp(in: context)
+        do { pending = try SubscriptionEngine.catchUp(in: context); engineError = nil }
+        catch { engineError = error.localizedDescription }
         await advisor.detect(from: transactions, categories: categories, existing: subscriptions, scope: scope)
     }
 }

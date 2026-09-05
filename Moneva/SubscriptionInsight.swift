@@ -2,205 +2,147 @@ import Foundation
 import FoundationModels
 import SwiftData
 
-/// What the model may propose for a recurring payment. It never creates one —
-/// the user confirms every field first.
 @Generable
-struct DraftedSubscription {
-    @Guide(description: "The service name as written on the transactions")
+struct DraftedMonthlySubscription {
     var name: String
-
-    @Guide(description: "The amount charged each month, as a plain number", .minimum(0.0))
-    var amount: Double
-
-    @Guide(description: "The day of the month the charge lands on", .range(1...31))
-    var dayOfMonth: Int
-
-    @Guide(description: "The closest category name from the list in the instructions")
+    var amount: String
+    var currency: String
+    var nextPayment: DraftDate
     var category: String
-
-    @Guide(description: "One short sentence saying why this looks recurring")
-    var reason: String
+    var clarification: String
 }
 
-@Generable
-struct DraftedSubscriptions {
-    @Guide(description: "Only charges that repeat on a similar day each month. Empty when nothing repeats.")
-    var items: [DraftedSubscription]
-}
-
-/// A proposal resolved into app types. Still only a proposal.
 struct DetectedSubscription: Identifiable {
-    let id = UUID()
+    var id = UUID()
     var name: String
     var amount: Decimal
     var nextPaymentDate: Date
     var category: SpendingCategory?
     var scope: Scope
     var reason: String
+    var currency = Money.code
 }
 
 enum SubscriptionResolver {
-    /// The model gives a day of the month; Swift turns it into the next real
-    /// date, clamped to months that are too short for it.
     static func nextDate(dayOfMonth: Int, now: Date = .now, calendar: Calendar = .current) -> Date {
         let candidate = Subscriptions.dateInMonth(of: now, anchorDay: dayOfMonth, like: now, calendar: calendar)
         guard candidate <= now else { return candidate }
         return Subscriptions.nextDate(after: candidate, anchorDay: dayOfMonth, calendar: calendar)
     }
 
-    /// Drops anything already tracked, so the same service is never proposed twice.
-    static func resolve(
-        _ drafts: [DraftedSubscription],
-        categories: [SpendingCategory],
-        existing: [Subscription],
-        scope: Scope,
-        now: Date = .now,
-        calendar: Calendar = .current
-    ) -> [DetectedSubscription] {
-        let taken = Set(existing.map { fold($0.name) })
-        return drafts.compactMap { draft in
-            let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            let amount = DraftResolver.amount(draft.amount)
-            guard !name.isEmpty, amount > 0, !taken.contains(fold(name)) else { return nil }
-            return DetectedSubscription(
-                name: name,
-                amount: amount,
-                nextPaymentDate: nextDate(dayOfMonth: draft.dayOfMonth, now: now, calendar: calendar),
-                category: DraftResolver.category(named: draft.category, in: categories),
-                scope: scope,
-                reason: draft.reason.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-        }
-    }
-
-    private static func fold(_ text: String) -> String {
-        text.trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+    static func resolveInput(_ value: DraftedMonthlySubscription, categories: [SpendingCategory], scope: Scope, input: String, now: Date = .now) -> DetectedSubscription {
+        let currency = value.currency.uppercased()
+        let date = DraftResolver.date(value.nextPayment, now: now)
+        return DetectedSubscription(name: DraftResolver.grounded(value.name, in: input), amount: Money.parse(value.amount) ?? 0, nextPaymentDate: date ?? now,
+            category: DraftResolver.category(named: value.category, in: categories), scope: scope,
+            reason: [value.clarification, date == nil ? "Choose the next payment date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the billing currency."].filter { !$0.isEmpty }.joined(separator: "\n"),
+            currency: Money.pickerCodes.contains(currency) ? currency : Money.code)
     }
 }
 
-/// Every number in here is computed in Swift and handed to the model as fact.
-/// The model only ever phrases the answer.
 enum SubscriptionDigest {
     static func lines(for subscriptions: [Subscription], calendar: Calendar = .current) -> [String] {
         let active = subscriptions.filter { $0.status == .active }
-        var lines = [
-            "Active subscriptions: \(active.count).",
-            "Total charged each month: \(Subscriptions.monthlyTotal(active).money()).",
-        ]
-        for subscription in active.sorted(by: { $0.amount > $1.amount }) {
-            var line = "\(subscription.name): \(subscription.amount.money(subscription.currency)) a month"
-            line += ", category \(subscription.category?.name ?? "none")"
-            line += ", next on \(subscription.nextPaymentDate.formatted(date: .abbreviated, time: .omitted))"
-            if let change = priceChange(subscription) { line += ", the price went from \(change.old.money(subscription.currency)) to \(change.new.money(subscription.currency))" }
-            lines.append(line + ".")
+        var lines = ["\(active.count) active subscriptions. These are schedules, not charges made by Moneva."]
+        for currency in Set(active.map(\.currency)).sorted() {
+            lines.append("Scheduled monthly cost: \(Subscriptions.monthlyTotal(active, currency: currency).money(currency)).")
         }
-        let paused = subscriptions.filter { $0.status == .paused }
-        if !paused.isEmpty { lines.append("Paused: \(paused.map(\.name).joined(separator: ", ")).") }
+        for subscription in active.sorted(by: { $0.amount > $1.amount }) {
+            var line = "\(subscription.name): \(subscription.amount.money(subscription.currency)) monthly, next payment \(subscription.nextPaymentDate.formatted(date: .abbreviated, time: .omitted))."
+            if let change = priceChange(subscription) { line += " Last two recorded payments: \(change.old.money(subscription.currency)), then \(change.new.money(subscription.currency))." }
+            lines.append(line)
+        }
+        lines.append("Payment history cannot tell whether a subscription is being used. Paused schedules are excluded from future costs.")
         return lines
     }
 
-    /// Compares the last two charges that actually went through.
     static func priceChange(_ subscription: Subscription) -> (old: Decimal, new: Decimal)? {
-        let amounts = subscription.payments
-            .compactMap { payment -> (Date, Decimal)? in
-                guard let transaction = payment.transaction else { return nil }
-                return (payment.processedDate, transaction.amount)
-            }
-            .sorted { $0.0 < $1.0 }
-            .map(\.1)
-        guard amounts.count >= 2 else { return nil }
-        let old = amounts[amounts.count - 2]
-        let new = amounts[amounts.count - 1]
-        return old == new ? nil : (old, new)
+        let charges = subscription.payments.compactMap(\.transaction).sorted { $0.date < $1.date }
+        guard charges.count >= 2 else { return nil }
+        let last = charges.suffix(2)
+        guard last.allSatisfy({ $0.currency == subscription.currency }), let old = last.first?.amount, let new = last.last?.amount, old != new else { return nil }
+        return (old, new)
     }
 }
 
-/// Finds candidate subscriptions in past spending, and answers questions about
-/// the ones already tracked. Both are read-only.
+@Generable
+struct SelectedFacts {
+    @Guide(description: "IDs of supplied facts relevant to the question. Empty if the facts cannot answer it. Never invent IDs.", .maximumCount(8))
+    var ids: [Int]
+}
+
 @MainActor
 @Observable
 final class SubscriptionAdvisor {
-    enum Phase {
-        case idle, working, ready, failed(String)
-    }
-
+    enum Phase { case idle, working, ready, failed(String) }
     private(set) var phase: Phase = .idle
     private(set) var detected: [DetectedSubscription] = []
     private(set) var answer = ""
-
+    private(set) var answerScope: Scope?
+    private var ignored: Set<String> = []
     static var unavailableReason: String? { TransactionDrafter.unavailableReason }
 
-    /// Proposals only. Nothing is created until the user taps Add it.
     func detect(from transactions: [Transaction], categories: [SpendingCategory], existing: [Subscription], scope: Scope) async {
-        guard Self.unavailableReason == nil else { return }
-        let candidates = Self.repeatingCandidates(transactions)
-        guard !candidates.isEmpty else {
-            detected = []
-            phase = .idle
-            return
-        }
-
-        phase = .working
-        let names = categories.map(\.name).joined(separator: ", ")
-        let session = LanguageModelSession {
-            "You look at a list of past card charges and point out the ones that repeat every month."
-            "A charge repeats when the same merchant is charged a similar amount on a similar day in more than one month."
-            "Ignore groceries, restaurants and anything that varies a lot."
-            "Choose the category from exactly this list: \(names)."
-            "Never invent a merchant or an amount that is not in the list."
-        }
-        do {
-            let response = try await session.respond(to: "Charges:\n\(candidates)", generating: DraftedSubscriptions.self)
-            detected = SubscriptionResolver.resolve(response.content.items, categories: categories, existing: existing, scope: scope)
-            phase = .ready
-        } catch {
-            phase = .failed("Could not look through your history just now.")
-        }
+        if case .working = phase { return }
+        await performDetection(transactions, categories: categories, existing: existing, scope: scope)
     }
 
-    func ask(_ question: String, subscriptions: [Subscription]) async {
-        let asked = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !asked.isEmpty else { return }
-        if let reason = Self.unavailableReason {
-            phase = .failed(reason)
-            return
-        }
+    private func performDetection(_ transactions: [Transaction], categories: [SpendingCategory], existing: [Subscription], scope: Scope) async {
+        detected = []
+        guard Self.unavailableReason == nil else { return }
+        let candidates = Self.candidates(transactions, categories: categories, existing: existing, scope: scope)
+        guard !candidates.isEmpty else { phase = .idle; return }
+        phase = .working
+        do {
+            let result = try await OnDeviceAI.generate(SelectedFacts.self,
+                instructions: "Select candidate IDs that plausibly represent monthly subscription services. Exclude ordinary groceries and variable purchases. These are suggestions only.",
+                data: candidates.enumerated().map { "\($0.offset): \($0.element.name), \($0.element.amount.money($0.element.currency)) monthly." }.joined(separator: "\n"))
+            detected = Array(Set(result.ids)).sorted().filter { candidates.indices.contains($0) }.map { candidates[$0] }.filter { !ignored.contains(Self.key($0)) }
+            phase = .ready
+        } catch { phase = .failed("Could not inspect recurring expenses. Manual subscription entry is available.") }
+    }
 
+    func ask(_ question: String, subscriptions: [Subscription], scope: Scope) async {
+        if case .working = phase { return }
+        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         phase = .working
         answer = ""
-        let facts = SubscriptionDigest.lines(for: subscriptions).joined(separator: "\n")
-        let session = LanguageModelSession {
-            "You answer questions about the recurring payments a person already tracks."
-            "These are the only facts you have, and every number in them is already correct:"
-            facts
-            "Answer in two or three short sentences. Never do arithmetic the facts do not already state, and never invent a service."
-        }
+        answerScope = scope
+        let facts = SubscriptionDigest.lines(for: subscriptions.filter { $0.scope == scope })
         do {
-            let stream = session.streamResponse(to: asked)
-            for try await snapshot in stream { answer = snapshot.content }
+            let result = try await OnDeviceAI.generate(SelectedFacts.self, instructions: "Select supplied facts answering the question. Do not infer usage from payment history.",
+                data: "Question: \(question)\nFacts:\n" + facts.enumerated().map { "\($0.offset): \($0.element)" }.joined(separator: "\n"))
+            answer = Array(Set(result.ids)).sorted().filter { facts.indices.contains($0) }.map { facts[$0] }.joined(separator: "\n\n")
+            if answer.isEmpty { answer = "The stored schedules do not provide enough information to answer that." }
             phase = .ready
-        } catch {
-            phase = .failed("Could not answer that just now.")
-        }
+        } catch { phase = .failed(error.localizedDescription) }
     }
 
     func dismissDetection(_ item: DetectedSubscription) {
+        ignored.insert(Self.key(item))
         detected.removeAll { $0.id == item.id }
     }
 
-    /// Only merchants seen in more than one month are worth the model's time,
-    /// and only their own text is sent.
-    static func repeatingCandidates(_ transactions: [Transaction], calendar: Calendar = .current) -> String {
-        let expenses = transactions.filter { $0.kind == .expense && !$0.merchant.isEmpty }
-        let byMerchant = Dictionary(grouping: expenses) {
-            $0.merchant.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-        }
-        let lines = byMerchant.values
-            .filter { group in Set(group.map { Subscriptions.billingPeriod(for: $0.date, calendar: calendar) }).count > 1 }
-            .flatMap { $0 }
-            .sorted { $0.date < $1.date }
-            .map { "\($0.merchant) — \($0.amount.money($0.currency)) on \($0.date.formatted(date: .abbreviated, time: .omitted))" }
-        return lines.joined(separator: "\n")
+    private static func key(_ item: DetectedSubscription) -> String { "\(item.scope.rawValue)|\(item.currency)|\(CategoryLibrary.fold(item.name))" }
+
+    // ponytail: exact recurring amounts across distinct months; widen tolerance only with evidence that variable bills need it.
+    static func candidates(_ transactions: [Transaction], categories: [SpendingCategory], existing: [Subscription], scope: Scope, now: Date = .now, calendar: Calendar = .current) -> [DetectedSubscription] {
+        let expenses = transactions.filter { $0.kind == .expense && $0.scope == scope && $0.date <= now && !$0.merchant.isEmpty }
+        let groups = Dictionary(grouping: expenses) { "\($0.currency)|\(CategoryLibrary.fold($0.merchant))" }
+        return groups.values.compactMap { group in
+            let sorted = group.sorted { $0.date > $1.date }
+            guard sorted.count >= 2, let latest = sorted.first,
+                  !existing.contains(where: { $0.scope == scope && $0.currency == latest.currency && CategoryLibrary.fold($0.name) == CategoryLibrary.fold(latest.merchant) }) else { return nil }
+            let previous = sorted[1]
+            let month1 = Budgeting.monthStart(for: previous.date, calendar: calendar)
+            let month2 = Budgeting.monthStart(for: latest.date, calendar: calendar)
+            guard calendar.dateComponents([.month], from: month1, to: month2).month == 1,
+                  latest.amount == previous.amount,
+                  abs(calendar.component(.day, from: latest.date) - calendar.component(.day, from: previous.date)) <= 3 else { return nil }
+            return DetectedSubscription(name: latest.merchant, amount: latest.amount,
+                nextPaymentDate: SubscriptionResolver.nextDate(dayOfMonth: calendar.component(.day, from: latest.date), now: now, calendar: calendar),
+                category: CategoryLibrary.isSelectable(latest.category, scope: scope) ? latest.category : nil,
+                scope: scope, reason: "Matching payments in consecutive months. Review before creating a schedule.", currency: latest.currency)
+        }.sorted { $0.name < $1.name }
     }
 }

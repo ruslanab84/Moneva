@@ -9,6 +9,8 @@ struct CategoryPickerView: View {
 
     @Binding var selection: SpendingCategory?
     let scope: Scope
+    var suggestedName = ""
+    var suggestedSymbol = "cart"
 
     @State private var query = ""
     @State private var isCreating = false
@@ -53,7 +55,7 @@ struct CategoryPickerView: View {
             }
             .sheet(isPresented: $isCreating) {
                 // A category made here is the one the user wanted to pick.
-                CategoryEditorView(scope: scope) { created in
+                CategoryEditorView(scope: scope, suggestedName: suggestedName.isEmpty ? query : suggestedName, suggestedSymbol: suggestedSymbol) { created in
                     selection = created
                     dismiss()
                 }

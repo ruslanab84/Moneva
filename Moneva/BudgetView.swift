@@ -10,9 +10,9 @@ struct BudgetView: View {
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
-    private var budget: Budget? { budgets.first { $0.scope == scope && $0.monthStart == range.lowerBound } }
+    private var budget: Budget? { budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound } }
     private var monthTransactions: [Transaction] {
-        transactions.filter { $0.scope == scope && range.contains($0.date) }
+        transactions.filter { $0.scope == scope && $0.currency == currencyCode && range.contains($0.date) }
     }
     private var spent: Decimal { Budgeting.spent(monthTransactions, in: range, scope: scope) }
 
@@ -82,9 +82,7 @@ struct BudgetView: View {
 
     @ViewBuilder
     private func limitRow(_ limit: BudgetLimit) -> some View {
-        let used = monthTransactions
-            .filter { $0.kind == .expense && $0.category?.persistentModelID == limit.category?.persistentModelID }
-            .reduce(Decimal.zero) { $0 + $1.amount }
+        let used = monthTransactions.filter { $0.kind == .expense }.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }
         let progress = Budgeting.progress(spent: used, limit: limit.amount)
         let state = Budgeting.LimitState(progress: progress)
 
@@ -136,7 +134,7 @@ struct BudgetEditor: View {
                         .font(.money(.title2))
                 }
                 Section("Category limits") {
-                    ForEach(categories, id: \.persistentModelID) { category in
+                    ForEach(CategoryLibrary.visible(categories, scope: scope), id: \.persistentModelID) { category in
                         HStack {
                             CategoryBadge(category: category, size: 30)
                             Text(category.name)

@@ -11,6 +11,7 @@ struct CategoryEditorView: View {
     private let existing: SpendingCategory?
     private let onSave: ((SpendingCategory) -> Void)?
 
+    @State private var saveError: String?
     @State private var name: String
     @State private var symbol: String
     @State private var paletteIndex: Int
@@ -18,11 +19,11 @@ struct CategoryEditorView: View {
     @State private var limit: Decimal
     @State private var scope: Scope
 
-    init(scope: Scope = .personal, onSave: ((SpendingCategory) -> Void)? = nil) {
+    init(scope: Scope = .personal, suggestedName: String = "", suggestedSymbol: String = "cart", onSave: ((SpendingCategory) -> Void)? = nil) {
         existing = nil
         self.onSave = onSave
-        _name = State(initialValue: "")
-        _symbol = State(initialValue: CategoryLibrary.symbols.first ?? "circle")
+        _name = State(initialValue: suggestedName)
+        _symbol = State(initialValue: CategoryLibrary.symbols.contains(suggestedSymbol) ? suggestedSymbol : "cart")
         _paletteIndex = State(initialValue: 0)
         _hasLimit = State(initialValue: false)
         _limit = State(initialValue: 0)
@@ -56,6 +57,11 @@ struct CategoryEditorView: View {
 
                 Section("Name") {
                     TextField("Category name", text: $name)
+                    let similar = CategoryLibrary.similar(trimmedName, in: CategoryLibrary.visible(all, scope: scope)).filter { $0 !== existing }
+                    if !similar.isEmpty {
+                        Text("Similar existing categories: " + similar.map(\.name).joined(separator: ", ")).font(.footnote)
+                    }
+                    if let saveError { Text(saveError).foregroundStyle(Palette.over) }
                     if !trimmedName.isEmpty && !nameIsFree {
                         Label("A \(scope.title.lowercased()) category is already called that.", systemImage: "exclamationmark.triangle")
                             .font(.footnote)
@@ -160,6 +166,7 @@ struct CategoryEditorView: View {
     }
 
     private func save() {
+        guard canSave else { return }
         let monthlyLimit: Decimal? = hasLimit && limit > 0 ? limit : nil
         if let existing {
             existing.name = trimmedName
@@ -179,9 +186,10 @@ struct CategoryEditorView: View {
                 sortIndex: CategoryLibrary.nextSortIndex(in: all, scope: scope)
             )
             context.insert(created)
-            try? context.save()
+            do { try context.save() } catch { context.rollback(); saveError = error.localizedDescription; return }
             onSave?(created)
         }
-        dismiss()
+        do { try context.save(); dismiss() }
+        catch { context.rollback(); saveError = error.localizedDescription }
     }
 }

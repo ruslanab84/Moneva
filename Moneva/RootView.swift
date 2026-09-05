@@ -35,7 +35,7 @@ struct RootView: View {
                         .background(Palette.card, in: .circle)
                         .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 5)
                 }
-                .accessibilityLabel("Add by voice")
+                .accessibilityLabel("Add by text or voice")
 
                 Button { isAdding = true } label: {
                     Image(systemName: "plus")

@@ -18,7 +18,7 @@ enum TransactionKind: String, Codable, CaseIterable, Identifiable {
 /// How a transaction got in. Voice and receipt drafts land here only after the
 /// user confirms them.
 enum EntrySource: String, Codable {
-    case manual, voice, receipt, subscription
+    case manual, voice, text, receipt, subscription
 }
 
 @Model
@@ -86,6 +86,17 @@ final class Transaction {
         self.currency = currency
     }
 
+    var draftID: String?
+    @Attribute(.externalStorage) var receiptImage: Data?
+    var receiptItems: Data?
+    @Relationship(deleteRule: .cascade, inverse: \TransactionAllocation.transaction)
+    var allocations: [TransactionAllocation] = []
+
+    func amount(in category: SpendingCategory?) -> Decimal {
+        if allocations.isEmpty { return self.category?.persistentModelID == category?.persistentModelID ? amount : 0 }
+        return allocations.filter { $0.category?.persistentModelID == category?.persistentModelID }.reduce(0) { $0 + $1.amount }
+    }
+
     /// Signed value for sums: expenses pull the month down, income lifts it.
     var signedAmount: Decimal { kind == .expense ? -amount : amount }
 }
@@ -94,6 +105,7 @@ final class Transaction {
 final class Budget {
     /// First instant of the budgeted month, in the user's calendar.
     var monthStart: Date = Date.now
+    var currency: String?
     var total: Decimal = Decimal.zero
     var scope: Scope = Scope.personal
 
@@ -103,6 +115,7 @@ final class Budget {
     init(monthStart: Date, total: Decimal, scope: Scope = .personal) {
         self.monthStart = monthStart
         self.total = total
+        self.currency = Money.code
         self.scope = scope
     }
 }
@@ -214,6 +227,8 @@ final class Subscription {
         self.category = category
     }
 
+    var draftID: String?
+
     var monthlyCost: Decimal { status == .active ? amount : 0 }
 }
 
@@ -235,5 +250,28 @@ final class SubscriptionPayment {
         self.processedDate = processedDate
         self.subscription = subscription
         self.transaction = transaction
+    }
+}
+
+@Model
+final class TransactionAllocation {
+    var amount: Decimal = Decimal.zero
+    var category: SpendingCategory?
+    var transaction: Transaction?
+    init(amount: Decimal, category: SpendingCategory?) {
+        self.amount = amount
+        self.category = category
+    }
+}
+
+@Model
+final class MerchantCategoryRule {
+    var merchant: String = ""
+    var scopeRaw: String = "personal"
+    var category: SpendingCategory?
+    init(merchant: String, scope: Scope, category: SpendingCategory) {
+        self.merchant = merchant
+        self.scopeRaw = scope.rawValue
+        self.category = category
     }
 }

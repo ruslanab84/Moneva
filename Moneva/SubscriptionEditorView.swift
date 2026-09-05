@@ -10,6 +10,12 @@ struct SubscriptionEditorView: View {
     @Query private var categories: [SpendingCategory]
 
     private let existing: Subscription?
+    private let draftID: UUID?
+    private let clarification: String
+    private let onSaved: (() -> Void)?
+    @State private var reviewed = false
+    @State private var saveError: String?
+    @State private var saved = false
 
     @State private var name: String
     @State private var amount: Decimal
@@ -27,11 +33,14 @@ struct SubscriptionEditorView: View {
 
     private static let reminderOptions = [0, 1, 3, 7]
 
-    init(editing subscription: Subscription? = nil, scope: Scope = .personal, draft: DetectedSubscription? = nil, categories: [SpendingCategory] = []) {
+    init(editing subscription: Subscription? = nil, scope: Scope = .personal, draft: DetectedSubscription? = nil, categories: [SpendingCategory] = [], onSaved: (() -> Void)? = nil) {
         existing = subscription
+        draftID = draft?.id
+        clarification = draft?.reason ?? ""
+        self.onSaved = onSaved
         _name = State(initialValue: subscription?.name ?? draft?.name ?? "")
         _amount = State(initialValue: subscription?.amount ?? draft?.amount ?? 0)
-        _currency = State(initialValue: subscription?.currency ?? Money.code)
+        _currency = State(initialValue: subscription?.currency ?? draft?.currency ?? Money.code)
         _category = State(initialValue: subscription?.category ?? draft?.category)
         _nextPaymentDate = State(initialValue: subscription?.nextPaymentDate ?? draft?.nextPaymentDate ?? .now)
         _reminderDays = State(initialValue: subscription?.reminderDays ?? 0)
@@ -41,7 +50,7 @@ struct SubscriptionEditorView: View {
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
-    private var canSave: Bool { !trimmedName.isEmpty && amount > 0 && category != nil }
+    private var canSave: Bool { !saved && !trimmedName.isEmpty && Money.valid(amount, currency: currency) && CategoryLibrary.isSelectable(category, scope: scope) && (draftID == nil || reviewed) && Calendar.current.startOfDay(for: nextPaymentDate) >= Calendar.current.startOfDay(for: .now) }
 
     var body: some View {
         NavigationStack {
@@ -85,6 +94,13 @@ struct SubscriptionEditorView: View {
                     }
                 }
 
+                if let saveError { Section { Text(saveError).foregroundStyle(Palette.over) } }
+                if draftID != nil {
+                    Section("Review draft") {
+                        if !clarification.isEmpty { Text(clarification) }
+                        Toggle("I checked the monthly schedule and all details", isOn: $reviewed)
+                    }
+                }
                 Section("Note") {
                     TextField("Optional", text: $note, axis: .vertical)
                 }
@@ -116,14 +132,24 @@ struct SubscriptionEditorView: View {
             } message: {
                 Text("Past transactions are kept.")
             }
+            .onChange(of: scope) { _, scope in
+                if !CategoryLibrary.isSelectable(category, scope: scope) { category = nil }
+            }
             .onAppear {
-                if existing == nil { currency = appCurrency }
+                if existing == nil && draftID == nil { currency = appCurrency }
                 if category == nil { category = CategoryLibrary.visible(categories, scope: scope).first }
             }
         }
     }
 
     private func save() {
+        guard canSave else { return }
+        if let draftID {
+            do {
+                let existingDrafts = try context.fetch(FetchDescriptor<Subscription>())
+                if existingDrafts.contains(where: { $0.draftID == draftID.uuidString }) { dismiss(); onSaved?(); return }
+            } catch { saveError = error.localizedDescription; return }
+        }
         let calendar = Calendar.current
         let subscription: Subscription
         if let existing {
@@ -153,14 +179,20 @@ struct SubscriptionEditorView: View {
             context.insert(created)
             subscription = created
         }
-        try? context.save()
+        if let draftID { subscription.draftID = draftID.uuidString }
+        do { try context.save() } catch { context.rollback(); saveError = error.localizedDescription; return }
+        saved = true
         Task { await Reminders.reschedule(subscription) }
         dismiss()
+        onSaved?()
     }
 
     private func togglePause(_ subscription: Subscription) {
+        if subscription.status == .paused {
+            subscription.nextPaymentDate = Subscriptions.firstFutureDate(subscription, now: .now)
+        }
         subscription.status = subscription.status == .active ? .paused : .active
-        try? context.save()
+        do { try context.save() } catch { context.rollback(); saveError = error.localizedDescription; return }
         Task { await Reminders.reschedule(subscription) }
         dismiss()
     }
@@ -171,7 +203,6 @@ struct SubscriptionEditorView: View {
         // Payments cascade; their transactions are only nullified, so the
         // money that was actually spent stays in the history.
         context.delete(existing)
-        try? context.save()
-        dismiss()
+        do { try context.save(); dismiss() } catch { context.rollback(); saveError = error.localizedDescription }
     }
 }

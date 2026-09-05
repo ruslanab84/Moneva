@@ -7,6 +7,9 @@ struct TransactionsView: View {
     @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
 
+    @State private var assistantOpen = false
+    @State private var selectedTransaction: Transaction?
+
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
     private var monthTransactions: [Transaction] {
@@ -21,6 +24,9 @@ struct TransactionsView: View {
     var body: some View {
         ScreenScroll(title: "Transactions", eyebrow: range.lowerBound.formatted(.dateTime.month(.wide).year())) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
+
+            Button("Search & explain spending", systemImage: "sparkles") { assistantOpen = true }
+            Text("Totals in \(currencyCode); other currencies stay separate.").font(.caption).foregroundStyle(Palette.inkMuted)
 
             HStack(spacing: 18) {
                 totals("Money in", Budgeting.earned(monthTransactions, in: range, scope: scope), Palette.accent)
@@ -51,6 +57,8 @@ struct TransactionsView: View {
                     ForEach(Array(group.items.enumerated()), id: \.element.persistentModelID) { index, transaction in
                         if index > 0 { Divider().overlay(Palette.line) }
                         TransactionRow(transaction: transaction)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectedTransaction = transaction }
                             .contextMenu {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     context.delete(transaction)
@@ -59,6 +67,13 @@ struct TransactionsView: View {
                     }
                 }
                 .monevaCard(padding: 16)
+            }
+        }
+        .sheet(isPresented: $assistantOpen) { SpendingAssistantView(scope: scope) }
+        .sheet(item: $selectedTransaction) { tx in
+            NavigationStack {
+                TransactionDetailView(transaction: tx)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { selectedTransaction = nil } } }
             }
         }
     }
@@ -80,6 +95,6 @@ struct TransactionsView: View {
     }
 
     private func dayTotal(_ items: [Transaction]) -> Decimal {
-        items.reduce(Decimal.zero) { $0 + ($1.kind == .expense ? $1.amount : 0) }
+        items.reduce(Decimal.zero) { $0 + ($1.kind == .expense && $1.currency == currencyCode ? $1.amount : 0) }
     }
 }

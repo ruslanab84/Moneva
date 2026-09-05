@@ -1,133 +1,119 @@
 import SwiftUI
 import SwiftData
 
-/// Speak a transaction, read the draft, then decide. Nothing reaches the store
-/// until Save — the model only ever fills a form.
 struct VoiceCaptureView: View {
+    var subscriptions = false
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
-    @AppStorage(Money.storageKey) private var currencyCode = Money.code
-    @Query(sort: \SpendingCategory.name) private var categories: [SpendingCategory]
-
+    @Query private var categories: [SpendingCategory]
+    @Query private var rules: [MerchantCategoryRule]
     @State private var speech = SpeechCapture()
-    @State private var drafter = TransactionDrafter()
-    @State private var isEditing = false
+    @State private var text = ""
+    @State private var drafts: [TransactionDraft] = []
+    @State private var subscriptionDraft: DetectedSubscription?
+    @State private var busy = false
+    @State private var microphoneBusy = false
+    @State private var error: String?
+    @State private var manual = false
+    @State private var task: Task<Void, Never>?
+    @State private var source: EntrySource = .text
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
 
-    /// Rebuilt from the model's latest snapshot, so the card fills in as the
-    /// draft streams rather than appearing whole at the end.
-    private var draft: TransactionDraft? {
-        drafter.partial.map { DraftResolver.resolve($0, categories: categories, scope: scope) }
-    }
-
-    private var isFinal: Bool {
-        if case .ready = drafter.phase { return true }
-        return false
-    }
-
     var body: some View {
         NavigationStack {
-            ScreenScroll(title: "Voice expense", eyebrow: "On device") {
-                if let reason = TransactionDrafter.unavailableReason {
-                    EmptyHint(title: "Drafting is off", message: reason, symbol: "sparkles.slash")
-                }
-
-                microphone
-
-                if !speech.text.isEmpty {
-                    Text("“\(speech.text)”")
-                        .font(.body)
-                        .foregroundStyle(Palette.ink)
-                        .monevaCard()
-                }
-
-                if let message = speech.error {
-                    Text(message).font(.footnote).foregroundStyle(Palette.over)
-                }
-
-                switch drafter.phase {
-                case .idle:
-                    EmptyView()
-                case .failed(let message):
-                    Text(message).font(.footnote).foregroundStyle(Palette.over).monevaCard()
-                case .drafting, .ready:
-                    if let draft {
-                        DraftCard(draft: draft, isFinal: isFinal, currencyCode: currencyCode)
-                    } else {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                            Text("Reading that…").font(.footnote).foregroundStyle(Palette.inkMuted)
+            Form {
+                Section(subscriptions ? "Describe a monthly subscription" : "Describe one or more transactions") {
+                    TextField(subscriptions ? "Netflix, 15 USD monthly, next payment September 20" : "Today, coffee 5 AZN, taxi 12 AZN", text: $text, axis: .vertical)
+                        .lineLimit(3...8)
+                        .disabled(busy || speech.isRecording)
+                    Button(speech.isRecording ? "Stop listening" : "Use microphone", systemImage: speech.isRecording ? "stop.fill" : "mic.fill") {
+                        microphoneBusy = true
+                        task = Task {
+                            if speech.isRecording {
+                                await speech.stop()
+                                text = speech.text
+                                source = .voice
+                            } else {
+                                await speech.start()
+                            }
+                            microphoneBusy = false
                         }
-                        .monevaCard()
                     }
-                    Text("Moneva only drafts. Nothing is written to your data until you tap Save.")
-                        .font(.caption)
-                        .foregroundStyle(Palette.inkFaint)
-                    if isFinal, let draft {
-                        DraftActions(draft: draft, edit: { isEditing = true }, save: { save(draft) })
+                    .disabled(busy || microphoneBusy)
+                    if speech.isRecording { Text(speech.text).accessibilityLabel("Transcript: \(speech.text)") }
+                    if let error = speech.error { Text(error).foregroundStyle(Palette.over) }
+                    Button("Create editable drafts", systemImage: "sparkles") { draft() }
+                        .disabled(busy || speech.isRecording || microphoneBusy || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !drafts.isEmpty)
+                    if busy { ProgressView("Processing on this iPhone…") }
+                    if let reason = TransactionDrafter.unavailableReason { Text(reason).font(.footnote) }
+                    Button("Enter manually") { task?.cancel(); busy = false; manual = true }
+                }
+                if let error { Section { Text(error).foregroundStyle(Palette.over) } }
+                ForEach($drafts) { $draft in
+                    Section("Draft — not saved") {
+                        DraftFields(draft: $draft)
+                        Button("Remove draft", role: .destructive) { drafts.removeAll { $0.id == draft.id } }
+                    }
+                }
+                if !drafts.isEmpty {
+                    Section {
+                        Button("Confirm and save \(drafts.count) transactions") { save() }
+                            .disabled(busy || !drafts.allSatisfy(\.canSave))
+                        Button("Discard drafts and revise text", role: .destructive) { drafts = [] }
+                    } footer: {
+                        Text("Nothing is saved until you confirm. Currency totals are kept separate.")
                     }
                 }
             }
+            .navigationTitle(subscriptions ? "Smart subscription" : "Text & voice")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        Task { await speech.stop(); dismiss() }
-                    }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheet(isPresented: $manual) {
+                if subscriptions { SubscriptionEditorView(scope: scope) } else { AddTransactionView() }
+            }
+            .sheet(item: $subscriptionDraft) { draft in
+                SubscriptionEditorView(scope: scope, draft: draft, onSaved: { dismiss() })
+            }
+            .onDisappear {
+                task?.cancel()
+                Task { await speech.stop() }
+            }
+        }
+    }
+
+    private func draft() {
+        busy = true
+        error = nil
+        let now = Date.now
+        let activeScope = scope
+        let input = text
+        let visible = CategoryLibrary.visible(categories, scope: activeScope)
+        task = Task {
+            defer { busy = false }
+            do {
+                if subscriptions {
+                    let result = try await OnDeviceAI.generate(DraftedMonthlySubscription.self,
+                        instructions: "Extract a monthly subscription draft. Use only stated values. If the year is omitted, use the next occurrence of the stated month and day. Flag non-monthly frequencies and ambiguities for review.",
+                        data: OnDeviceAI.context(categories: visible, now: now) + "\nRequest: " + input)
+                    subscriptionDraft = SubscriptionResolver.resolveInput(result, categories: visible, scope: activeScope, input: input, now: now)
+                } else {
+                    let result = try await OnDeviceAI.generate(DraftedTransactions.self,
+                        instructions: "Extract every expense or income as a separate draft. Resolve relative language into signed day offsets; explicit dates into year/month/day. If a transaction date is not mentioned, use today (offset 0). Never assume a currency; ask if absent. Flag ambiguous amounts and dates. Suggest an existing category before a new category.",
+                        data: OnDeviceAI.context(categories: visible, now: now) + "\nRequest: " + input)
+                    drafts = result.items.map { DraftResolver.resolve($0, categories: visible, rules: rules, scope: activeScope, source: source, input: input, now: now) }
+                    if drafts.isEmpty { error = "No transactions found. Add amounts and currencies, or enter manually." }
                 }
-            }
-            .onAppear { drafter.prewarm(categories: categories) }
-            .sheet(isPresented: $isEditing, onDismiss: { dismiss() }) {
-                if let draft { AddTransactionView(draft: draft) }
-            }
+            } catch is CancellationError {} catch { self.error = error.localizedDescription }
         }
     }
 
-    private var microphone: some View {
-        VStack(spacing: 12) {
-            Button {
-                Task { await toggleRecording() }
-            } label: {
-                Image(systemName: speech.isRecording ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(Palette.card)
-                    .frame(width: 96, height: 96)
-                    .background(speech.isRecording ? Palette.over : Palette.accent, in: .circle)
-                    .shadow(color: Palette.accent.opacity(0.35), radius: 18, x: 0, y: 10)
-            }
-            .accessibilityLabel(speech.isRecording ? "Stop listening" : "Start listening")
-
-            Text(speech.isRecording ? "Listening — tap to stop" : "Speech stays on this iPhone")
-                .font(.footnote)
-                .foregroundStyle(Palette.inkMuted)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-    }
-
-    private func toggleRecording() async {
-        if speech.isRecording {
-            await speech.stop()
-            await drafter.draft(from: speech.text, categories: categories)
-        } else {
-            drafter.reset()
-            await speech.start()
-        }
-    }
-
-    private func save(_ draft: TransactionDraft) {
-        context.insert(Transaction(
-            amount: draft.amount,
-            date: draft.date,
-            merchant: draft.merchant,
-            note: draft.note,
-            kind: draft.kind,
-            scope: draft.scope,
-            source: .voice,
-            category: draft.category
-        ))
-        dismiss()
+    private func save() {
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
+        do { try DraftStore.save(drafts, in: context); dismiss() }
+        catch { self.error = error.localizedDescription }
     }
 }
