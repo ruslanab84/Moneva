@@ -62,11 +62,62 @@ enum Money {
         return symbol == code ? code : "\(code) \(symbol)"
     }
 
+    static let flagRegions = Set(Locale.Region.isoRegions.map(\.identifier))
+
+    /// "🇺🇸" for USD. An ISO 4217 code opens with its ISO 3166 region, so the
+    /// flag is those two letters as regional indicators. Codes whose region no
+    /// longer exists (ANG) or never did (XAU, gold) have no flag to draw, and
+    /// the indicators would render as two empty boxes.
+    static func flag(for code: String) -> String {
+        let region = code.prefix(2).uppercased()
+        guard flagRegions.contains(region) else { return "" }
+        var flag = ""
+        for scalar in region.unicodeScalars {
+            guard (65...90).contains(scalar.value), let indicator = UnicodeScalar(0x1F1E6 + scalar.value - 65) else { return "" }
+            flag.unicodeScalars.append(indicator)
+        }
+        return flag
+    }
+
     /// Codes offered in the picker: the device's own first, then the rest.
     static var pickerCodes: [String] {
         let mine = Locale.current.currency?.identifier
         let rest = Locale.commonISOCurrencyCodes.filter { $0 != mine }
         return ([mine].compactMap { $0 }) + rest
+    }
+}
+
+/// Light or dark by choice, or whatever the phone is doing. Every colour in
+/// `Palette` resolves from the trait collection, so one override covers the app.
+enum AppTheme: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    static let storageKey = "theme"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .system: "iphone"
+        case .light: "sun.max"
+        case .dark: "moon"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
     }
 }
 

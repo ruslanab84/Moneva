@@ -141,6 +141,11 @@ func monevaSelfCheck() {
         assert(symbol.allSatisfy { !$0.isNumber && !$0.isWhitespace }, "\(code) symbol must carry no digits or spaces")
     }
 
+    assert(Money.flag(for: "USD") == "🇺🇸", "a currency code opens with its country")
+    assert(Money.flag(for: "AZN") == "🇦🇿", "and so does every other one")
+    assert(Money.flag(for: "XAU").isEmpty, "gold belongs to no country, so it flies no flag")
+    assert(Money.flag(for: "ANG").isEmpty, "a retired region draws empty boxes, not a flag")
+
     // Vision hands text back in detection order; a receipt only reads correctly
     // top to bottom, then left to right within a line.
     let scanned: [(text: String, rect: CGRect)] = [

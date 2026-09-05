@@ -123,8 +123,8 @@ struct BudgetEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \SpendingCategory.name) private var categories: [SpendingCategory]
 
-    /// Local until Save — Cancel must leave the setting alone.
-    @State private var currencyCode = Money.code
+    /// Display only — the currency itself is chosen in Settings.
+    @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @State private var total: Decimal = 0
     @State private var limits: [PersistentIdentifier: Decimal] = [:]
 
@@ -134,15 +134,6 @@ struct BudgetEditor: View {
                 Section("Monthly total") {
                     AmountField(title: "Total limit", value: $total, currencyCode: currencyCode)
                         .font(.money(.title2))
-                }
-                Section {
-                    Picker("Currency", selection: $currencyCode) {
-                        ForEach(Money.pickerCodes, id: \.self) { code in
-                            Text(Money.label(for: code)).tag(code)
-                        }
-                    }
-                } footer: {
-                    Text("Moneva shows every amount in this currency. Past transactions keep the code they were saved with.")
                 }
                 Section("Category limits") {
                     ForEach(categories, id: \.persistentModelID) { category in
@@ -188,7 +179,6 @@ struct BudgetEditor: View {
             context.insert(fresh)
             return fresh
         }()
-        Money.code = currencyCode
         target.total = total
 
         // Rebuild the limit set from the form: simpler than diffing, and the

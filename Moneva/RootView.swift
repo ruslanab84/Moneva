@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
+    @AppStorage(AppTheme.storageKey) private var themeRaw = AppTheme.system.rawValue
     @State private var isAdding = false
     @State private var isSpeaking = false
     @State private var isScanning = false
@@ -52,5 +53,6 @@ struct RootView: View {
         .sheet(isPresented: $isAdding) { AddTransactionView() }
         .sheet(isPresented: $isSpeaking) { VoiceCaptureView() }
         .sheet(isPresented: $isScanning) { ReceiptScanView() }
+        .preferredColorScheme(AppTheme(rawValue: themeRaw)?.colorScheme)
     }
 }

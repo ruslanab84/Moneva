@@ -8,6 +8,7 @@ struct HomeView: View {
     // move to a predicate #Query if a month ever holds thousands of rows.
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query private var budgets: [Budget]
+    @State private var isSettingsOpen = false
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
@@ -58,6 +59,19 @@ struct HomeView: View {
                 .monevaCard(padding: 16)
             }
         }
+        .overlay(alignment: .topTrailing) {
+            Button { isSettingsOpen = true } label: {
+                Image(systemName: "gearshape")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Palette.inkMuted)
+                    .frame(width: 40, height: 40)
+                    .background(Palette.card, in: .circle)
+            }
+            .accessibilityLabel("Settings")
+            .padding(.trailing, 20)
+            .padding(.top, 8)
+        }
+        .sheet(isPresented: $isSettingsOpen) { SettingsView() }
     }
 
     private var greeting: String {
