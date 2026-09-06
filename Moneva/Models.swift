@@ -36,6 +36,9 @@ final class SpendingCategory {
     /// written before this property existed never had, and reading the empty
     /// value force-casts and crashes.
     var scopeRaw: String?
+    /// Which side of the ledger this category belongs to. Same optional-raw
+    /// treatment as `scopeRaw`: rows written before it existed read as expense.
+    var kindRaw: String?
     /// Manual order in the picker. Ties fall back to name.
     var sortIndex: Int = 0
 
@@ -44,10 +47,15 @@ final class SpendingCategory {
         set { scopeRaw = newValue.rawValue }
     }
 
+    var kind: TransactionKind {
+        get { kindRaw.flatMap(TransactionKind.init(rawValue:)) ?? .expense }
+        set { kindRaw = newValue.rawValue }
+    }
+
     @Relationship(deleteRule: .nullify, inverse: \Transaction.category)
     var transactions: [Transaction] = []
 
-    init(name: String, symbol: String, tintHex: String, softHex: String, monthlyLimit: Decimal? = nil, isBuiltIn: Bool = false, scope: Scope = .personal, sortIndex: Int = 0) {
+    init(name: String, symbol: String, tintHex: String, softHex: String, monthlyLimit: Decimal? = nil, isBuiltIn: Bool = false, scope: Scope = .personal, kind: TransactionKind = .expense, sortIndex: Int = 0) {
         self.name = name
         self.symbol = symbol
         self.tintHex = tintHex
@@ -55,6 +63,7 @@ final class SpendingCategory {
         self.monthlyLimit = monthlyLimit
         self.isBuiltIn = isBuiltIn
         self.scopeRaw = scope.rawValue
+        self.kindRaw = kind.rawValue
         self.sortIndex = sortIndex
     }
 

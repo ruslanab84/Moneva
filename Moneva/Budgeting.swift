@@ -196,10 +196,24 @@ func monevaSelfCheck() {
     assert(CategoryLibrary.visible(library, scope: .shared).last === shared, "in a shared budget, personal comes first and shared last")
     assert(CategoryLibrary.search(library, for: "tran").map(\.name) == ["Transport"], "search matches part of a name")
 
+    // Income has its own catalogue: the two sides never leak into each other.
+    let salaryCategory = SpendingCategory(name: "Salary", symbol: "briefcase", tintHex: "4F7A55", softHex: "DDE8DD", kind: .income)
+    let ledger = library + [salaryCategory]
+    assert(!CategoryLibrary.visible(ledger, scope: .personal).contains { $0 === salaryCategory }, "income categories stay out of the expense picker")
+    assert(CategoryLibrary.visible(ledger, scope: .personal, kind: .income).map(\.name) == ["Salary"], "the income picker shows only income categories")
+    assert(CategoryLibrary.visible(ledger, scope: .personal, kind: nil).contains { $0 === salaryCategory }, "both sides list together when no kind is asked for")
+    assert(!CategoryLibrary.isSelectable(salaryCategory, scope: .personal), "an income category is never selectable on an expense")
+    assert(CategoryLibrary.isSelectable(salaryCategory, scope: .personal, kind: .income), "an income category is selectable on income")
+    assert(CategoryLibrary.isNameAvailable("Food", scope: .personal, kind: .income, in: ledger), "the same name is free on the other side of the ledger")
+    assert(!CategoryLibrary.isNameAvailable("salary", scope: .personal, kind: .income, in: ledger), "an income name is taken whatever its case")
+
     aiFeaturesSelfCheck()
 
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")
     assert(Budgeting.projectedCompletion(remaining: 100, monthlyRate: 0, from: sept, calendar: calendar) == nil, "no rate, no date")
+
+    assert(AmountField.editable(0).isEmpty, "an empty amount field never seeds a leading zero to type around")
+    assert(AmountField.editable(Decimal(string: "1250.75")!) == "1250.75", "an existing amount comes back editable, unrounded and ungrouped")
 }
 #endif

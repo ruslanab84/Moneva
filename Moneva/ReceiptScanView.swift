@@ -38,7 +38,7 @@ struct ReceiptScanView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Receipt") {
+                Section {
                     if VNDocumentCameraViewController.isSupported {
                         Button("Scan with camera", systemImage: "doc.viewfinder") { scanning = true }.disabled(busy)
                     }
@@ -51,12 +51,22 @@ struct ReceiptScanView: View {
                     if busy { ProgressView("Reading receipt on device…") }
                     if let error { Text(error).foregroundStyle(Palette.over) }
                     if !ocr.isEmpty { DisclosureGroup("Recognized text") { Text(ocr).textSelection(.enabled) } }
+                } header: { Eyebrow("Receipt") }
+                .listRowBackground(Palette.card)
+                Section {
+                    AmountHero(draft: $draft, allowKind: false, eyebrow: "Reviewed receipt total")
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                 }
-                Section("Reviewed total") { DraftFields(draft: $draft, allowKind: false) }.disabled(busy)
+                .disabled(busy)
+                Section { DraftFields(draft: $draft, allowKind: false, showsAmount: false) }
+                    .listRowBackground(Palette.card)
+                    .disabled(busy)
                 Section {
                     Toggle("Split by category", isOn: $split).disabled(busy)
                     Text(split ? "Allocate every item, tax and discount. Category totals must equal the receipt total." : "Save as one expense using the reviewed total.").font(.caption)
                 }
+                .listRowBackground(Palette.card)
                 ForEach($items) { $item in
                     Section {
                         TextField("Item name", text: $item.name)
@@ -71,8 +81,9 @@ struct ReceiptScanView: View {
                         if !item.uncertainty.isEmpty { Text(item.uncertainty).font(.footnote).foregroundStyle(Palette.warning) }
                         Button("Remove line", role: .destructive) { items.removeAll { $0.id == item.id } }
                     }
+                    .listRowBackground(Palette.card)
                 }
-                Section("Category subtotals") {
+                Section {
                     ForEach(allocations) { allocation in
                         Button {
                             selectingIDs = Set(items.filter { $0.category?.persistentModelID == allocation.category?.persistentModelID }.map(\.id))
@@ -87,17 +98,32 @@ struct ReceiptScanView: View {
                         Text("Difference: \((draft.amount - allocated).money(draft.currency)). Correct the lines or save as one expense.").foregroundStyle(Palette.over)
                     }
                     Button("Add item, tax or discount") { items.append(ReceiptItem()) }
-                }
+                } header: { Eyebrow("Category subtotals") }
+                .listRowBackground(Palette.card)
                 Section {
-                    Button(split ? "Confirm and save split receipt" : "Confirm and save one expense") {
+                    Button {
                         if ReceiptMath.duplicates(prepared, in: transactions).isEmpty { save() } else { duplicateWarning = true }
-                    }.disabled(!canSave)
+                    } label: {
+                        Text(split ? "Confirm and save split receipt" : "Confirm and save one expense")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .disabled(!canSave)
+                    .listRowBackground(Palette.card)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Palette.ground)
+            .tint(Palette.accent)
             .disabled(saved)
             .navigationTitle("Receipt review")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.foregroundStyle(Palette.inkMuted)
+                }
+            }
             .onAppear { draft.scope = Scope(rawValue: scopeRaw) ?? .personal }
             .fullScreenCover(isPresented: $scanning) {
                 DocumentScanner(onScan: { image in process(image) }, onError: { error = $0 }).ignoresSafeArea()

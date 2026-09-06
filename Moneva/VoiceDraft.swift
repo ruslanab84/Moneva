@@ -62,7 +62,7 @@ struct TransactionDraft: Identifiable {
 
     var canSave: Bool {
         reviewed && Money.valid(amount, currency: currency) &&
-        (kind == .income || CategoryLibrary.isSelectable(category, scope: scope))
+        CategoryLibrary.isSelectable(category, scope: scope, kind: kind)
     }
 }
 
@@ -95,9 +95,11 @@ enum DraftResolver {
     }
 
     static func resolve(_ value: DraftedTransaction, categories: [SpendingCategory], rules: [MerchantCategoryRule], scope: Scope, source: EntrySource, input: String, now: Date = .now) -> TransactionDraft {
-        let visible = CategoryLibrary.visible(categories, scope: scope)
+        // Income and expense have separate category sets; the draft's own kind picks one.
+        let kind: TransactionKind = value.kind == .income ? .income : .expense
+        let visible = CategoryLibrary.visible(categories, scope: scope, kind: kind)
         let merchant = grounded(value.merchant, in: input)
-        let category = CategoryLibrary.ruleCategory(merchant: merchant, scope: scope, rules: rules)
+        let category = CategoryLibrary.ruleCategory(merchant: merchant, scope: scope, kind: kind, rules: rules)
             ?? category(named: value.category, in: visible)
             ?? CategoryLibrary.similar(value.category, in: visible).first
         let parsedDate = date(value.date, now: now)
@@ -106,10 +108,10 @@ enum DraftResolver {
         if Money.parse(value.amount) == nil { questions.append("What is the amount?") }
         if !Money.pickerCodes.contains(currency) { questions.append("Which currency? Select it below.") }
         if parsedDate == nil { questions.append("Which date? Select it below.") }
-        if value.kind == .expense && category == nil { questions.append("Choose or create a category.") }
-        return TransactionDraft(kind: value.kind == .income ? .income : .expense,
+        if category == nil { questions.append("Choose or create a category.") }
+        return TransactionDraft(kind: kind,
             amount: Money.parse(value.amount) ?? 0, merchant: merchant,
-            note: grounded(value.note, in: input), date: parsedDate ?? now, category: value.kind == .income ? nil : category,
+            note: grounded(value.note, in: input), date: parsedDate ?? now, category: category,
             scope: scope, currency: Money.pickerCodes.contains(currency) ? currency : Money.code, source: source,
             suggestedName: category == nil ? String(value.category.prefix(60)) : "",
             suggestedSymbol: CategoryLibrary.symbols.contains(value.symbol) ? value.symbol : "cart",

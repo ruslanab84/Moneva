@@ -18,10 +18,14 @@ struct CategoryEditorView: View {
     @State private var hasLimit: Bool
     @State private var limit: Decimal
     @State private var scope: Scope
+    /// Fixed once created: moving a category across the ledger would rewrite
+    /// what every transaction on it meant.
+    private let kind: TransactionKind
 
-    init(scope: Scope = .personal, suggestedName: String = "", suggestedSymbol: String = "cart", onSave: ((SpendingCategory) -> Void)? = nil) {
+    init(scope: Scope = .personal, kind: TransactionKind = .expense, suggestedName: String = "", suggestedSymbol: String = "cart", onSave: ((SpendingCategory) -> Void)? = nil) {
         existing = nil
         self.onSave = onSave
+        self.kind = kind
         _name = State(initialValue: suggestedName)
         _symbol = State(initialValue: CategoryLibrary.symbols.contains(suggestedSymbol) ? suggestedSymbol : "cart")
         _paletteIndex = State(initialValue: 0)
@@ -33,6 +37,7 @@ struct CategoryEditorView: View {
     init(editing category: SpendingCategory) {
         existing = category
         onSave = nil
+        kind = category.kind
         _name = State(initialValue: category.name)
         _symbol = State(initialValue: category.symbol)
         _paletteIndex = State(initialValue: CategoryLibrary.palette.firstIndex { $0.tint == category.tintHex } ?? 0)
@@ -45,7 +50,7 @@ struct CategoryEditorView: View {
     private var colors: (tint: String, soft: String) { CategoryLibrary.palette[paletteIndex] }
 
     private var nameIsFree: Bool {
-        CategoryLibrary.isNameAvailable(trimmedName, scope: scope, in: all, excluding: existing)
+        CategoryLibrary.isNameAvailable(trimmedName, scope: scope, kind: kind, in: all, excluding: existing)
     }
 
     private var canSave: Bool { !trimmedName.isEmpty && nameIsFree && (!hasLimit || limit > 0) }
@@ -57,7 +62,7 @@ struct CategoryEditorView: View {
 
                 Section("Name") {
                     TextField("Category name", text: $name)
-                    let similar = CategoryLibrary.similar(trimmedName, in: CategoryLibrary.visible(all, scope: scope)).filter { $0 !== existing }
+                    let similar = CategoryLibrary.similar(trimmedName, in: CategoryLibrary.visible(all, scope: scope, kind: kind)).filter { $0 !== existing }
                     if !similar.isEmpty {
                         Text("Similar existing categories: " + similar.map(\.name).joined(separator: ", ")).font(.footnote)
                     }
@@ -72,21 +77,24 @@ struct CategoryEditorView: View {
                 Section("Icon") { iconPicker }
                 Section("Colour") { colorPicker }
 
-                Section("Monthly limit") {
-                    Toggle("Set a limit", isOn: $hasLimit)
-                    if hasLimit {
-                        AmountField(title: "Limit", value: $limit)
-                        if limit <= 0 {
-                            Text("A limit has to be more than zero.")
-                                .font(.footnote)
-                                .foregroundStyle(Palette.over)
+                // A monthly limit is a spending idea; income has nothing to cap.
+                if kind == .expense {
+                    Section("Monthly limit") {
+                        Toggle("Set a limit", isOn: $hasLimit)
+                        if hasLimit {
+                            AmountField(title: "Limit", value: $limit)
+                            if limit <= 0 {
+                                Text("A limit has to be more than zero.")
+                                    .font(.footnote)
+                                    .foregroundStyle(Palette.over)
+                            }
                         }
                     }
                 }
 
                 Section("Scope") { ScopePicker(scope: $scope) }
             }
-            .navigationTitle(existing == nil ? "New category" : "Edit category")
+            .navigationTitle(existing == nil ? (kind == .income ? "New income category" : "New category") : "Edit category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -183,7 +191,8 @@ struct CategoryEditorView: View {
                 softHex: colors.soft,
                 monthlyLimit: monthlyLimit,
                 scope: scope,
-                sortIndex: CategoryLibrary.nextSortIndex(in: all, scope: scope)
+                kind: kind,
+                sortIndex: CategoryLibrary.nextSortIndex(in: all, scope: scope, kind: kind)
             )
             context.insert(created)
             do { try context.save() } catch { context.rollback(); saveError = error.localizedDescription; return }

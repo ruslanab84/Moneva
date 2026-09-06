@@ -9,6 +9,7 @@ struct CategoryPickerView: View {
 
     @Binding var selection: SpendingCategory?
     let scope: Scope
+    var kind: TransactionKind = .expense
     var suggestedName = ""
     var suggestedSymbol = "cart"
 
@@ -19,7 +20,7 @@ struct CategoryPickerView: View {
     private let columns = [GridItem(.adaptive(minimum: 96), spacing: 12)]
 
     private var visible: [SpendingCategory] {
-        CategoryLibrary.search(CategoryLibrary.visible(all, scope: scope), for: query)
+        CategoryLibrary.search(CategoryLibrary.visible(all, scope: scope, kind: kind), for: query)
     }
 
     private var personal: [SpendingCategory] { visible.filter { $0.scope == .personal } }
@@ -47,7 +48,7 @@ struct CategoryPickerView: View {
             }
             .background(Palette.ground)
             .searchable(text: $query, prompt: "Search categories")
-            .navigationTitle("Category")
+            .navigationTitle(kind == .income ? "Income category" : "Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -55,12 +56,12 @@ struct CategoryPickerView: View {
             }
             .sheet(isPresented: $isCreating) {
                 // A category made here is the one the user wanted to pick.
-                CategoryEditorView(scope: scope, suggestedName: suggestedName.isEmpty ? query : suggestedName, suggestedSymbol: suggestedSymbol) { created in
+                CategoryEditorView(scope: scope, kind: kind, suggestedName: suggestedName.isEmpty ? query : suggestedName, suggestedSymbol: suggestedSymbol) { created in
                     selection = created
                     dismiss()
                 }
             }
-            .sheet(isPresented: $isManaging) { CategoryManagerView() }
+            .sheet(isPresented: $isManaging) { CategoryManagerView(kind: kind) }
         }
     }
 
@@ -74,7 +75,7 @@ struct CategoryPickerView: View {
                     .background(Palette.accent, in: .rect(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("New category").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-                    Text("Pick an icon, a colour and a limit").font(.footnote).foregroundStyle(Palette.inkMuted)
+                    Text(kind == .income ? "Pick an icon and a colour" : "Pick an icon, a colour and a limit").font(.footnote).foregroundStyle(Palette.inkMuted)
                 }
                 Spacer()
             }

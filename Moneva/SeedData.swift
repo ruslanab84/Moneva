@@ -24,11 +24,31 @@ enum SeedData {
         ("Other", "square.grid.2x2", "78746A", "E4E2DB"),
     ]
 
+    /// Where money comes from. Kept apart from spending so the two pickers
+    /// never show each other's categories.
+    static let defaultIncomeCategories: [(name: String, symbol: String, tint: String, soft: String)] = [
+        ("Salary", "briefcase", "4F7A55", "DDE8DD"),
+        ("Deposit", "banknote", "3F7684", "DCE7EA"),
+        ("Rent", "house", "7A5B86", "E7DEE8"),
+        ("Investment", "chart.line.uptrend.xyaxis", "2F6A8F", "D9E6EF"),
+        ("Business", "building.columns", "8F6115", "F1E4CC"),
+        ("Gift", "gift", "A34F63", "F2DDE2"),
+        ("Refund", "arrow.down.circle", "5B6B3F", "E2E7D6"),
+        ("Other income", "square.grid.2x2", "78746A", "E4E2DB"),
+    ]
+
     static func installIfNeeded(in context: ModelContext) {
-        let existing = (try? context.fetchCount(FetchDescriptor<SpendingCategory>())) ?? 0
-        guard existing == 0 else { return }
-        for (index, item) in defaultCategories.enumerated() {
-            context.insert(SpendingCategory(name: item.name, symbol: item.symbol, tintHex: item.tint, softHex: item.soft, isBuiltIn: true, sortIndex: index))
+        let all = (try? context.fetch(FetchDescriptor<SpendingCategory>())) ?? []
+        install(defaultCategories, kind: .expense, into: all, in: context)
+        // Income arrived after the first release, so this pass runs on existing stores too.
+        install(defaultIncomeCategories, kind: .income, into: all, in: context)
+    }
+
+    private static func install(_ seeds: [(name: String, symbol: String, tint: String, soft: String)],
+                                kind: TransactionKind, into existing: [SpendingCategory], in context: ModelContext) {
+        guard !existing.contains(where: { $0.kind == kind }) else { return }
+        for (index, item) in seeds.enumerated() {
+            context.insert(SpendingCategory(name: item.name, symbol: item.symbol, tintHex: item.tint, softHex: item.soft, isBuiltIn: true, kind: kind, sortIndex: index))
         }
         try? context.save()
     }

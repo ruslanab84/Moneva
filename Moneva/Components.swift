@@ -130,20 +130,25 @@ struct AmountField: View {
     @Binding var value: Decimal
     /// Read once per field so the symbol matches whatever the settings say.
     var currencyCode: String = Money.code
+    /// Off where a currency picker sits next to the field — code and symbol
+    /// twice in one row reads like a bug.
+    var showsSymbol = true
     @State private var text = ""
 
     var body: some View {
         HStack(spacing: 6) {
             TextField(title, text: $text)
                 .keyboardType(.decimalPad)
-                .onAppear { text = AmountField.display(value) }
+                .onAppear { text = AmountField.editable(value) }
                 .onChange(of: text) { _, new in value = AmountField.parse(new) }
                 .onChange(of: value) { _, new in
-                    if AmountField.parse(text) != new { text = AmountField.display(new) }
+                    if AmountField.parse(text) != new { text = AmountField.editable(new) }
                 }
-            Text(Money.symbol(for: currencyCode))
-                .foregroundStyle(Palette.inkMuted)
-                .accessibilityHidden(true)
+            if showsSymbol {
+                Text(Money.symbol(for: currencyCode))
+                    .foregroundStyle(Palette.inkMuted)
+                    .accessibilityHidden(true)
+            }
         }
     }
 
@@ -153,7 +158,52 @@ struct AmountField: View {
         Money.parse(input) ?? 0
     }
 
+    /// Zero shows as an empty field so the first digit typed replaces it
+    /// instead of landing next to a leading "0".
+    static func editable(_ value: Decimal) -> String {
+        value == 0 ? "" : display(value)
+    }
+
     static func display(_ value: Decimal) -> String {
         value.formatted(.number.precision(.fractionLength(0...6)).grouping(.never).locale(Locale(identifier: "en_US_POSIX")))
+    }
+}
+
+/// The amount is the point of this screen, so it gets the serif face and the
+/// whole card instead of one anonymous form row.
+struct AmountHero: View {
+    @Binding var draft: TransactionDraft
+    var allowKind = true
+    /// Overrides the expense/income caption where the screen already says
+    /// what the money is — a receipt total, say.
+    var eyebrow: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if allowKind {
+                Picker("Kind", selection: $draft.kind) {
+                    ForEach(TransactionKind.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Eyebrow(eyebrow ?? (draft.kind == .income ? "Income amount" : "Expense amount"))
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    AmountField(title: "0", value: $draft.amount, currencyCode: draft.currency, showsSymbol: false)
+                        .font(.money(.largeTitle))
+                        .foregroundStyle(draft.kind == .income ? Palette.accent : Palette.ink)
+                    Picker("Currency", selection: $draft.currency) {
+                        ForEach(Money.pickerCodes, id: \.self) { Text($0).tag($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .font(.footnote.weight(.semibold))
+                }
+            }
+        }
+        .monevaCard()
+        .padding(.horizontal, 4)
+        .padding(.vertical, 6)
     }
 }

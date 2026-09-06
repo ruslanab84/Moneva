@@ -8,17 +8,22 @@ struct CategoryManagerView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var all: [SpendingCategory]
 
+    /// Manage one side of the ledger at a time — whichever picker opened this.
+    var kind: TransactionKind = .expense
+
     @State private var editing: SpendingCategory?
 
+    private var listed: [SpendingCategory] { all.filter { $0.kind == kind } }
+
     private var active: [SpendingCategory] {
-        all.filter { !$0.isArchived }.sorted {
+        listed.filter { !$0.isArchived }.sorted {
             $0.sortIndex != $1.sortIndex ? $0.sortIndex < $1.sortIndex
                 : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
     }
 
     private var archived: [SpendingCategory] {
-        all.filter(\.isArchived).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        listed.filter(\.isArchived).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     var body: some View {
@@ -50,7 +55,7 @@ struct CategoryManagerView: View {
                 }
             }
             .environment(\.editMode, .constant(.active))
-            .navigationTitle("Categories")
+            .navigationTitle(kind == .income ? "Income categories" : "Categories")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
@@ -91,7 +96,7 @@ struct CategoryManagerView: View {
 
     private func restore(_ category: SpendingCategory) {
         category.isArchived = false
-        category.sortIndex = CategoryLibrary.nextSortIndex(in: all, scope: category.scope)
+        category.sortIndex = CategoryLibrary.nextSortIndex(in: all, scope: category.scope, kind: category.kind)
         try? context.save()
     }
 }

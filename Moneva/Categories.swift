@@ -14,6 +14,7 @@ enum CategoryLibrary {
         ("Body & mind", ["cross.case", "pills", "dumbbell", "figure.run", "scissors", "graduationcap"]),
         ("Life", ["gamecontroller", "film", "music.note", "book", "tshirt", "beach.umbrella"]),
         ("Other", ["creditcard", "banknote", "briefcase", "square.grid.2x2", "star", "flag"]),
+        ("Money in", ["chart.line.uptrend.xyaxis", "arrow.down.circle", "building.columns", "hands.clap", "sparkles", "dollarsign.circle"]),
     ]
 
     static var symbols: [String] { symbolGroups.flatMap(\.symbols) }
@@ -27,9 +28,10 @@ enum CategoryLibrary {
     ]
 
     /// What the picker shows: never archived, personal before shared, and only
-    /// shared categories when a shared budget is open.
-    static func visible(_ all: [SpendingCategory], scope: Scope) -> [SpendingCategory] {
-        all.filter { !$0.isArchived && ($0.scope == .personal || scope == .shared) }
+    /// shared categories when a shared budget is open. `kind` splits the two
+    /// sides of the ledger — pass nil to list both.
+    static func visible(_ all: [SpendingCategory], scope: Scope, kind: TransactionKind? = .expense) -> [SpendingCategory] {
+        all.filter { !$0.isArchived && ($0.scope == .personal || scope == .shared) && (kind == nil || $0.kind == kind) }
             .sorted { lhs, rhs in
                 if lhs.scope != rhs.scope { return lhs.scope == .personal }
                 if lhs.sortIndex != rhs.sortIndex { return lhs.sortIndex < rhs.sortIndex }
@@ -45,21 +47,22 @@ enum CategoryLibrary {
 
     /// A name is free when no live category in the same scope already answers
     /// to it. Archived names stay taken — restoring must not collide.
-    static func isNameAvailable(_ name: String, scope: Scope, in all: [SpendingCategory], excluding existing: SpendingCategory? = nil) -> Bool {
+    static func isNameAvailable(_ name: String, scope: Scope, kind: TransactionKind = .expense, in all: [SpendingCategory], excluding existing: SpendingCategory? = nil) -> Bool {
         let wanted = fold(name)
         guard !wanted.isEmpty else { return false }
         return !all.contains { candidate in
-            candidate !== existing && candidate.scope == scope && fold(candidate.name) == wanted
+            candidate !== existing && candidate.scope == scope && candidate.kind == kind && fold(candidate.name) == wanted
         }
     }
 
-    static func isSelectable(_ category: SpendingCategory?, scope: Scope) -> Bool {
+    static func isSelectable(_ category: SpendingCategory?, scope: Scope, kind: TransactionKind = .expense) -> Bool {
         guard let category else { return false }
-        return !category.isArchived && (category.scope == .personal || scope == .shared)
+        return !category.isArchived && (category.scope == .personal || scope == .shared) && category.kind == kind
     }
 
-    static func ruleCategory(merchant: String, scope: Scope, rules: [MerchantCategoryRule]) -> SpendingCategory? {
-        rules.first { $0.merchant == fold(merchant) && $0.scopeRaw == scope.rawValue && isSelectable($0.category, scope: scope) }?.category
+    /// Merchant rules only ever describe spending, so an income draft matches none.
+    static func ruleCategory(merchant: String, scope: Scope, kind: TransactionKind = .expense, rules: [MerchantCategoryRule]) -> SpendingCategory? {
+        rules.first { $0.merchant == fold(merchant) && $0.scopeRaw == scope.rawValue && isSelectable($0.category, scope: scope, kind: kind) }?.category
     }
 
     // ponytail: name containment catches obvious near-duplicates; add edit distance if users need typo matching.
@@ -69,8 +72,8 @@ enum CategoryLibrary {
         return categories.filter { fold($0.name).contains(wanted) || wanted.contains(fold($0.name)) }
     }
 
-    static func nextSortIndex(in all: [SpendingCategory], scope: Scope) -> Int {
-        (all.filter { $0.scope == scope }.map(\.sortIndex).max() ?? 0) + 1
+    static func nextSortIndex(in all: [SpendingCategory], scope: Scope, kind: TransactionKind = .expense) -> Int {
+        (all.filter { $0.scope == scope && $0.kind == kind }.map(\.sortIndex).max() ?? 0) + 1
     }
 
     static func fold(_ text: String) -> String {
