@@ -32,6 +32,27 @@ enum Subscriptions {
         return calendar.date(from: parts) ?? month
     }
 
+    /// A fixed-term plan stops after its last payment date; an open-ended one
+    /// never does.
+    static func hasEnded(_ subscription: Subscription, on date: Date, calendar: Calendar = .current) -> Bool {
+        guard let end = subscription.endDate else { return false }
+        return calendar.startOfDay(for: date) > calendar.startOfDay(for: end)
+    }
+
+    /// Charges still to come, counting the next one. nil when open-ended.
+    // ponytail: walks month by month, capped; fine for loans, revisit if anything bills daily.
+    static func remainingPayments(nextPaymentDate: Date, anchorDay: Int, endDate: Date?, calendar: Calendar = .current) -> Int? {
+        guard let endDate else { return nil }
+        let last = calendar.startOfDay(for: endDate)
+        var cursor = nextPaymentDate
+        var count = 0
+        while calendar.startOfDay(for: cursor) <= last, count < 1200 {
+            count += 1
+            cursor = nextDate(after: cursor, anchorDay: anchorDay, calendar: calendar)
+        }
+        return count
+    }
+
     /// Charges that should already have happened and have not been recorded.
     /// Driven by the stored next date, then filtered against the periods
     /// already on file, so a launch after two quiet months cannot double-bill.
@@ -39,13 +60,16 @@ enum Subscriptions {
         nextPaymentDate: Date,
         anchorDay: Int,
         processed: Set<String>,
+        endDate: Date? = nil,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> [(period: String, date: Date)] {
         var due: [(period: String, date: Date)] = []
         var cursor = nextPaymentDate
         var guardCount = 0
+        let last = endDate.map { calendar.startOfDay(for: $0) }
         while cursor <= now, guardCount < maxCatchUp {
+            if let last, calendar.startOfDay(for: cursor) > last { break }
             let period = billingPeriod(for: cursor, calendar: calendar)
             if !processed.contains(period) { due.append((period, cursor)) }
             cursor = nextDate(after: cursor, anchorDay: anchorDay, calendar: calendar)
@@ -66,8 +90,10 @@ enum Subscriptions {
         return calendar.date(byAdding: .day, value: -daysBefore, to: paymentDate)
     }
 
-    static func monthlyTotal(_ subscriptions: [Subscription], currency: String = Money.code) -> Decimal {
-        subscriptions.filter { $0.currency == currency }.reduce(0) { $0 + $1.monthlyCost }
+    static func monthlyTotal(_ subscriptions: [Subscription], currency: String = Money.code, now: Date = .now, calendar: Calendar = .current) -> Decimal {
+        subscriptions
+            .filter { $0.currency == currency && !hasEnded($0, on: now, calendar: calendar) }
+            .reduce(0) { $0 + $1.monthlyCost }
     }
 }
 
@@ -96,6 +122,7 @@ enum SubscriptionEngine {
                     nextPaymentDate: subscription.nextPaymentDate,
                     anchorDay: subscription.anchorDay,
                     processed: processed,
+                    endDate: subscription.endDate,
                     now: now,
                     calendar: calendar
                 )

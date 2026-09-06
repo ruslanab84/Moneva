@@ -177,6 +177,19 @@ func monevaSelfCheck() {
     gym.status = .paused
     assert(Subscriptions.monthlyTotal([netflix, gym]) == 12, "a paused subscription costs nothing this month")
 
+    // A fixed term stops billing: 24 instalments from September 2026 and no more.
+    let loan = Subscription(name: "Car loan", amount: 300, nextPaymentDate: sept,
+                            endDate: calendar.date(from: DateComponents(year: 2028, month: 8, day: 1))!,
+                            category: food, calendar: calendar)
+    assert(Subscriptions.remainingPayments(nextPaymentDate: sept, anchorDay: 1, endDate: loan.endDate, calendar: calendar) == 24, "September 2026 to August 2028 inclusive is 24 monthly payments")
+    assert(Subscriptions.remainingPayments(nextPaymentDate: sept, anchorDay: 1, endDate: nil, calendar: calendar) == nil, "an open-ended plan has no payment count")
+    let afterTerm = calendar.date(from: DateComponents(year: 2028, month: 12, day: 1))!
+    assert(Subscriptions.duePeriods(nextPaymentDate: sept, anchorDay: 1, processed: [], endDate: loan.endDate, now: afterTerm, calendar: calendar).count == 24, "catch-up never bills past the last payment date")
+    assert(Subscriptions.hasEnded(loan, on: afterTerm, calendar: calendar), "a term that is over has ended")
+    assert(!Subscriptions.hasEnded(loan, on: sept, calendar: calendar), "a term still running has not ended")
+    assert(Subscriptions.monthlyTotal([loan], now: afterTerm, calendar: calendar) == 0, "a finished plan costs nothing this month")
+    assert(Subscriptions.monthlyTotal([loan], now: sept, calendar: calendar) == 300, "a running plan still costs its instalment")
+
     // A detected day of the month resolves forward, never into the past.
     let mid = calendar.date(from: DateComponents(year: 2026, month: 9, day: 17))!
     assert(calendar.component(.month, from: SubscriptionResolver.nextDate(dayOfMonth: 25, now: mid, calendar: calendar)) == 9, "a day still to come stays in this month")

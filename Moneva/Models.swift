@@ -197,6 +197,9 @@ final class Subscription {
     var currency: String = "AZN"
     var frequency: BillingFrequency = BillingFrequency.monthly
     var nextPaymentDate: Date = Date.now
+    /// Last date a charge may land on — a loan or any fixed-term plan. nil is
+    /// open-ended, which is what every subscription written before this was.
+    var endDate: Date?
     /// Day of the month the charge lands on, kept separately so a short month
     /// never drags the date backwards for good.
     var anchorDay: Int = 1
@@ -217,6 +220,7 @@ final class Subscription {
         amount: Decimal,
         currency: String = Money.code,
         nextPaymentDate: Date,
+        endDate: Date? = nil,
         reminderDays: Int? = nil,
         paymentMode: PaymentMode = .autoAdd,
         note: String = "",
@@ -228,6 +232,7 @@ final class Subscription {
         self.amount = amount
         self.currency = currency
         self.nextPaymentDate = nextPaymentDate
+        self.endDate = endDate
         self.anchorDay = calendar.component(.day, from: nextPaymentDate)
         self.reminderDays = reminderDays
         self.paymentMode = paymentMode

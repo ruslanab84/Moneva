@@ -254,6 +254,9 @@ struct SubscriptionsView: View {
         parts.append(subscription.frequency.title.lowercased())
         if subscription.scope == .shared { parts.append("Shared") }
         if subscription.status == .paused { parts.append("Paused") }
+        if let end = subscription.endDate {
+            parts.append(Subscriptions.hasEnded(subscription, on: .now) ? "Finished" : "ends \(end.formatted(date: .abbreviated, time: .omitted))")
+        }
         if let days = subscription.reminderDays { parts.append("reminder \(days)d before") }
         return parts.joined(separator: " · ")
     }

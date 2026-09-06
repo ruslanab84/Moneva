@@ -27,7 +27,9 @@ enum Reminders {
 
         // Reminders off means no notifications at all, and no permission
         // prompt: the subscriptions screen still asks in app when a charge is due.
-        guard subscription.status == .active, subscription.reminderDays != nil else { return }
+        // A finished plan has nothing left to announce.
+        guard subscription.status == .active, subscription.reminderDays != nil,
+              !Subscriptions.hasEnded(subscription, on: subscription.nextPaymentDate, calendar: calendar) else { return }
         var requests: [UNNotificationRequest] = []
 
         if let fireDate = Subscriptions.reminderDate(paymentDate: subscription.nextPaymentDate, daysBefore: subscription.reminderDays, calendar: calendar) {
