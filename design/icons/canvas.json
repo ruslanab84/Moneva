@@ -1,0 +1,15 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A — Monogram", "x": 0, "y": 0, "w": 1024, "h": 1024 },
+    { "file": "Coin.dc.html", "title": "B — Coin", "x": 1184, "y": 0, "w": 1024, "h": 1024 },
+    { "file": "Bars.dc.html", "title": "C — Ledger Bars", "x": 2368, "y": 0, "w": 1024, "h": 1024 },
+    { "file": "Wallet.dc.html", "title": "D — Wallet", "x": 3552, "y": 0, "w": 1024, "h": 1024 }
+  ],
+  "annotations": [
+    { "id": "note-a", "x": 0, "y": -130, "w": 1024, "text": "Serif M, ledger rule underneath — quietest, closest to the app's money typography" },
+    { "id": "note-b", "x": 1184, "y": -130, "w": 1024, "text": "Inverted coin monogram — most contrast on a home screen, reads as currency" },
+    { "id": "note-c", "x": 2368, "y": -130, "w": 1024, "text": "Ascending bars, no letterform — growth/budget metaphor, most abstract" },
+    { "id": "note-d", "x": 3552, "y": -130, "w": 1024, "text": "Tilted card + coin — most literal 'wallet app' object" }
+  ],
+  "launch": { "view": "canvas" }
+}

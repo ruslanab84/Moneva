@@ -25,6 +25,7 @@ struct SubscriptionsView: View {
     @State private var isSmartCreating = false
     @State private var engineError: String?
     @State private var question = ""
+    @FocusState private var questionFocused: Bool
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
 
@@ -199,9 +200,9 @@ struct SubscriptionsView: View {
                     TextField("How much will subscriptions cost this month?", text: $question, axis: .vertical)
                         .font(.subheadline)
                         .submitLabel(.send)
-                    Button("Ask") {
-                        Task { await advisor.ask(question, subscriptions: subscriptions.filter { $0.scope == scope }, scope: scope) }
-                    }
+                        .focused($questionFocused)
+                        .onSubmit { askQuestion() }
+                    Button("Ask") { askQuestion() }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.accent)
                     .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -259,6 +260,11 @@ struct SubscriptionsView: View {
         }
         if let days = subscription.reminderDays { parts.append("reminder \(days)d before") }
         return parts.joined(separator: " · ")
+    }
+
+    private func askQuestion() {
+        questionFocused = false
+        Task { await advisor.ask(question, subscriptions: subscriptions.filter { $0.scope == scope }, scope: scope) }
     }
 
     private func refresh() async {

@@ -95,6 +95,16 @@ enum Subscriptions {
             .filter { $0.currency == currency && !hasEnded($0, on: now, calendar: calendar) }
             .reduce(0) { $0 + $1.monthlyCost }
     }
+
+    /// Future scheduled payments between start-of-day boundaries, excluding the last boundary, at the current price.
+    static func projectedCost(_ subscription: Subscription, in range: Range<Date>, calendar: Calendar = .current) -> Decimal {
+        guard subscription.status == .active, !range.isEmpty,
+              let lastDay = calendar.date(byAdding: .day, value: -1, to: range.upperBound) else { return 0 }
+        let end = min(subscription.endDate ?? lastDay, lastDay)
+        let next = firstFutureDate(subscription, now: range.lowerBound, calendar: calendar)
+        let count = remainingPayments(nextPaymentDate: next, anchorDay: subscription.anchorDay, endDate: end, calendar: calendar) ?? 0
+        return subscription.amount * Decimal(count)
+    }
 }
 
 /// Turns due charges into transactions. Auto-add writes; ask-before-adding

@@ -103,23 +103,34 @@ enum SpendingReport {
         let current = Budgeting.monthRange(for: now, calendar: calendar)
         let previous = Budgeting.monthRange(for: calendar.date(byAdding: .month, value: -1, to: now)!, calendar: calendar)
         let history = transactions.filter { $0.scope == scope && $0.kind == .expense && $0.date <= now }
+        let hasPriorHistory = history.contains(where: { previous.contains($0.date) })
         var facts: [SpendingFact] = []
         func add(_ text: String, _ source: [Transaction]) { facts.append(SpendingFact(id: facts.count, text: text, transactions: source)) }
-        add("This month is incomplete. Comparisons below use this month so far and the full previous month; unrecorded spending is unknown.", [])
-        if !history.contains(where: { $0.date < previous.lowerBound }) {
-            add("History before the comparison period is insufficient to establish complete coverage. Missing transactions are not evidence of zero spending.", [])
+        if hasPriorHistory {
+            add("This month is incomplete. Comparisons below use this month so far and the full previous month; unrecorded spending is unknown.", [])
+            if !history.contains(where: { $0.date < previous.lowerBound }) {
+                add("History before the comparison period is insufficient to establish complete coverage. Missing transactions are not evidence of zero spending.", [])
+            }
         }
         for currency in Set(history.map(\.currency) + subscriptions.filter { $0.scope == scope }.map(\.currency)).sorted() {
             let month = history.filter { $0.currency == currency && current.contains($0.date) }
             let prior = history.filter { $0.currency == currency && previous.contains($0.date) }
             let total = month.reduce(Decimal.zero) { $0 + $1.amount }
-            add("Recorded spending this month so far: \(total.money(currency)). Previous calendar month: \(prior.reduce(Decimal.zero) { $0 + $1.amount }.money(currency)).", month + prior)
+            if prior.isEmpty {
+                add("Recorded spending this month so far: \(total.money(currency)).", month)
+            } else {
+                add("Recorded spending this month so far: \(total.money(currency)). Previous calendar month: \(prior.reduce(Decimal.zero) { $0 + $1.amount }.money(currency)).", month + prior)
+            }
             for category in categories {
                 let used = month.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
                 let before = prior.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
                 guard used > 0 || before > 0 else { continue }
-                let difference = used - before
-                add("\(category.name): \(used.money(currency)) this month so far versus \(before.money(currency)) in the previous month; \(difference >= 0 ? "increase" : "decrease") of \(abs(difference).money(currency)). The difference reflects the linked recorded purchases, not a known change in habits or prices.", (month + prior).filter { $0.amount(in: category) > 0 })
+                if prior.isEmpty {
+                    add("\(category.name): \(used.money(currency)) this month so far.", month.filter { $0.amount(in: category) > 0 })
+                } else {
+                    let difference = used - before
+                    add("\(category.name): \(used.money(currency)) this month so far versus \(before.money(currency)) in the previous month; \(difference >= 0 ? "increase" : "decrease") of \(abs(difference).money(currency)). The difference reflects the linked recorded purchases, not a known change in habits or prices.", (month + prior).filter { $0.amount(in: category) > 0 })
+                }
             }
             if let budget = budgets.first(where: { $0.scope == scope && $0.monthStart == current.lowerBound && ($0.currency ?? Money.code) == currency }) {
                 add("Budget: \(total.money(currency)) used of \(budget.total.money(currency)); \(max(budget.total - total, 0).money(currency)) remaining.", month)
@@ -129,7 +140,7 @@ enum SpendingReport {
                 }
             }
         }
-        for line in SubscriptionDigest.lines(for: subscriptions.filter { $0.scope == scope }) {
+        for line in SubscriptionDigest.lines(for: subscriptions.filter { $0.scope == scope }, now: now, calendar: calendar) {
             add(line, history.filter { $0.source == .subscription })
         }
         return facts

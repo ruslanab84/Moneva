@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    .icon {
+      width: 1024px; height: 1024px;
+      background: #F6F4F0;
+      display: flex; align-items: flex-end; justify-content: center;
+      gap: 48px;
+      padding: 0 200px 208px;
+      box-sizing: border-box;
+    }
+    .bar { border-radius: 28px 28px 10px 10px; }
+    .b1 { width: 120px; height: 260px; background: #24544A; opacity: 0.45; }
+    .b2 { width: 120px; height: 400px; background: #24544A; opacity: 0.7; }
+    .b3 { width: 120px; height: 560px; background: #24544A; }
+  </style>
+</helmet>
+<div class="icon">
+  <div class="bar b1"></div>
+  <div class="bar b2"></div>
+  <div class="bar b3"></div>
+</div>
+</x-dc>
+</body>
+</html>

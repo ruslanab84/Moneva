@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    .icon {
+      width: 1024px; height: 1024px;
+      background: #F6F4F0;
+      position: relative;
+      overflow: hidden;
+    }
+    .card {
+      position: absolute;
+      width: 620px; height: 420px;
+      left: 202px; top: 302px;
+      background: #24544A;
+      border-radius: 56px;
+      transform: rotate(-8deg);
+    }
+    .stripe {
+      position: absolute;
+      left: 0; right: 0; top: 132px;
+      height: 64px;
+      background: #EAF0ED;
+      opacity: 0.85;
+    }
+    .coin {
+      position: absolute;
+      width: 220px; height: 220px;
+      right: 150px; top: 150px;
+      border-radius: 50%;
+      background: #F2EFE9;
+      box-shadow: inset 0 0 0 10px rgba(36,84,74,0.18);
+    }
+  </style>
+</helmet>
+<div class="icon">
+  <div class="card">
+    <div class="stripe"></div>
+  </div>
+  <div class="coin"></div>
+</div>
+</x-dc>
+</body>
+</html>

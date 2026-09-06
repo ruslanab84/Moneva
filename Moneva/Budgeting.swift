@@ -38,6 +38,18 @@ enum Budgeting {
             .reduce(Decimal.zero) { $0 + $1.amount }
     }
 
+    /// Running total of expenses by day-of-month, for a spending trend chart.
+    /// Days past `now` simply stay flat at the last real total — there are no
+    /// future transactions to sum, so no special-casing is needed here.
+    static func cumulativeSpending(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code, calendar: Calendar = .current) -> [(day: Int, total: Decimal)] {
+        let daysInMonth = calendar.range(of: .day, in: .month, for: range.lowerBound)?.count ?? 30
+        return (1...daysInMonth).map { day in
+            let dayEnd = calendar.date(byAdding: .day, value: day, to: range.lowerBound) ?? range.upperBound
+            let total = spent(transactions, in: range.lowerBound..<min(dayEnd, range.upperBound), scope: scope, currency: currency)
+            return (day, total)
+        }
+    }
+
     static func progress(spent: Decimal, limit: Decimal) -> Double {
         guard limit > 0 else { return 0 }
         return (spent / limit).doubleValue
@@ -86,6 +98,12 @@ func monevaSelfCheck() {
     assert(Budgeting.spent(all, in: range, scope: .personal) == 42, "scope and date filters must both apply")
     assert(Budgeting.spent(all, in: range, scope: .shared) == 35, "shared scope is separate money")
     assert(Budgeting.earned(all, in: range, scope: .personal) == 2400, "income must not count as spending")
+
+    let trend = Budgeting.cumulativeSpending(all, in: range, scope: .personal, calendar: calendar)
+    assert(trend.count == 30, "September has 30 days")
+    assert(trend[1].total == 0, "day 2 is before the first personal expense")
+    assert(trend[2].total == 42, "day 3 picks up the Bravo expense")
+    assert(trend.last!.total == 42, "no more expenses after day 3, total stays flat")
 
     assert(Budgeting.progress(spent: 400, limit: 500) == 0.8, "progress is spent over limit")
     assert(Budgeting.progress(spent: 100, limit: 0) == 0, "a zero limit must not divide")

@@ -1,0 +1,11 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A — Daily bars", "x": 0, "y": 0, "w": 390, "h": 780 },
+    { "file": "Cumulative.dc.html", "title": "B — Running total", "x": 550, "y": 0, "w": 390, "h": 780 }
+  ],
+  "annotations": [
+    { "id": "note-a", "x": 0, "y": -110, "w": 390, "text": "Bar per day, today highlighted — matches the day-grouped list below it on this screen" },
+    { "id": "note-b", "x": 550, "y": -110, "w": 390, "text": "Cumulative line — reads pace toward month total, less legible per-day" }
+  ],
+  "launch": { "view": "canvas" }
+}

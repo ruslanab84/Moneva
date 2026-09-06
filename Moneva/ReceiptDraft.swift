@@ -6,30 +6,14 @@ import SwiftData
 enum ReceiptLineKind: String, Codable, CaseIterable { case item, tax, discount }
 
 @Generable
-struct DraftedReceiptLine {
-    var name: String
-    var kind: ReceiptLineKind
-    @Guide(description: "Printed positive line amount, NOT unit price. Empty if unreadable; do not multiply.")
-    var amount: String
-    @Guide(description: "Printed quantity, empty if not readable")
-    var quantity: String
-    @Guide(description: "Printed unit price, empty if not readable")
-    var unitPrice: String
-    @Guide(description: "True only for an informational tax/discount already included in item amounts. Never count twice.")
-    var alreadyIncluded: Bool
-    var category: String
-    var uncertainty: String
-}
-
-@Generable
 struct DraftedReceipt {
     var merchant: String
     var date: DraftDate
     var currency: String
     @Guide(description: "Printed final paid total, decimal digits; empty if unclear. Never use subtotal, tendered cash or change.")
     var total: String
-    @Guide(description: "Available items, taxes and discounts; empty when extraction fails", .maximumCount(80))
-    var items: [DraftedReceiptLine]
+    @Guide(description: "One existing category for the whole receipt, empty if unclear")
+    var category: String
     var clarification: String
 }
 

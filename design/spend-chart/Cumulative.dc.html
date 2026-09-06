@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    .screen {
+      width: 390px; height: 780px;
+      background: #F6F4F0;
+      font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+      padding: 20px 16px 0;
+      box-sizing: border-box;
+      color: #1C1A17;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+      color: #726C61;
+    }
+    .title { font-size: 30px; font-weight: 700; margin: 2px 0 18px; letter-spacing: -0.3px; }
+    .card {
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 16px;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+      margin-bottom: 14px;
+    }
+    .totals-row { display: flex; align-items: center; gap: 18px; }
+    .totals-col { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .totals-col .val { font-family: ui-serif, Georgia, serif; font-size: 22px; }
+    .divider { width: 1px; height: 40px; background: #E8E4DC; }
+    .chart-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+    .chart-total { font-family: ui-serif, Georgia, serif; font-size: 17px; color: #1C1A17; }
+    .chart-svg { display: block; width: 100%; }
+    .axis-labels { display: flex; justify-content: space-between; margin-top: 6px; }
+    .axis-labels span { font-size: 11px; color: #8C867C; }
+  </style>
+</helmet>
+<div class="screen">
+  <div class="eyebrow">September 2026</div>
+  <div class="title">Transactions</div>
+
+  <div class="card">
+    <div class="totals-row">
+      <div class="totals-col">
+        <div class="eyebrow">Money in</div>
+        <div class="val" style="color:#24544A">$0.00</div>
+      </div>
+      <div class="divider"></div>
+      <div class="totals-col">
+        <div class="eyebrow">Money out</div>
+        <div class="val" style="color:#1C1A17">$328.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="chart-head">
+      <div class="eyebrow">Spending this month</div>
+    </div>
+    <svg class="chart-svg" viewBox="0 0 326 96" width="326" height="96">
+      <line x1="0" y1="8" x2="326" y2="8" stroke="#E8E4DC" stroke-width="1"/>
+      <line x1="0" y1="96" x2="326" y2="96" stroke="#E8E4DC" stroke-width="1"/>
+      <polygon points="3.5,96 3.5,77.8 14.5,77.8 25.5,56.3 36.5,52.6 47.5,37.3 58.5,8.0 58.5,96"
+               fill="rgba(28,26,23,0.08)"/>
+      <polyline points="3.5,77.8 14.5,77.8 25.5,56.3 36.5,52.6 47.5,37.3 58.5,8.0"
+                fill="none" stroke="#1C1A17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="58.5" y1="8.0" x2="326" y2="8.0" stroke="#E8E4DC" stroke-width="2" stroke-dasharray="1 5" stroke-linecap="round"/>
+      <circle cx="58.5" cy="8.0" r="4" fill="#F6F4F0" stroke="#1C1A17" stroke-width="2"/>
+      <text x="67" y="12" font-size="11" font-weight="600" fill="#1C1A17">$328</text>
+    </svg>
+    <div class="axis-labels">
+      <span>1</span><span>8</span><span>15</span><span>22</span><span>29</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

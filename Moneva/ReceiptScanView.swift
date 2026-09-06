@@ -10,30 +10,18 @@ struct ReceiptScanView: View {
     @Query private var categories: [SpendingCategory]
     @Query private var transactions: [Transaction]
     @State private var draft = TransactionDraft(source: .receipt)
-    @State private var items: [ReceiptItem] = []
     @State private var image: UIImage?
     @State private var photo: PhotosPickerItem?
     @State private var scanning = false
     @State private var busy = false
-    @State private var split = false
     @State private var retainImage = false
     @State private var error: String?
     @State private var ocr = ""
-    @State private var selectingIDs: Set<UUID> = []
-    @State private var picking = false
     @State private var duplicateWarning = false
     @State private var saved = false
     @State private var task: Task<Void, Never>?
 
-    private var allocations: [ReceiptAllocation] { ReceiptMath.allocations(items) }
-    private var prepared: TransactionDraft {
-        var result = draft
-        if split { result.category = allocations.first(where: { $0.amount > 0 })?.category }
-        return result
-    }
-    private var canSave: Bool {
-        !busy && !saved && prepared.canSave && (!split || ReceiptMath.reconciled(items, total: draft.amount, currency: draft.currency, scope: draft.scope))
-    }
+    private var canSave: Bool { !busy && !saved && draft.canSave }
 
     var body: some View {
         NavigationStack {
@@ -63,48 +51,10 @@ struct ReceiptScanView: View {
                     .listRowBackground(Palette.card)
                     .disabled(busy)
                 Section {
-                    Toggle("Split by category", isOn: $split).disabled(busy)
-                    Text(split ? "Allocate every item, tax and discount. Category totals must equal the receipt total." : "Save as one expense using the reviewed total.").font(.caption)
-                }
-                .listRowBackground(Palette.card)
-                ForEach($items) { $item in
-                    Section {
-                        TextField("Item name", text: $item.name)
-                        Picker("Line type", selection: $item.kind) {
-                            ForEach(ReceiptLineKind.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
-                        }
-                        AmountField(title: "Printed line amount", value: $item.amount, currencyCode: draft.currency)
-                        TextField("Quantity (if printed)", text: $item.quantity)
-                        TextField("Unit price (if printed)", text: $item.unitPrice)
-                        Toggle("Already included in other line amounts", isOn: $item.alreadyIncluded)
-                        Button(item.category?.name ?? "Choose or create category") { selectingIDs = [item.id]; picking = true }
-                        if !item.uncertainty.isEmpty { Text(item.uncertainty).font(.footnote).foregroundStyle(Palette.warning) }
-                        Button("Remove line", role: .destructive) { items.removeAll { $0.id == item.id } }
-                    }
-                    .listRowBackground(Palette.card)
-                }
-                Section {
-                    ForEach(allocations) { allocation in
-                        Button {
-                            selectingIDs = Set(items.filter { $0.category?.persistentModelID == allocation.category?.persistentModelID }.map(\.id))
-                            picking = true
-                        } label: {
-                            LabeledContent(allocation.category?.name ?? "Uncategorised", value: allocation.amount.money(draft.currency))
-                        }
-                    }
-                    let allocated = allocations.reduce(Decimal.zero) { $0 + $1.amount }
-                    LabeledContent("Allocated", value: allocated.money(draft.currency))
-                    if split && allocated != draft.amount {
-                        Text("Difference: \((draft.amount - allocated).money(draft.currency)). Correct the lines or save as one expense.").foregroundStyle(Palette.over)
-                    }
-                    Button("Add item, tax or discount") { items.append(ReceiptItem()) }
-                } header: { Eyebrow("Category subtotals") }
-                .listRowBackground(Palette.card)
-                Section {
                     Button {
-                        if ReceiptMath.duplicates(prepared, in: transactions).isEmpty { save() } else { duplicateWarning = true }
+                        if ReceiptMath.duplicates(draft, in: transactions).isEmpty { save() } else { duplicateWarning = true }
                     } label: {
-                        Text(split ? "Confirm and save split receipt" : "Confirm and save one expense")
+                        Text("Confirm and save one expense")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
@@ -136,11 +86,6 @@ struct ReceiptScanView: View {
                     } catch { self.error = "Could not import this image. Try another image or enter the total manually." }
                 }
             }
-            .sheet(isPresented: $picking) {
-                CategoryPickerView(selection: Binding(get: { items.first { selectingIDs.contains($0.id) }?.category }, set: { category in
-                    for index in items.indices where selectingIDs.contains(items[index].id) { items[index].category = category }
-                }), scope: draft.scope)
-            }
             .confirmationDialog("Possible duplicate receipt", isPresented: $duplicateWarning, titleVisibility: .visible) {
                 Button("Save another copy") { save() }
                 Button("Cancel", role: .cancel) {}
@@ -152,8 +97,6 @@ struct ReceiptScanView: View {
     private func process(_ image: UIImage) {
         guard !busy else { return }
         self.image = image
-        items = []
-        split = false
         draft = TransactionDraft(scope: draft.scope, source: .receipt)
         retainImage = false
         busy = true
@@ -165,7 +108,7 @@ struct ReceiptScanView: View {
                 ocr = try await ReceiptText.read(image)
                 let visible = CategoryLibrary.visible(categories, scope: draft.scope)
                 let result = try await OnDeviceAI.generate(DraftedReceipt.self,
-                    instructions: "Structure this receipt. Extract only printed values. Missing date/currency/total must remain empty or nil and require clarification. Extract line amounts without arithmetic. Include printed quantities, prices, taxes and discounts. Mark informational tax or discounts already included in line totals to prevent double counting. If line extraction fails return no items, retaining a readable total.",
+                    instructions: "Extract one expense from this receipt using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
                     data: OnDeviceAI.context(categories: visible) + "\nReceipt text:\n" + ocr)
                 let date = DraftResolver.date(result.date)
                 let currency = result.currency.uppercased()
@@ -173,14 +116,8 @@ struct ReceiptScanView: View {
                 draft.currency = Money.pickerCodes.contains(currency) ? currency : Money.code
                 draft.merchant = DraftResolver.grounded(result.merchant, in: ocr)
                 draft.date = date ?? .now
-                draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed total, taxes and discounts against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")
-                items = result.items.map {
-                    ReceiptItem(name: $0.name, kind: $0.kind, amount: Money.parse($0.amount) ?? 0, quantity: $0.quantity, unitPrice: $0.unitPrice,
-                        alreadyIncluded: $0.alreadyIncluded, category: DraftResolver.category(named: $0.category, in: visible),
-                        uncertainty: $0.uncertainty + (Money.parse($0.amount) == nil ? " Check the line amount." : ""))
-                }
-                draft.category = items.first?.category
-                if items.isEmpty { error = "No items were extracted. You can save one expense after reviewing the total." }
+                draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed final total against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")
+                draft.category = DraftResolver.category(named: result.category, in: visible)
             } catch is CancellationError {} catch { self.error = error.localizedDescription + " Enter the reviewed total manually, or scan again." }
         }
     }
@@ -188,10 +125,8 @@ struct ReceiptScanView: View {
     private func save() {
         guard canSave else { return }
         do {
-            let savedItems = items.map { SavedReceiptItem(name: $0.name, kind: $0.kind, amount: $0.amount, quantity: $0.quantity, unitPrice: $0.unitPrice, alreadyIncluded: $0.alreadyIncluded, category: $0.category?.name) }
-            try DraftStore.save([prepared], in: context, allocations: split ? allocations.filter { $0.amount > 0 } : [],
-                receiptImage: retainImage ? image?.jpegData(compressionQuality: 0.8) : nil,
-                receiptItems: try JSONEncoder().encode(savedItems))
+            try DraftStore.save([draft], in: context,
+                receiptImage: retainImage ? image?.jpegData(compressionQuality: 0.8) : nil)
             saved = true
             dismiss()
         } catch { self.error = error.localizedDescription }

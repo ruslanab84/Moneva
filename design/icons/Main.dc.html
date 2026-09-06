@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    .icon {
+      width: 1024px; height: 1024px;
+      background: #F6F4F0;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .m {
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      font-size: 660px;
+      font-weight: 600;
+      color: #24544A;
+      line-height: 1;
+      letter-spacing: -18px;
+      margin-top: -18px;
+    }
+    .rule {
+      position: absolute;
+      left: 232px; right: 232px; bottom: 300px;
+      height: 10px;
+      background: #24544A;
+      border-radius: 5px;
+      opacity: 0.9;
+    }
+  </style>
+</helmet>
+<div class="icon">
+  <div class="m">M</div>
+  <div class="rule"></div>
+</div>
+</x-dc>
+</body>
+</html>

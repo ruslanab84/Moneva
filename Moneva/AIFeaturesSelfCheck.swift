@@ -20,6 +20,37 @@ func aiFeaturesSelfCheck() {
         assert(DraftResolver.grounded("Coffee Shop", in: "coffee 5 AZN").isEmpty, "invented merchant labels are removed")
         assert(DraftResolver.grounded("Bravo", in: "Spent 5 AZN at Bravo") == "Bravo")
         let date = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!
+        let forecastStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 6))!
+        let forecastEnd = calendar.date(byAdding: .month, value: 12, to: forecastStart)!
+        let forecastRange = forecastStart..<forecastEnd
+        let iCloud = Subscription(name: "iCloud", amount: 3, currency: "AZN",
+            nextPaymentDate: calendar.date(from: DateComponents(year: 2026, month: 9, day: 8))!, category: food, calendar: calendar)
+        let otherCurrency = Subscription(name: "Other service", amount: 10, currency: "USD", nextPaymentDate: forecastStart, category: home, calendar: calendar)
+        assert(Subscriptions.projectedCost(iCloud, in: forecastRange, calendar: calendar) == 36, "iCloud at 3 AZN monthly costs 36 AZN over the next year")
+        let sharedCloud = Subscription(name: "iCloud", amount: 100, currency: "AZN", nextPaymentDate: forecastStart, scope: .shared, category: shared, calendar: calendar)
+        let question = "How much will I spend on iCloud in a year?"
+        let request = SubscriptionQuestion(name: "iCloud", period: .nextTwelveMonths)
+        let selected = request.selectedSubscriptions(in: [iCloud, otherCurrency, sharedCloud], scope: .personal, question: question)
+        assert(selected.count == 1 && selected[0] === iCloud, "a named question never includes another service or scope")
+        assert(SubscriptionQuestion(name: "ALL", period: .nextTwelveMonths).selectedSubscriptions(in: [iCloud, sharedCloud], scope: .personal, question: question).isEmpty, "a model cannot replace a named service with all subscriptions")
+        assert(SubscriptionQuestion(name: "Dropbox", period: .nextTwelveMonths).selectedSubscriptions(in: [iCloud], scope: .personal, question: "Dropbox cost per year?").isEmpty, "unknown services never fall back to all subscriptions")
+        let annualAnswer = SubscriptionDigest.costAnswer(.nextTwelveMonths, subscriptions: [iCloud], now: forecastStart, calendar: calendar)
+        assert(annualAnswer.hasPrefix("iCloud: \(Decimal(36).money("AZN")) for the next 12 months"), "the answer uses the annual total for the selected subscription")
+        let combinedAnswer = SubscriptionDigest.costAnswer(.nextTwelveMonths, subscriptions: [iCloud, otherCurrency], now: forecastStart, calendar: calendar)
+        assert(combinedAnswer.contains(Decimal(120).money("USD")) && combinedAnswer.contains(Decimal(36).money("AZN")), "currencies must not be summed together")
+        assert(SubscriptionDigest.costAnswer(.restOfYear, subscriptions: [iCloud], now: forecastStart, calendar: calendar).hasPrefix("iCloud: \(Decimal(12).money("AZN"))"), "remaining calendar year differs from a full year")
+        iCloud.endDate = calendar.date(from: DateComponents(year: 2026, month: 12, day: 8))!
+        assert(Subscriptions.projectedCost(iCloud, in: forecastRange, calendar: calendar) == 12, "the final payment date is inclusive")
+        iCloud.status = .paused
+        assert(Subscriptions.projectedCost(iCloud, in: forecastRange, calendar: calendar) == 0)
+        iCloud.status = .active
+        iCloud.endDate = date
+        assert(Subscriptions.projectedCost(iCloud, in: forecastRange, calendar: calendar) == 0, "ended subscriptions have no future cost")
+        let january = calendar.date(from: DateComponents(year: 2027, month: 1, day: 31))!
+        iCloud.endDate = nil
+        iCloud.nextPaymentDate = january
+        iCloud.anchorDay = 31
+        assert(Subscriptions.projectedCost(iCloud, in: january..<calendar.date(byAdding: .year, value: 1, to: january)!, calendar: calendar) == 36, "a payment today is included and the anniversary is excluded, including short months")
         var first = TransactionDraft(amount: 5, merchant: "Cafe", date: date, category: food, currency: "AZN", source: .text, reviewed: true, rememberCategory: true)
         let second = TransactionDraft(amount: 12, merchant: "Taxi", date: date, category: home, currency: "USD", source: .voice, reviewed: true)
         var invalid = first
@@ -55,6 +86,14 @@ func aiFeaturesSelfCheck() {
         let filter = SpendingFilter(category: food, scope: .personal)
         let matches = filter.results(transactions)
         assert(matches.reduce(Decimal.zero) { $0 + filter.amount($1) } == 16, "category search uses allocations")
+        let totalOnly = TransactionDraft(amount: Decimal(string: "14.25")!, merchant: "Another market", date: date, category: food, currency: "AZN", source: .receipt, reviewed: true)
+        try DraftStore.save([totalOnly], in: context)
+        try DraftStore.save([totalOnly], in: context)
+        let totalOnlyTransactions = try context.fetch(FetchDescriptor<Transaction>()).filter { $0.draftID == totalOnly.id.uuidString }
+        assert(totalOnlyTransactions.count == 1, "receipt total is saved once")
+        let totalOnlyReceipt = totalOnlyTransactions[0]
+        assert(totalOnlyReceipt.amount == totalOnly.amount && totalOnlyReceipt.allocations.isEmpty && totalOnlyReceipt.receiptItems == nil)
+        assert(totalOnlyReceipt.amount(in: food) == totalOnly.amount && totalOnlyReceipt.amount(in: home) == 0, "the whole receipt belongs to one category")
         let malicious = DraftedSearch(period: .all, start: nil, end: nil, category: "", merchant: "", minimum: "", maximum: "", currency: "", scope: "shared", kind: "expense", clarification: "")
         do { _ = try SpendingSearch.resolve(malicious, categories: [food], scope: .personal); assertionFailure("scope escalation accepted") } catch {}
         let monday = calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!
