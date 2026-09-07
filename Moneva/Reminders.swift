@@ -23,10 +23,10 @@ enum Reminders {
     /// every create, edit, pause and resume.
     static func reschedule(_ subscription: Subscription, calendar: Calendar = .current) async {
         let center = UNUserNotificationCenter.current()
-        cancel(subscription)
+        cancel(subscription, includingTrial: subscription.status != .active)
 
-        // Reminders off means no notifications at all, and no permission
-        // prompt: the subscriptions screen still asks in app when a charge is due.
+        // Renewal reminders off means no renewal notifications or permission
+        // prompt. Trial reminders are managed separately by catchUp.
         // A finished plan has nothing left to announce.
         guard subscription.status == .active, subscription.reminderDays != nil,
               !Subscriptions.hasEnded(subscription, on: subscription.nextPaymentDate, calendar: calendar) else { return }
@@ -58,10 +58,43 @@ enum Reminders {
         for request in requests { try? await center.add(request) }
     }
 
-    static func cancel(_ subscription: Subscription) {
+    static func cancel(_ subscription: Subscription, includingTrial: Bool = true) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(
             withIdentifiers: [identifier(subscription, suffix: "reminder"), identifier(subscription, suffix: "confirm")]
+                + (includingTrial ? [identifier(subscription, suffix: "trial")] : [])
         )
+    }
+
+    /// Called only by catchUp. Existing notification permission is respected;
+    /// catch-up never prompts on launch or changes ordinary renewal reminders.
+    static func registerTrial(_ subscription: Subscription, now: Date, calendar: Calendar) {
+        let center = UNUserNotificationCenter.current()
+        let id = identifier(subscription, suffix: "trial")
+        guard let request = trialRequest(subscription, now: now, calendar: calendar) else {
+            center.removePendingNotificationRequests(withIdentifiers: [id])
+            return
+        }
+        // A stable identifier replaces an earlier request when the trial changes.
+        center.add(request) { error in
+            if let error { NSLog("Trial reminder could not be scheduled: %@", error.localizedDescription) }
+        }
+    }
+
+    static func trialRequest(_ subscription: Subscription, now: Date, calendar: Calendar) -> UNNotificationRequest? {
+        guard subscription.status == .active, let end = subscription.trialEndsAt,
+              subscription.nextPaymentDate <= end,
+              !Subscriptions.hasEnded(subscription, on: end, calendar: calendar),
+              let fire = Subscriptions.reminderDate(paymentDate: end, daysBefore: 2, calendar: calendar),
+              fire > now else { return nil }
+        let content = UNMutableNotificationContent()
+        content.title = "\(subscription.name) trial ends soon"
+        content.body = "Your trial ends on \(end.formatted(date: .abbreviated, time: .omitted))."
+        content.sound = .default
+        var parts = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fire)
+        parts.calendar = calendar
+        parts.timeZone = calendar.timeZone
+        return UNNotificationRequest(identifier: identifier(subscription, suffix: "trial"), content: content,
+            trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false))
     }
 
     private static func identifier(_ subscription: Subscription, suffix: String) -> String {

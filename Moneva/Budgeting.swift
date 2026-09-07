@@ -1,16 +1,22 @@
 import Foundation
 import SwiftUI
+#if DEBUG
+import SwiftData
+import UserNotifications
+#endif
 
 /// Every number the app shows is computed here, in Swift — never by a model.
 enum Budgeting {
     enum LimitState {
         case ok, nearingLimit, atLimit
 
-        /// Thresholds the PRD notifies on: 80% and 100%.
-        init(progress: Double) {
+        /// Thresholds the PRD notifies on: 80% and 100% — plus an early-red
+        /// escalation when 14 days or fewer remain in the month, since 80%
+        /// spent with two weeks still to go is a worse sign than 80% on day 28.
+        init(progress: Double, daysRemaining: Int = .max) {
             switch progress {
             case ..<0.8: self = .ok
-            case ..<1.0: self = .nearingLimit
+            case ..<1.0: self = daysRemaining <= 14 ? .atLimit : .nearingLimit
             default: self = .atLimit
             }
         }
@@ -24,6 +30,10 @@ enum Budgeting {
         let start = monthStart(for: date, calendar: calendar)
         let end = calendar.date(byAdding: .month, value: 1, to: start) ?? date
         return start..<end
+    }
+
+    static func daysRemaining(in range: Range<Date>, from now: Date = .now, calendar: Calendar = .current) -> Int {
+        calendar.dateComponents([.day], from: now, to: range.upperBound).day ?? 0
     }
 
     static func spent(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> Decimal {
@@ -47,6 +57,17 @@ enum Budgeting {
             let dayEnd = calendar.date(byAdding: .day, value: day, to: range.lowerBound) ?? range.upperBound
             let total = spent(transactions, in: range.lowerBound..<min(dayEnd, range.upperBound), scope: scope, currency: currency)
             return (day, total)
+        }
+    }
+
+    /// This month's expense total per category, categories with nothing spent
+    /// omitted. `amount(in:)` (not the raw transaction amount) so a shared
+    /// transaction only counts the caller's split.
+    static func spendingByCategory(_ transactions: [Transaction], categories: [SpendingCategory], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> [(category: SpendingCategory, total: Decimal)] {
+        let month = transactions.filter { $0.kind == .expense && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
+        return categories.compactMap { category in
+            let total = month.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
+            return total > 0 ? (category, total) : nil
         }
     }
 
@@ -110,6 +131,9 @@ func monevaSelfCheck() {
     if case .ok = Budgeting.LimitState(progress: 0.79) {} else { assertionFailure("79% is still ok") }
     if case .nearingLimit = Budgeting.LimitState(progress: 0.8) {} else { assertionFailure("80% must warn") }
     if case .atLimit = Budgeting.LimitState(progress: 1.0) {} else { assertionFailure("100% must alert") }
+    if case .atLimit = Budgeting.LimitState(progress: 0.8, daysRemaining: 14) {} else { assertionFailure("80% with 14 days left must escalate to red") }
+    if case .nearingLimit = Budgeting.LimitState(progress: 0.8, daysRemaining: 15) {} else { assertionFailure("80% with more than 14 days left is still just a warning") }
+    assert(Budgeting.daysRemaining(in: range, from: calendar.date(from: DateComponents(year: 2026, month: 9, day: 17))!, calendar: calendar) == 14, "14 days remain from the 17th to October 1st")
 
     let half = calendar.date(from: DateComponents(year: 2026, month: 9, day: 16))!
     let projected = Budgeting.projectedMonthTotal(spent: 1000, now: half, calendar: calendar)
@@ -125,6 +149,11 @@ func monevaSelfCheck() {
     let transport = SpendingCategory(name: "Transport", symbol: "car", tintHex: "3F7684", softHex: "DCE7EA")
     let other = SpendingCategory(name: "Other", symbol: "square.grid.2x2", tintHex: "78746A", softHex: "E4E2DB")
     let catalogue = [food, transport, other]
+
+    let byCategory = Budgeting.spendingByCategory(all, categories: catalogue, in: range, scope: .personal)
+    assert(byCategory.map(\.category.name) == ["Food"], "only categories with spending show up, in catalogue order")
+    assert(byCategory.first?.total == 42, "the category total matches the personal-scope spend")
+    assert(Budgeting.spendingByCategory(all, categories: catalogue, in: range, scope: .shared).first?.total == 35, "a shared transaction counts on the shared side, not personal")
 
     assert(Money.parse("42.499") == Decimal(string: "42.499"), "exact model decimal survives without float conversion")
     assert(Money.parse("-5") == nil && Money.parse("NaN") == nil && Money.parse("5abc") == nil && Money.parse("1.2.3") == nil, "malformed money is rejected, not partially parsed")
@@ -195,6 +224,46 @@ func monevaSelfCheck() {
     gym.status = .paused
     assert(Subscriptions.monthlyTotal([netflix, gym]) == 12, "a paused subscription costs nothing this month")
 
+    let pricePlan = Subscription(name: "Price check", amount: 12, currency: "USD", nextPaymentDate: sept, category: food)
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "empty history has no price change")
+    let firstCharge = Transaction(amount: Decimal(string: "9.99")!, date: jan31, merchant: "Price check", category: food, currency: "USD")
+    let secondCharge = Transaction(amount: Decimal(string: "12.49")!, date: feb, merchant: "Price check", category: food, currency: "USD")
+    let firstPayment = SubscriptionPayment(billingPeriod: "2026-01", processedDate: sept, subscription: pricePlan, transaction: firstCharge)
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "one payment has no comparison")
+    let secondPayment = SubscriptionPayment(billingPeriod: "2026-02", processedDate: jan31, subscription: pricePlan, transaction: secondCharge)
+    pricePlan.payments = [secondPayment, firstPayment]
+    let increase = Subscriptions.priceChange(pricePlan, calendar: calendar)
+    assert(increase?.delta == Decimal(string: "2.50") && increase?.direction == .increase, "9.99 to 12.49 increases by exactly 2.50")
+    assert(increase?.currency == "USD" && increase?.periodDate == calendar.date(from: DateComponents(year: 2026, month: 2, day: 1)), "billing month determines the period, regardless of array or processing order")
+
+    secondCharge.amount = Decimal(string: "7.98")!
+    let decrease = Subscriptions.priceChange(pricePlan, calendar: calendar)
+    assert(decrease?.delta == Decimal(string: "-2.01") && decrease?.direction == .decrease, "9.99 to 7.98 decreases by exactly 2.01")
+    secondCharge.amount = firstCharge.amount
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "unchanged prices have no badge")
+    secondCharge.amount = Decimal(string: "7.98")!
+    secondCharge.currency = "EUR"
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "different payment currencies are never compared")
+    pricePlan.currency = "EUR"
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "changing the schedule currency does not relabel old payments")
+    secondCharge.currency = "USD"
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "historical USD changes are hidden on an EUR schedule")
+    pricePlan.currency = "USD"
+
+    let thirdCharge = Transaction(amount: 15, date: mar, merchant: "Price check", category: food, currency: "USD")
+    let thirdPayment = SubscriptionPayment(billingPeriod: "2026-03", subscription: pricePlan, transaction: thirdCharge)
+    pricePlan.payments = [thirdPayment, firstPayment, secondPayment]
+    secondCharge.currency = "EUR"
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "USD to EUR to USD never bridges the middle payment")
+    secondCharge.currency = "USD"
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar)?.delta == Decimal(string: "7.02"), "only the latest adjacent pair is compared")
+    secondPayment.transaction = nil
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "skipped or deleted transactions never bridge a gap")
+    secondPayment.transaction = secondCharge
+    assert(Subscriptions.priceChange(gym, calendar: calendar) == nil, "another subscription does not inherit this history")
+    thirdCharge.amount = .nan
+    assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "invalid stored amounts cannot produce a badge")
+
     // A fixed term stops billing: 24 instalments from September 2026 and no more.
     let loan = Subscription(name: "Car loan", amount: 300, nextPaymentDate: sept,
                             endDate: calendar.date(from: DateComponents(year: 2028, month: 8, day: 1))!,
@@ -237,6 +306,47 @@ func monevaSelfCheck() {
     assert(CategoryLibrary.isSelectable(salaryCategory, scope: .personal, kind: .income), "an income category is selectable on income")
     assert(CategoryLibrary.isNameAvailable("Food", scope: .personal, kind: .income, in: ledger), "the same name is free on the other side of the ledger")
     assert(!CategoryLibrary.isNameAvailable("salary", scope: .personal, kind: .income, in: ledger), "an income name is taken whatever its case")
+
+    let trialEnd = calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 14))!
+    assert(Subscriptions.nextDate(after: sept, anchorDay: 1, trialEndsAt: trialEnd, calendar: calendar) == trialEnd)
+    let firstRenewal = Subscriptions.nextDate(after: trialEnd, anchorDay: 31, trialEndsAt: trialEnd, calendar: calendar)
+    assert(firstRenewal == calendar.date(from: DateComponents(year: 2026, month: 11, day: 30, hour: 14))!)
+    assert(calendar.component(.day, from: Subscriptions.nextDate(after: firstRenewal, anchorDay: 31, trialEndsAt: trialEnd, calendar: calendar)) == 31)
+    assert(Subscriptions.duePeriods(nextPaymentDate: sept, anchorDay: 31, processed: [], trialEndsAt: trialEnd, now: trialEnd.addingTimeInterval(-1), calendar: calendar).isEmpty)
+    assert(Subscriptions.duePeriods(nextPaymentDate: sept, anchorDay: 31, processed: [], trialEndsAt: trialEnd, now: trialEnd, calendar: calendar).map(\.date) == [trialEnd])
+    do {
+        let container = try ModelContainer(for: Subscription.self, SubscriptionPayment.self, Transaction.self, SpendingCategory.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = container.mainContext
+        let trial = Subscription(name: "Trial", amount: 12, nextPaymentDate: sept, trialEndsAt: trialEnd,
+            paymentMode: .ask, category: nil, calendar: calendar)
+        context.insert(trial)
+        assert(trial.nextPaymentDate == trialEnd && trial.anchorDay == 31)
+        assert(netflix.trialEndsAt == nil, "existing subscriptions have no trial")
+        assert(Subscriptions.firstFutureDate(trial, now: sept, calendar: calendar) == trialEnd)
+        let fire = calendar.date(byAdding: .day, value: -2, to: trialEnd)!
+        let request = Reminders.trialRequest(trial, now: sept, calendar: calendar)!
+        let trigger = request.trigger as! UNCalendarNotificationTrigger
+        assert(calendar.date(from: trigger.dateComponents) == fire && !trigger.repeats)
+        assert(Reminders.trialRequest(trial, now: fire, calendar: calendar) == nil, "do not schedule past reminders")
+        trial.status = .paused
+        assert(Reminders.trialRequest(trial, now: sept, calendar: calendar) == nil)
+        trial.status = .active
+        trial.endDate = sept
+        assert(Reminders.trialRequest(trial, now: sept, calendar: calendar) == nil)
+        trial.endDate = nil
+        // Boundary is in the past so the self-check cannot enqueue a test notification.
+        trial.nextPaymentDate = sept
+        trial.anchorDay = 1
+        let beforeTrialEnd = try SubscriptionEngine.catchUp(in: context, now: trialEnd.addingTimeInterval(-1), calendar: calendar)
+        assert(beforeTrialEnd.isEmpty && trial.nextPaymentDate == trialEnd && trial.anchorDay == 31)
+        let due = try SubscriptionEngine.catchUp(in: context, now: trialEnd, calendar: calendar)
+        assert(due.count == 1 && due[0].date == trialEnd)
+        try SubscriptionEngine.skip(due[0], in: context, calendar: calendar)
+        assert(trial.nextPaymentDate == firstRenewal)
+        let repeated = try SubscriptionEngine.catchUp(in: context, now: trialEnd, calendar: calendar)
+        assert(repeated.isEmpty && trial.payments.count == 1)
+    } catch { assertionFailure("Trial boundary self-check failed: \(error)") }
 
     aiFeaturesSelfCheck()
 

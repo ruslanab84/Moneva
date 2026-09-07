@@ -14,9 +14,18 @@ Single target `Moneva`, no test target yet — correctness is enforced by an ass
 xcodebuild -project Moneva.xcodeproj -scheme Moneva -destination 'generic/platform=iOS Simulator' -configuration Debug build
 ```
 
-To actually verify a change, build for a concrete simulator, launch the `.app`, and tap through the flow (see the iOS Simulator tool) — a compile-only build misses runtime issues like SwiftData migration crashes or a broken Cancel/redraw.
+To actually verify a change, build for a concrete simulator, launch the `.app`, and tap through the changed flow — a compile-only build misses runtime issues like SwiftData migration crashes or a broken Cancel/redraw.
 
 Environment: Xcode 26.6, iOS deployment target 26.5, Swift 5.0.
+
+## Working rules
+
+- Keep changes narrow and preserve unrelated worktree edits. Read the affected call flow and reuse the existing components or rule enums before adding code.
+- This is a local-only app: do not add a backend, remote AI, analytics, or upload financial data, receipt images, voice transcripts, or OCR text.
+- Preserve the `personal`/`shared` and income/expense partitions in every query, calculation, picker, and saved record. Keep currencies separate; do not convert or relabel historical amounts.
+- Use `Decimal` for money and `Calendar` for date arithmetic. Put reusable money, date, and category logic in the existing pure enums, not SwiftUI view bodies.
+- Treat SwiftData schema edits as migration work. New properties on existing models need a compatible default/optional storage strategy and verification against an existing store.
+- For changes to money, dates, persistence, or AI resolvers, add the smallest regression to `monevaSelfCheck()` or `aiFeaturesSelfCheck()` and launch a DEBUG build. For UI or migration changes, also exercise the changed flow in the simulator.
 
 ## Core architecture: model drafts, Swift decides
 
@@ -25,7 +34,7 @@ The one pattern that spans the AI-touching files (voice capture, receipt OCR, su
 - [VoiceDraft.swift](Moneva/VoiceDraft.swift) — `DraftedTransaction` (`@Generable`) is what `LanguageModelSession` fills in from spoken text or OCR'd receipt text. `DraftResolver` turns that into a `TransactionDraft` (real `Decimal`, `Date`, `SpendingCategory`), rounding/clamping/matching everything itself. `TransactionDrafter` wraps one session, streams partial results (`PartiallyGenerated`) so the UI fills in field by field, and gates on `SystemLanguageModel.default.availability`.
 - Trust boundary: app-owned data (category names, business rules) goes in the session's `instructions`; untrusted free text (transcript, OCR text) goes in the `prompt`.
 - The model is never asked to compute a calendar date — it emits `daysAgo: Int` and `DraftResolver.date` resolves it with `Calendar`.
-- [ReceiptScan.swift](Moneva/ReceiptScan.swift) — `DocumentScanner` wraps `VNDocumentCameraViewController`; `ReceiptText.read` does on-device Vision OCR, then re-orders Vision's out-of-order text blocks into reading order by banding them into rows (`ordered(_:)` — a fixed-height heuristic, marked `ponytail:` for its ceiling).
+- [ReceiptScan.swift](Moneva/ReceiptScan.swift) — `DocumentScanner` wraps `VNDocumentCameraViewController`; `ReceiptText.read` does on-device Vision OCR, then reconstructs rows by vertical overlap and reads each row left-to-right. Its conservative rightmost-price heuristic is deliberately marked `ponytail:` with its upgrade boundary.
 - [SpeechCapture.swift](Moneva/SpeechCapture.swift) — on-device transcription feeding the same `TransactionDrafter` in `.spoken` mode.
 
 Drafts from either source land in the same confirm-before-save UI; nothing from a model reaches the store un-reviewed.

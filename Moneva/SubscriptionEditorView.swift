@@ -74,6 +74,9 @@ struct SubscriptionEditorView: View {
                     Picker("Currency", selection: $currency) {
                         ForEach(Money.pickerCodes, id: \.self) { Text(Money.label(for: $0)).tag($0) }
                     }
+                    if let existing, let change = Subscriptions.priceChange(existing), change.currency == currency {
+                        SubscriptionPriceChangeBadge(change: change)
+                    }
                 }
 
                 Section {

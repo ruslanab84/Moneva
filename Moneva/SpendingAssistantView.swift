@@ -85,7 +85,7 @@ struct SpendingAssistantView: View {
                             }
                         }
                         ForEach(matches) { tx in
-                            NavigationLink { TransactionDetailView(transaction: tx) } label: { TransactionRow(transaction: tx) }
+                            NavigationLink { TransactionEditView(transaction: tx) } label: { TransactionRow(transaction: tx) }
                         }
                         if matches.isEmpty { Text("No matching records.") }
                     }
@@ -108,7 +108,7 @@ struct SpendingAssistantView: View {
                     List {
                         Text(fact.text)
                         ForEach(fact.transactions) { tx in
-                            NavigationLink { TransactionDetailView(transaction: tx) } label: { TransactionRow(transaction: tx) }
+                            NavigationLink { TransactionEditView(transaction: tx) } label: { TransactionRow(transaction: tx) }
                         }
                         if fact.transactions.isEmpty { Text("Source: the calculated report and subscription schedules for this scope.") }
                     }.navigationTitle("Source records")
@@ -156,28 +156,3 @@ struct SpendingAssistantView: View {
     }
 }
 
-struct TransactionDetailView: View {
-    let transaction: Transaction
-    var body: some View {
-        List {
-            TransactionRow(transaction: transaction)
-            Text(transaction.date.formatted(date: .complete, time: .shortened))
-            if !transaction.note.isEmpty { Text(transaction.note) }
-            ForEach(transaction.allocations) { allocation in
-                LabeledContent(allocation.category?.name ?? "Uncategorised", value: allocation.amount.money(transaction.currency))
-            }
-            if let data = transaction.receiptImage, let image = UIImage(data: data) {
-                Image(uiImage: image).resizable().scaledToFit().accessibilityLabel("Saved receipt")
-            }
-            if let data = transaction.receiptItems, let items = try? JSONDecoder().decode([SavedReceiptItem].self, from: data) {
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    VStack(alignment: .leading) {
-                        Text("\(item.name) · \(item.kind.rawValue) · \(item.amount.money(transaction.currency))")
-                        if !item.quantity.isEmpty || !item.unitPrice.isEmpty { Text("Quantity: \(item.quantity) · Unit price: \(item.unitPrice)").font(.caption) }
-                        if item.alreadyIncluded { Text("Included in other lines; not added again.").font(.caption) }
-                    }
-                }
-            }
-        }.navigationTitle("Transaction")
-    }
-}

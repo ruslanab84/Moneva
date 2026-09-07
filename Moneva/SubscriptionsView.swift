@@ -240,6 +240,9 @@ struct SubscriptionsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(subscription.name).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
                 Text(subtitle(for: subscription)).font(.footnote).foregroundStyle(Palette.inkMuted)
+                if let change = Subscriptions.priceChange(subscription) {
+                    SubscriptionPriceChangeBadge(change: change)
+                }
             }
             Spacer(minLength: 8)
             Text(subscription.amount.money(subscription.currency))
@@ -271,5 +274,25 @@ struct SubscriptionsView: View {
         do { pending = try SubscriptionEngine.catchUp(in: context); engineError = nil }
         catch { engineError = error.localizedDescription }
         await advisor.detect(from: transactions, categories: categories, existing: subscriptions, scope: scope)
+    }
+}
+
+struct SubscriptionPriceChangeBadge: View {
+    let change: Subscriptions.PriceChange
+
+    private var increased: Bool { change.direction == .increase }
+    private var amount: String { (increased ? change.delta : -change.delta).money(change.currency) }
+    private var period: String { change.periodDate.formatted(.dateTime.month(.abbreviated).year()) }
+
+    var body: some View {
+        Label("\(increased ? "+" : "−")\(amount) · \(period)", systemImage: increased ? "arrow.up" : "arrow.down")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(increased ? Palette.over : Palette.accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(increased ? Palette.ground : Palette.accentSoft, in: .rect(cornerRadius: 8))
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Price \(increased ? "increased" : "decreased") by \(amount), \(period)")
     }
 }

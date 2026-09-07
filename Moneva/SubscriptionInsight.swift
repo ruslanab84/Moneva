@@ -84,20 +84,13 @@ enum SubscriptionDigest {
         }
         for subscription in active.sorted(by: { $0.amount > $1.amount }) {
             var line = "\(subscription.name): \(subscription.amount.money(subscription.currency)) monthly, next payment \(subscription.nextPaymentDate.formatted(date: .abbreviated, time: .omitted))."
-            if let change = priceChange(subscription) { line += " Last two recorded payments: \(change.old.money(subscription.currency)), then \(change.new.money(subscription.currency))." }
+            if let change = Subscriptions.priceChange(subscription, calendar: calendar) { line += " Last two recorded payments: \(change.old.money(change.currency)), then \(change.new.money(change.currency))." }
             lines.append(line)
         }
         lines.append("Payment history cannot tell whether a subscription is being used. Paused schedules are excluded from future costs.")
         return lines
     }
 
-    static func priceChange(_ subscription: Subscription) -> (old: Decimal, new: Decimal)? {
-        let charges = subscription.payments.compactMap(\.transaction).sorted { $0.date < $1.date }
-        guard charges.count >= 2 else { return nil }
-        let last = charges.suffix(2)
-        guard last.allSatisfy({ $0.currency == subscription.currency }), let old = last.first?.amount, let new = last.last?.amount, old != new else { return nil }
-        return (old, new)
-    }
 }
 
 @Generable

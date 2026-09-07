@@ -200,6 +200,8 @@ final class Subscription {
     /// Last date a charge may land on — a loan or any fixed-term plan. nil is
     /// open-ended, which is what every subscription written before this was.
     var endDate: Date?
+    /// Optional storage lets subscriptions from older stores migrate without backfilling.
+    var trialEndsAt: Date? = nil
     /// Day of the month the charge lands on, kept separately so a short month
     /// never drags the date backwards for good.
     var anchorDay: Int = 1
@@ -221,6 +223,7 @@ final class Subscription {
         currency: String = Money.code,
         nextPaymentDate: Date,
         endDate: Date? = nil,
+        trialEndsAt: Date? = nil,
         reminderDays: Int? = nil,
         paymentMode: PaymentMode = .autoAdd,
         note: String = "",
@@ -231,9 +234,10 @@ final class Subscription {
         self.name = name
         self.amount = amount
         self.currency = currency
-        self.nextPaymentDate = nextPaymentDate
+        self.nextPaymentDate = trialEndsAt ?? nextPaymentDate
         self.endDate = endDate
-        self.anchorDay = calendar.component(.day, from: nextPaymentDate)
+        self.trialEndsAt = trialEndsAt
+        self.anchorDay = calendar.component(.day, from: trialEndsAt ?? nextPaymentDate)
         self.reminderDays = reminderDays
         self.paymentMode = paymentMode
         self.note = note

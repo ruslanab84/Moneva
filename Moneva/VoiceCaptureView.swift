@@ -95,13 +95,18 @@ struct VoiceCaptureView: View {
                     }
                     Section {
                         DraftFields(draft: $draft, allowKind: false, showsAmount: false)
+                        if drafts.count > 1 {
+                            Button("Save this transaction") { saveOne(draft) }
+                                .font(.subheadline.weight(.semibold))
+                                .disabled(busy || !draft.canSave)
+                        }
                         Button("Remove draft", role: .destructive) { drafts.removeAll { $0.id == draft.id } }
                             .font(.subheadline)
                     }
                     .listRowBackground(Palette.card)
                 }
 
-                if !drafts.isEmpty {
+                if drafts.count == 1 {
                     Section {
                         Button {
                             save()
@@ -117,6 +122,17 @@ struct VoiceCaptureView: View {
                             .frame(maxWidth: .infinity)
                     } footer: {
                         Text("Nothing is saved until you confirm. Currency totals are kept separate.")
+                            .font(.caption)
+                            .foregroundStyle(Palette.inkMuted)
+                    }
+                    .listRowBackground(Palette.card)
+                } else if !drafts.isEmpty {
+                    Section {
+                        Button("Discard remaining drafts", role: .destructive) { drafts = [] }
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity)
+                    } footer: {
+                        Text("Each draft saves separately. Nothing is saved until you tap Save on it.")
                             .font(.caption)
                             .foregroundStyle(Palette.inkMuted)
                     }
@@ -178,10 +194,8 @@ struct VoiceCaptureView: View {
                         data: OnDeviceAI.context(categories: visible, now: now) + "\nRequest: " + input)
                     subscriptionDraft = SubscriptionResolver.resolveInput(result, categories: visible, scope: activeScope, input: input, now: now)
                 } else {
-                    let result = try await OnDeviceAI.generate(DraftedTransactions.self,
-                        instructions: "Extract every expense or income as a separate draft. Resolve relative language into signed day offsets; explicit dates into year/month/day. If a transaction date is not mentioned, use today (offset 0). Never assume a currency; ask if absent. Flag ambiguous amounts and dates. Suggest an existing category before a new category.",
-                        data: OnDeviceAI.context(categories: library, now: now) + "\nRequest: " + input)
-                    drafts = result.items.map { DraftResolver.resolve($0, categories: library, rules: rules, scope: activeScope, source: source, input: input, now: now) }
+                    let items = try await TransactionDrafter(categories: library).draftTransactions(from: input, now: now)
+                    drafts = DraftResolver.resolve(items, categories: library, rules: rules, scope: activeScope, source: source, input: input, now: now)
                     if drafts.isEmpty { error = "No transactions found. Add amounts and currencies, or enter manually." }
                 }
             } catch is CancellationError {} catch { self.error = error.localizedDescription }
@@ -193,6 +207,15 @@ struct VoiceCaptureView: View {
         busy = true
         defer { busy = false }
         do { try DraftStore.save(drafts, in: context); dismiss() }
+        catch { self.error = error.localizedDescription }
+    }
+
+    /// Batch confirm-UI: each draft saves on its own, so one bad draft never blocks the rest.
+    private func saveOne(_ draft: TransactionDraft) {
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
+        do { try DraftStore.save([draft], in: context); drafts.removeAll { $0.id == draft.id } }
         catch { self.error = error.localizedDescription }
     }
 }

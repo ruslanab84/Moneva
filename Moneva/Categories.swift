@@ -7,14 +7,14 @@ import FoundationModels
 /// both themes, which emoji do none of.
 enum CategoryLibrary {
     static let symbolGroups: [(name: String, symbols: [String])] = [
-        ("Everyday", ["fork.knife", "cart", "bag", "takeoutbag.and.cup.and.straw", "wineglass", "cup.and.saucer"]),
-        ("Getting around", ["car", "bus", "tram", "bicycle", "fuelpump", "airplane"]),
-        ("Home & bills", ["house", "bolt", "drop", "wifi", "receipt", "wrench.and.screwdriver"]),
-        ("People", ["heart", "gift", "person.2", "figure.2.and.child.holdinghands", "pawprint", "bubble.left.and.bubble.right"]),
-        ("Body & mind", ["cross.case", "pills", "dumbbell", "figure.run", "scissors", "graduationcap"]),
-        ("Life", ["gamecontroller", "film", "music.note", "book", "tshirt", "beach.umbrella"]),
-        ("Other", ["creditcard", "banknote", "briefcase", "square.grid.2x2", "star", "flag"]),
-        ("Money in", ["chart.line.uptrend.xyaxis", "arrow.down.circle", "building.columns", "hands.clap", "sparkles", "dollarsign.circle"]),
+        ("Everyday", ["fork.knife", "cart", "bag", "takeoutbag.and.cup.and.straw", "wineglass", "cup.and.saucer", "birthday.cake", "popcorn", "carrot"]),
+        ("Getting around", ["car", "bus", "tram", "bicycle", "fuelpump", "airplane", "ferry", "parkingsign", "figure.walk"]),
+        ("Home & bills", ["house", "bolt", "drop", "wifi", "receipt", "wrench.and.screwdriver", "sofa", "lightbulb", "shower"]),
+        ("People", ["heart", "gift", "person.2", "figure.2.and.child.holdinghands", "pawprint", "bubble.left.and.bubble.right", "figure.and.child.holdinghands", "party.popper", "envelope"]),
+        ("Body & mind", ["cross.case", "pills", "dumbbell", "figure.run", "scissors", "graduationcap", "stethoscope", "brain.head.profile", "figure.yoga"]),
+        ("Life", ["gamecontroller", "film", "music.note", "book", "tshirt", "beach.umbrella", "paintpalette", "camera", "guitars"]),
+        ("Other", ["creditcard", "banknote", "briefcase", "square.grid.2x2", "star", "flag", "shippingbox", "wallet.pass", "puzzlepiece"]),
+        ("Money in", ["chart.line.uptrend.xyaxis", "arrow.down.circle", "building.columns", "hands.clap", "sparkles", "dollarsign.circle", "banknote.fill", "briefcase.fill", "percent"]),
     ]
 
     static var symbols: [String] { symbolGroups.flatMap(\.symbols) }
@@ -25,6 +25,9 @@ enum CategoryLibrary {
         ("B4694E", "F3DFD8"), ("4F7A55", "DDE8DD"), ("8F6115", "F1E4CC"),
         ("2F6A8F", "D9E6EF"), ("A34F63", "F2DDE2"), ("5B6B3F", "E2E7D6"),
         ("6B5BA6", "E1DDF0"), ("A85A2E", "F4E1D4"), ("78746A", "E4E2DB"),
+        ("3F8F8A", "DCEBE9"), ("9E4F7C", "EEDCE6"), ("9C3F3F", "EDD9D9"),
+        ("3F6B4A", "DCE7DE"), ("3F5B8F", "DCE2EF"), ("C97355", "F5E1D9"),
+        ("8672B8", "E9E3F2"), ("8A6E5B", "EAE2DC"),
     ]
 
     /// What the picker shows: never archived, personal before shared, and only

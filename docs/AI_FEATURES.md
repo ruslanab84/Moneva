@@ -11,6 +11,8 @@ The entry points are the floating Text & Voice and Receipt buttons, Subscription
 
 Persistence remains local SwiftData. “Shared” is the existing local partition, not an implemented account, membership or sync system. No external AI provider or remote sync was added. New stored properties use optional columns/defaults; new allocation/rule models are included in the container. Legacy budgets had no currency metadata: the existing selected currency is captured once during upgrade, because the original currency cannot be recovered from those records.
 
+See [Receipt workflow architecture and implementation](RECEIPT_WORKFLOW.md) for the mode choice, data models, OCR/category safeguards, live amount/percentage breakdown and accuracy evaluation plan.
+
 ## Validation
 
 Build:

@@ -4,6 +4,37 @@ import SwiftData
 /// Every date and amount a recurring payment needs, in Swift. No model ever
 /// computes a billing date — it only ever suggests one for a human to confirm.
 enum Subscriptions {
+    struct PriceChange {
+        enum Direction { case increase, decrease }
+
+        let old: Decimal
+        let new: Decimal
+        let currency: String
+        /// First day of the billing month, independent of catch-up processing time.
+        let periodDate: Date
+        var delta: Decimal { new - old }
+        var direction: Direction { delta > 0 ? .increase : .decrease }
+    }
+
+    /// Compare adjacent latest periods, never bridging a missing charge or a
+    /// currency switch. Payment amounts live on their linked transactions.
+    static func priceChange(_ subscription: Subscription, calendar: Calendar = .current) -> PriceChange? {
+        let payments = subscription.payments.sorted { $0.billingPeriod < $1.billingPeriod }.suffix(2)
+        guard payments.count == 2, let previous = payments.first, let latest = payments.last,
+              previous.subscription?.id == subscription.id, latest.subscription?.id == subscription.id,
+              previous.billingPeriod < latest.billingPeriod,
+              let old = previous.transaction, let new = latest.transaction,
+              old.currency == new.currency, new.currency == subscription.currency,
+              Money.valid(old.amount, currency: old.currency), Money.valid(new.amount, currency: new.currency),
+              old.amount != new.amount else { return nil }
+
+        let parts = latest.billingPeriod.split(separator: "-")
+        guard parts.count == 2, let year = Int(parts[0]), let month = Int(parts[1]),
+              let date = calendar.date(from: DateComponents(year: year, month: month, day: 1)),
+              billingPeriod(for: date, calendar: calendar) == latest.billingPeriod else { return nil }
+        return PriceChange(old: old.amount, new: new.amount, currency: new.currency, periodDate: date)
+    }
+
     /// Safety valve: a corrupt stored date must not spin the catch-up loop.
     static let maxCatchUp = 60
 
@@ -14,8 +45,10 @@ enum Subscriptions {
     }
 
     /// One month on, landing on the same day of the month. February pulls a
-    /// 31st back to the 28th without losing the anchor for March.
-    static func nextDate(after date: Date, anchorDay: Int, calendar: Calendar = .current) -> Date {
+    /// 31st back to the 28th without losing the anchor for March. A date
+    /// before the trial ends advances to that first billing date instead.
+    static func nextDate(after date: Date, anchorDay: Int, trialEndsAt: Date? = nil, calendar: Calendar = .current) -> Date {
+        if let trialEndsAt, date < trialEndsAt { return trialEndsAt }
         guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: date) else { return date }
         return dateInMonth(of: nextMonth, anchorDay: anchorDay, like: date, calendar: calendar)
     }
@@ -61,11 +94,15 @@ enum Subscriptions {
         anchorDay: Int,
         processed: Set<String>,
         endDate: Date? = nil,
+        trialEndsAt: Date? = nil,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> [(period: String, date: Date)] {
         var due: [(period: String, date: Date)] = []
         var cursor = nextPaymentDate
+        if let trialEndsAt, cursor < trialEndsAt {
+            cursor = nextDate(after: cursor, anchorDay: anchorDay, trialEndsAt: trialEndsAt, calendar: calendar)
+        }
         var guardCount = 0
         let last = endDate.map { calendar.startOfDay(for: $0) }
         while cursor <= now, guardCount < maxCatchUp {
@@ -79,6 +116,7 @@ enum Subscriptions {
     }
 
     static func firstFutureDate(_ subscription: Subscription, now: Date, calendar: Calendar = .current) -> Date {
+        if let trial = subscription.trialEndsAt, trial >= now, subscription.nextPaymentDate <= trial { return trial }
         if subscription.nextPaymentDate >= calendar.startOfDay(for: now) { return subscription.nextPaymentDate }
         let candidate = dateInMonth(of: now, anchorDay: subscription.anchorDay, like: subscription.nextPaymentDate, calendar: calendar)
         return candidate >= calendar.startOfDay(for: now) ? candidate : nextDate(after: candidate, anchorDay: subscription.anchorDay, calendar: calendar)
@@ -127,12 +165,17 @@ enum SubscriptionEngine {
 
         do {
             for subscription in subscriptions where subscription.status == .active {
+                if let trial = subscription.trialEndsAt, subscription.nextPaymentDate <= trial {
+                    subscription.nextPaymentDate = trial
+                    subscription.anchorDay = calendar.component(.day, from: trial)
+                }
                 let processed = Set(subscription.payments.map(\.billingPeriod))
                 let due = Subscriptions.duePeriods(
                     nextPaymentDate: subscription.nextPaymentDate,
                     anchorDay: subscription.anchorDay,
                     processed: processed,
                     endDate: subscription.endDate,
+                    trialEndsAt: subscription.trialEndsAt,
                     now: now,
                     calendar: calendar
                 )
@@ -148,6 +191,10 @@ enum SubscriptionEngine {
 
             try context.save()
         } catch { context.rollback(); throw error }
+        // Register only after persistence succeeds, including trials with no due charge.
+        for subscription in subscriptions {
+            Reminders.registerTrial(subscription, now: now, calendar: calendar)
+        }
         return pending.sorted { $0.date < $1.date }
     }
 
@@ -175,7 +222,7 @@ enum SubscriptionEngine {
         calendar: Calendar
     ) throws {
         guard subscription.modelContext != nil, subscription.status == .active,
-              date >= subscription.nextPaymentDate,
+              date >= max(subscription.nextPaymentDate, subscription.trialEndsAt ?? subscription.nextPaymentDate),
               !subscription.payments.contains(where: { $0.billingPeriod == period }) else { return }
 
         var transaction: Transaction?
