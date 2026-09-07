@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "createdAt": "2026-09-07T15:45:29.069Z",
+        "reason": "Moneva's existing shipped brand font (Theme.swift Font.money, used app-wide for all money values, design/Transactions.dc.html) — not a generic default, matched intentionally per design-canvas rule 0"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "design/category-chart/*"
+        ],
+        "createdAt": "2026-09-07T15:45:29.086Z",
+        "reason": "Moneva's actual brand background (Palette.ground #F6F4F0 in Theme.swift, used across every existing shipped screen) — matched intentionally, not a generic AI default"
+      }
+    ]
+  }
+}

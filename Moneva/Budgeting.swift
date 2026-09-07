@@ -6,11 +6,13 @@ enum Budgeting {
     enum LimitState {
         case ok, nearingLimit, atLimit
 
-        /// Thresholds the PRD notifies on: 80% and 100%.
-        init(progress: Double) {
+        /// Thresholds the PRD notifies on: 80% and 100% — plus an early-red
+        /// escalation when 14 days or fewer remain in the month, since 80%
+        /// spent with two weeks still to go is a worse sign than 80% on day 28.
+        init(progress: Double, daysRemaining: Int = .max) {
             switch progress {
             case ..<0.8: self = .ok
-            case ..<1.0: self = .nearingLimit
+            case ..<1.0: self = daysRemaining <= 14 ? .atLimit : .nearingLimit
             default: self = .atLimit
             }
         }
@@ -24,6 +26,10 @@ enum Budgeting {
         let start = monthStart(for: date, calendar: calendar)
         let end = calendar.date(byAdding: .month, value: 1, to: start) ?? date
         return start..<end
+    }
+
+    static func daysRemaining(in range: Range<Date>, from now: Date = .now, calendar: Calendar = .current) -> Int {
+        calendar.dateComponents([.day], from: now, to: range.upperBound).day ?? 0
     }
 
     static func spent(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> Decimal {
@@ -47,6 +53,17 @@ enum Budgeting {
             let dayEnd = calendar.date(byAdding: .day, value: day, to: range.lowerBound) ?? range.upperBound
             let total = spent(transactions, in: range.lowerBound..<min(dayEnd, range.upperBound), scope: scope, currency: currency)
             return (day, total)
+        }
+    }
+
+    /// This month's expense total per category, categories with nothing spent
+    /// omitted. `amount(in:)` (not the raw transaction amount) so a shared
+    /// transaction only counts the caller's split.
+    static func spendingByCategory(_ transactions: [Transaction], categories: [SpendingCategory], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> [(category: SpendingCategory, total: Decimal)] {
+        let month = transactions.filter { $0.kind == .expense && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
+        return categories.compactMap { category in
+            let total = month.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
+            return total > 0 ? (category, total) : nil
         }
     }
 
@@ -110,6 +127,9 @@ func monevaSelfCheck() {
     if case .ok = Budgeting.LimitState(progress: 0.79) {} else { assertionFailure("79% is still ok") }
     if case .nearingLimit = Budgeting.LimitState(progress: 0.8) {} else { assertionFailure("80% must warn") }
     if case .atLimit = Budgeting.LimitState(progress: 1.0) {} else { assertionFailure("100% must alert") }
+    if case .atLimit = Budgeting.LimitState(progress: 0.8, daysRemaining: 14) {} else { assertionFailure("80% with 14 days left must escalate to red") }
+    if case .nearingLimit = Budgeting.LimitState(progress: 0.8, daysRemaining: 15) {} else { assertionFailure("80% with more than 14 days left is still just a warning") }
+    assert(Budgeting.daysRemaining(in: range, from: calendar.date(from: DateComponents(year: 2026, month: 9, day: 17))!, calendar: calendar) == 14, "14 days remain from the 17th to October 1st")
 
     let half = calendar.date(from: DateComponents(year: 2026, month: 9, day: 16))!
     let projected = Budgeting.projectedMonthTotal(spent: 1000, now: half, calendar: calendar)
@@ -125,6 +145,11 @@ func monevaSelfCheck() {
     let transport = SpendingCategory(name: "Transport", symbol: "car", tintHex: "3F7684", softHex: "DCE7EA")
     let other = SpendingCategory(name: "Other", symbol: "square.grid.2x2", tintHex: "78746A", softHex: "E4E2DB")
     let catalogue = [food, transport, other]
+
+    let byCategory = Budgeting.spendingByCategory(all, categories: catalogue, in: range, scope: .personal)
+    assert(byCategory.map(\.category.name) == ["Food"], "only categories with spending show up, in catalogue order")
+    assert(byCategory.first?.total == 42, "the category total matches the personal-scope spend")
+    assert(Budgeting.spendingByCategory(all, categories: catalogue, in: range, scope: .shared).first?.total == 35, "a shared transaction counts on the shared side, not personal")
 
     assert(Money.parse("42.499") == Decimal(string: "42.499"), "exact model decimal survives without float conversion")
     assert(Money.parse("-5") == nil && Money.parse("NaN") == nil && Money.parse("5abc") == nil && Money.parse("1.2.3") == nil, "malformed money is rejected, not partially parsed")

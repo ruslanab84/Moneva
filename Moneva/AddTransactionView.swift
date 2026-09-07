@@ -61,6 +61,7 @@ struct DraftFields: View {
     var requiresReview = true
     var allowKind = true
     var showsAmount = true
+    var showsCategory = true
     @Query private var rules: [MerchantCategoryRule]
     @Query private var categories: [SpendingCategory]
     @State private var picking = false
@@ -85,7 +86,7 @@ struct DraftFields: View {
             Picker("Scope", selection: $draft.scope) {
                 ForEach(Scope.allCases) { Text($0.title).tag($0) }
             }
-            categoryFields
+            if showsCategory { categoryFields }
             TextField("Note", text: $draft.note, axis: .vertical)
             if !draft.clarification.isEmpty { Text(draft.clarification).foregroundStyle(Palette.warning) }
             if let suggestionError { Text(suggestionError).foregroundStyle(Palette.over) }

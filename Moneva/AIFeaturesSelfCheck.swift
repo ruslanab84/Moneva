@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import CoreGraphics
 import SwiftData
 
 @MainActor
@@ -94,6 +95,70 @@ func aiFeaturesSelfCheck() {
         let totalOnlyReceipt = totalOnlyTransactions[0]
         assert(totalOnlyReceipt.amount == totalOnly.amount && totalOnlyReceipt.allocations.isEmpty && totalOnlyReceipt.receiptItems == nil)
         assert(totalOnlyReceipt.amount(in: food) == totalOnly.amount && totalOnlyReceipt.amount(in: home) == 0, "the whole receipt belongs to one category")
+        let utility = SpendingCategory(name: "Utilities", symbol: "bolt", tintHex: "B5813F", softHex: "F0E6D6")
+        context.insert(utility)
+        try context.save()
+        var split = Receipt(draft: TransactionDraft(amount: 200, merchant: "Mixed market", category: nil, currency: "USD", source: .receipt, reviewed: true), mode: .split,
+            items: [ReceiptItem(name: "Food", amount: 80, category: food, reviewed: true),
+                ReceiptItem(name: "Household", amount: 72, category: home, reviewed: true),
+                ReceiptItem(name: "Electricity", amount: 48, category: utility, reviewed: true)])
+        assert(split.canSave && split.remaining == 0)
+        split.items.append(ReceiptItem(name: "Change", amount: 0, alreadyIncluded: true, reviewed: true))
+        assert(split.canSave, "zero change on an excluded summary does not block saving")
+        split.items.removeLast()
+        assert(split.breakdown.first { $0.allocation.category === food }?.fraction == Decimal(string: "0.4"))
+        assert(split.breakdown.first { $0.allocation.category === home }?.fraction == Decimal(string: "0.36"))
+        assert(split.breakdown.first { $0.allocation.category === utility }?.fraction == Decimal(string: "0.24"))
+        split.items[1].category = food
+        assert(split.breakdown.count == 2 && split.breakdown.first { $0.allocation.category === food }?.allocation.amount == 152, "manual overrides immediately regroup")
+        split.items[1].category = home
+        split.items[0].reviewed = false
+        assert(!split.canSave, "a matching total cannot bypass line review")
+        split.items[0].reviewed = true
+        split.items[0].category = shared
+        assert(!split.canSave, "split categories respect scope")
+        split.items[0].category = food
+        split.draft.amount = 199
+        assert(!split.canSave && split.remaining == -1)
+        split.draft.amount = 200
+        try split.save(in: context, image: nil)
+        try split.save(in: context, image: nil)
+        let reloaded = try ModelContext(container).fetch(FetchDescriptor<Transaction>()).filter { $0.draftID == split.draft.id.uuidString }
+        assert(reloaded.count == 1 && reloaded[0].allocations.count == 3 && reloaded[0].category == nil)
+        let decoded = try JSONDecoder().decode([SavedReceiptItem].self, from: reloaded[0].receiptItems!)
+        assert(decoded.count == 3 && decoded[1].category == "Home" && decoded[2].amount == 48, "reviewed items survive persistence")
+        assert(ReceiptMath.breakdown(split.items, total: 0).allSatisfy { $0.fraction == nil })
+        split.items.append(ReceiptItem(name: "Food refunded", kind: .discount, amount: 80, category: food, reviewed: true))
+        split.draft.amount = 120
+        split.draft.id = UUID()
+        assert(split.canSave, "zero-net categories reconcile")
+        try split.save(in: context, image: nil)
+        split.items[0].amount = Decimal(string: "80.001")!
+        assert(!split.canSave, "currency precision is enforced")
+
+        let rows = ReceiptText.rows([
+            .init(text: "MILK", rect: CGRect(x: 10, y: 100, width: 80, height: 20), confidence: 0.95),
+            .init(text: "80.00", rect: CGRect(x: 200, y: 104, width: 50, height: 20), confidence: 0.8),
+            .init(text: "SOAP  72,00", rect: CGRect(x: 10, y: 140, width: 240, height: 20)),
+            .init(text: "POWER  48.00", rect: CGRect(x: 10, y: 180, width: 240, height: 20)),
+            .init(text: "TOTAL  200.00", rect: CGRect(x: 10, y: 220, width: 240, height: 20))])
+        assert(rows[0].text == "MILK  80.00" && rows[0].confidence == 0.8, "a price across an old row-band boundary remains paired")
+        var extracted = ReceiptText.items(from: rows)
+        assert(extracted.count == 4 && extracted[1].amount == 72 && extracted[3].alreadyIncluded)
+        assert(extracted.reduce(Decimal.zero) { $0 + $1.contribution } == 200)
+        assert(ReceiptText.items(from: [.init(text: "Product $1,234.56", confidence: 1)])[0].amount == Decimal(string: "1234.56"))
+        assert(ReceiptText.amount("1.234,56") == Decimal(string: "1234.56"))
+        assert(ReceiptText.amount("12,34.56") == nil, "malformed grouping is rejected")
+        assert(ReceiptText.amount("1,234,56") == nil, "grouping and decimal separators must differ")
+        assert(ReceiptText.items(from: [.init(text: "COUPON -2.00", confidence: 1)])[0].contribution == -2)
+        ReceiptCategorizer.apply([
+            ReceiptLineSuggestion(lineID: 0, categoryID: 999, confidence: .likely, kind: .item, alreadyIncluded: false, reason: "unknown"),
+            ReceiptLineSuggestion(lineID: 1, categoryID: 0, confidence: .likely, kind: .item, alreadyIncluded: false, reason: "duplicate"),
+            ReceiptLineSuggestion(lineID: 1, categoryID: 1, confidence: .likely, kind: .item, alreadyIncluded: false, reason: "duplicate"),
+            ReceiptLineSuggestion(lineID: 99, categoryID: 0, confidence: .likely, kind: .item, alreadyIncluded: false, reason: "invented")
+        ], to: &extracted, indices: [0, 1, 2, 3], categories: [food, home])
+        assert(extracted[0].category == nil && extracted[0].categoryConfidence == .uncertain && extracted[1].category == nil)
+        assert(extracted[0].amount == 80 && extracted[3].alreadyIncluded && !extracted[0].reviewed, "model output cannot change money, include known summaries, or mark lines reviewed")
         let malicious = DraftedSearch(period: .all, start: nil, end: nil, category: "", merchant: "", minimum: "", maximum: "", currency: "", scope: "shared", kind: "expense", clarification: "")
         do { _ = try SpendingSearch.resolve(malicious, categories: [food], scope: .personal); assertionFailure("scope escalation accepted") } catch {}
         let monday = calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!

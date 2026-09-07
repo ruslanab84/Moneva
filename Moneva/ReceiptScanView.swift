@@ -9,11 +9,16 @@ struct ReceiptScanView: View {
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
     @Query private var categories: [SpendingCategory]
     @Query private var transactions: [Transaction]
-    @State private var draft = TransactionDraft(source: .receipt)
+    @State private var receipt = Receipt()
+    @State private var pickingItem: ReceiptItem?
     @State private var image: UIImage?
     @State private var photo: PhotosPickerItem?
     @State private var scanning = false
+    @State private var receivedCameraImage = false
+    @State private var initializedScope = false
+    @State private var choosingMode = false
     @State private var busy = false
+    @State private var splitAttempted = false
     @State private var retainImage = false
     @State private var error: String?
     @State private var ocr = ""
@@ -21,47 +26,63 @@ struct ReceiptScanView: View {
     @State private var saved = false
     @State private var task: Task<Void, Never>?
 
-    private var canSave: Bool { !busy && !saved && draft.canSave }
+    private var canSave: Bool { !busy && !saved && !choosingMode && receipt.canSave }
 
     var body: some View {
         NavigationStack {
             Form {
+                captureSection
                 Section {
-                    if VNDocumentCameraViewController.isSupported {
-                        Button("Scan with camera", systemImage: "doc.viewfinder") { scanning = true }.disabled(busy)
+                    Picker("Categorization", selection: $receipt.mode) {
+                        ForEach(ReceiptMode.allCases) { Text($0.title).tag($0) }
                     }
-                    PhotosPicker(selection: $photo, matching: .images) { Label("Import receipt image", systemImage: "photo") }.disabled(busy)
-                    if let image {
-                        Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 300).accessibilityLabel("Receipt preview")
-                        Toggle("Keep this receipt image", isOn: $retainImage)
-                    }
-                    Text("Images stay on this iPhone. Keep image is off by default. You can also enter a reviewed total manually.").font(.caption)
-                    if busy { ProgressView("Reading receipt on device…") }
-                    if let error { Text(error).foregroundStyle(Palette.over) }
-                    if !ocr.isEmpty { DisclosureGroup("Recognized text") { Text(ocr).textSelection(.enabled) } }
-                } header: { Eyebrow("Receipt") }
+                    Text(receipt.mode == .single ? "Assign the full receipt to one category." : "Review each item. Category amounts and percentages update as you edit.")
+                        .font(.caption)
+                }
+                .disabled(busy || choosingMode)
                 .listRowBackground(Palette.card)
                 Section {
-                    AmountHero(draft: $draft, allowKind: false, eyebrow: "Reviewed receipt total")
+                    AmountHero(draft: $receipt.draft, allowKind: false, eyebrow: "Reviewed receipt total")
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
                 .disabled(busy)
-                Section { DraftFields(draft: $draft, allowKind: false, showsAmount: false) }
-                    .listRowBackground(Palette.card)
-                    .disabled(busy)
                 Section {
-                    Button {
-                        if ReceiptMath.duplicates(draft, in: transactions).isEmpty { save() } else { duplicateWarning = true }
-                    } label: {
-                        Text("Confirm and save one expense")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
-                    .disabled(!canSave)
+                    DraftFields(draft: $receipt.draft, allowKind: false, showsAmount: false, showsCategory: receipt.mode == .single)
+                }
+                .listRowBackground(Palette.card)
+                .disabled(busy)
+                if receipt.mode == .split {
+                    ReceiptBreakdownSection(breakdown: receipt.breakdown, total: receipt.draft.amount,
+                        remaining: receipt.remaining, currency: receipt.draft.currency)
+                    Section {
+                        ForEach($receipt.items) { $item in
+                            ReceiptItemRow(item: $item, currency: receipt.draft.currency) { pickingItem = item }
+                        }
+                        .onDelete { receipt.items.remove(atOffsets: $0); receipt.draft.reviewed = false }
+                        Button("Add missing item", systemImage: "plus") {
+                            receipt.items.append(ReceiptItem())
+                            receipt.draft.reviewed = false
+                        }
+                        Text("Check every line, including excluded summaries. Add missing items or adjustments; swipe to delete incorrect rows. Amounts are printed line totals, not unit prices.")
+                            .font(.caption)
+                    } header: { Text("Line items") }
+                    .disabled(busy)
                     .listRowBackground(Palette.card)
                 }
+                Section {
+                    Button("Confirm and save one expense") {
+                        if ReceiptMath.duplicates(receipt.draft, in: transactions).isEmpty { save() } else { duplicateWarning = true }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .disabled(!canSave)
+                    if receipt.mode == .split && !receipt.canSave {
+                        Text("Review all lines and receipt details, select valid categories, and match the printed total to save.")
+                            .font(.caption).foregroundStyle(Palette.warning)
+                    }
+                }
+                .listRowBackground(Palette.card)
             }
             .scrollContentBackground(.hidden)
             .background(Palette.ground)
@@ -71,19 +92,68 @@ struct ReceiptScanView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.foregroundStyle(Palette.inkMuted)
+                    Button("Cancel") { task?.cancel(); dismiss() }.foregroundStyle(Palette.inkMuted)
                 }
             }
-            .onAppear { draft.scope = Scope(rawValue: scopeRaw) ?? .personal }
-            .fullScreenCover(isPresented: $scanning) {
-                DocumentScanner(onScan: { image in process(image) }, onError: { error = $0 }).ignoresSafeArea()
+            .onAppear {
+                if !initializedScope {
+                    receipt.draft.scope = Scope(rawValue: scopeRaw) ?? .personal
+                    initializedScope = true
+                }
+            }
+            .fullScreenCover(isPresented: $scanning, onDismiss: {
+                if receivedCameraImage { choosingMode = true; receivedCameraImage = false }
+            }) {
+                DocumentScanner(onScan: { prepare($0); receivedCameraImage = true }, onError: { error = $0 }).ignoresSafeArea()
             }
             .onChange(of: photo) { _, photo in
+                guard let photo else { return }
+                task?.cancel()
+                busy = true
                 task = Task {
+                    defer { busy = false }
                     do {
-                        guard let data = try await photo?.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
-                        process(image)
-                    } catch { self.error = "Could not import this image. Try another image or enter the total manually." }
+                        guard let data = try await photo.loadTransferable(type: Data.self), let image = UIImage(data: data) else {
+                            error = "Could not open this image. Choose another image."
+                            return
+                        }
+                        try Task.checkCancellation()
+                        prepare(image)
+                        choosingMode = true
+                    } catch is CancellationError {} catch { self.error = "Could not import this image. Try another image or enter the total manually." }
+                }
+            }
+            .confirmationDialog("How would you like to categorize this receipt?", isPresented: $choosingMode, titleVisibility: .visible) {
+                Button("Single category — full receipt total") { receipt.mode = .single; process() }
+                Button("Split by category — individual items") { receipt.mode = .split; process() }
+                Button("Cancel", role: .cancel) {}
+            }
+            .onChange(of: receipt.mode) { _, mode in
+                receipt.draft.reviewed = false
+                receipt.draft.rememberCategory = false
+                if mode == .split && !ocr.isEmpty && !splitAttempted && !busy {
+                    busy = true
+                    task = Task { defer { busy = false }; await categorize() }
+                }
+            }
+            .onChange(of: receipt.draft.scope) { _, scope in
+                receipt.draft.reviewed = false
+                receipt.draft.rememberCategory = false
+                if !CategoryLibrary.isSelectable(receipt.draft.category, scope: scope) { receipt.draft.category = nil }
+                for index in receipt.items.indices {
+                    if !CategoryLibrary.isSelectable(receipt.items[index].category, scope: scope) {
+                        receipt.items[index].category = nil
+                        receipt.items[index].reviewed = false
+                    }
+                }
+            }
+            .onChange(of: receipt.draft.currency) { _, _ in
+                receipt.draft.reviewed = false
+                for index in receipt.items.indices { receipt.items[index].reviewed = false }
+            }
+            .sheet(item: $pickingItem) { item in
+                if let index = receipt.items.firstIndex(where: { $0.id == item.id }) {
+                    CategoryPickerView(selection: $receipt.items[index].category, scope: receipt.draft.scope)
                 }
             }
             .confirmationDialog("Possible duplicate receipt", isPresented: $duplicateWarning, titleVisibility: .visible) {
@@ -94,41 +164,162 @@ struct ReceiptScanView: View {
         }
     }
 
-    private func process(_ image: UIImage) {
-        guard !busy else { return }
+    private var captureSection: some View {
+        Section {
+            if VNDocumentCameraViewController.isSupported {
+                Button("Scan with camera", systemImage: "doc.viewfinder") { scanning = true }.disabled(busy)
+            }
+            PhotosPicker(selection: $photo, matching: .images) { Label("Import receipt image", systemImage: "photo") }.disabled(busy)
+            if let image {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 300).accessibilityLabel("Receipt preview")
+                Toggle("Keep this receipt image", isOn: $retainImage)
+                if ocr.isEmpty && !busy { Button("Read receipt") { choosingMode = true } }
+            }
+            Text("Images stay on this iPhone. Keep image is off by default. Manual entry is always available.").font(.caption)
+            if busy { ProgressView("Reading receipt on device…") }
+            if let error { Text(error).foregroundStyle(Palette.over) }
+            if !ocr.isEmpty { DisclosureGroup("Recognized text") { Text(ocr).textSelection(.enabled) } }
+        } header: { Eyebrow("Receipt") }
+        .listRowBackground(Palette.card)
+    }
+
+    private func prepare(_ image: UIImage) {
         self.image = image
-        draft = TransactionDraft(scope: draft.scope, source: .receipt)
+        receipt = Receipt(draft: TransactionDraft(scope: receipt.draft.scope, source: .receipt))
         retainImage = false
-        busy = true
+        splitAttempted = false
         error = nil
         ocr = ""
+    }
+
+    private func process() {
+        guard let image, !busy else { return }
+        busy = true
         task = Task {
             defer { busy = false }
             do {
-                ocr = try await ReceiptText.read(image)
-                let visible = CategoryLibrary.visible(categories, scope: draft.scope)
-                let result = try await OnDeviceAI.generate(DraftedReceipt.self,
-                    instructions: "Extract one expense from this receipt using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
-                    data: OnDeviceAI.context(categories: visible) + "\nReceipt text:\n" + ocr)
-                let date = DraftResolver.date(result.date)
-                let currency = result.currency.uppercased()
-                draft.amount = Money.parse(result.total) ?? 0
-                draft.currency = Money.pickerCodes.contains(currency) ? currency : Money.code
-                draft.merchant = DraftResolver.grounded(result.merchant, in: ocr)
-                draft.date = date ?? .now
-                draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed final total against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")
-                draft.category = DraftResolver.category(named: result.category, in: visible)
-            } catch is CancellationError {} catch { self.error = error.localizedDescription + " Enter the reviewed total manually, or scan again." }
+                let rows = try await ReceiptText.read(image)
+                try Task.checkCancellation()
+                ocr = rows.map(\.text).joined(separator: "\n")
+                receipt.items = ReceiptText.items(from: rows)
+                do {
+                    let visible = CategoryLibrary.visible(categories, scope: receipt.draft.scope)
+                    let result = try await OnDeviceAI.generate(DraftedReceipt.self,
+                        instructions: "Extract one expense using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
+                        data: OnDeviceAI.context(categories: visible) + "\nReceipt text:\n" + ocr)
+                    let date = DraftResolver.date(result.date)
+                    let currency = result.currency.uppercased()
+                    receipt.draft.amount = Money.parse(result.total) ?? 0
+                    receipt.draft.currency = Money.pickerCodes.contains(currency) ? currency : Money.code
+                    receipt.draft.merchant = DraftResolver.grounded(result.merchant, in: ocr)
+                    receipt.draft.date = date ?? .now
+                    receipt.draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed final total against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")
+                    receipt.draft.category = DraftResolver.category(named: result.category, in: visible)
+                } catch is CancellationError { return } catch {
+                    self.error = error.localizedDescription + " Enter the receipt details manually. OCR items remain available."
+                }
+                if receipt.mode == .split { await categorize() }
+            } catch is CancellationError {} catch {
+                self.error = "Could not read this receipt. Try a clearer image or enter the details and items manually."
+            }
+        }
+    }
+
+    private func categorize() async {
+        splitAttempted = true
+        guard !receipt.items.isEmpty else { return }
+        do {
+            let items = try await ReceiptCategorizer.suggest(receipt.items,
+                categories: CategoryLibrary.visible(categories, scope: receipt.draft.scope))
+            try Task.checkCancellation()
+            receipt.items = items
+        } catch is CancellationError {} catch {
+            self.error = error.localizedDescription + " Choose item categories manually; the scanned amounts are preserved."
         }
     }
 
     private func save() {
         guard canSave else { return }
         do {
-            try DraftStore.save([draft], in: context,
-                receiptImage: retainImage ? image?.jpegData(compressionQuality: 0.8) : nil)
+            try receipt.save(in: context, image: retainImage ? image?.jpegData(compressionQuality: 0.8) : nil)
             saved = true
             dismiss()
         } catch { self.error = error.localizedDescription }
+    }
+}
+
+struct ReceiptBreakdownSection: View {
+    var breakdown: [CategoryBreakdown]
+    var total: Decimal
+    var remaining: Decimal
+    var currency: String
+
+    var body: some View {
+        Section {
+            ForEach(breakdown) { group in
+                DisclosureGroup {
+                    ForEach(group.items) { item in
+                        LabeledContent(item.name, value: item.contribution.money(currency))
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(group.allocation.category?.name ?? "Choose category", systemImage: group.allocation.category?.symbol ?? "questionmark.circle")
+                        Text("\(group.allocation.amount.money(currency)) (\(group.fraction.map { $0.formatted(.percent.precision(.fractionLength(0...1))) } ?? "—"))")
+                            .monospacedDigit()
+                    }
+                }
+            }
+            LabeledContent("Printed total", value: total.money(currency))
+            LabeledContent(remaining == 0 ? "Matched" : "Difference to resolve", value: remaining.money(currency))
+                .foregroundStyle(remaining == 0 ? Palette.ink : Palette.warning)
+            Text("Percentages use the printed total. Rounded percentages may not add to 100%. Taxes and discounts affect their assigned category.")
+                .font(.caption)
+        } header: { Text("Category breakdown · \(currency)") }
+        .listRowBackground(Palette.card)
+    }
+}
+
+struct ReceiptItemRow: View {
+    @Binding var item: ReceiptItem
+    var currency: String
+    var pickCategory: () -> Void
+
+    private var editSignature: String {
+        "\(item.name)|\(item.amount)|\(item.kind)|\(item.alreadyIncluded)|\(String(describing: item.category?.persistentModelID))|\(item.quantity)|\(item.unitPrice)"
+    }
+
+    var body: some View {
+        DisclosureGroup {
+            TextField("Item description", text: $item.name)
+            AmountField(title: "Printed line total", value: $item.amount, currencyCode: currency)
+            Picker("Line type", selection: $item.kind) {
+                ForEach(ReceiptLineKind.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+            }
+            TextField("Quantity (reference only)", text: $item.quantity)
+            TextField("Unit price (reference only)", text: $item.unitPrice)
+            Toggle("Already included / summary — exclude", isOn: $item.alreadyIncluded)
+            if !item.alreadyIncluded {
+                Button(action: pickCategory) {
+                    Label(item.category?.name ?? "Choose category", systemImage: item.category?.symbol ?? "square.grid.2x2")
+                }
+            }
+            if !item.sourceText.isEmpty { Text("Scanned: \(item.sourceText)").font(.caption).textSelection(.enabled) }
+            if let confidence = item.ocrConfidence {
+                Text("OCR confidence: \(confidence.formatted(.percent.precision(.fractionLength(0)))). This measures text recognition, not category accuracy.").font(.caption)
+            }
+            Text(item.categoryConfidence == .likely ? "Category suggestion: likely (not a calibrated probability)." : "Category suggestion: uncertain — choose or verify manually.")
+                .font(.caption).foregroundStyle(Palette.warning)
+            if !item.uncertainty.isEmpty { Text(item.uncertainty).font(.caption) }
+            Toggle("I verified this line", isOn: $item.reviewed)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name.isEmpty ? "New item" : item.name)
+                Text("\(item.alreadyIncluded ? "Excluded" : item.category?.name ?? "Choose category") · \(item.contribution.money(currency))")
+                    .font(.caption)
+                Label(item.reviewed ? "Reviewed" : "Needs review", systemImage: item.reviewed ? "checkmark.circle" : "exclamationmark.circle")
+                    .font(.caption).foregroundStyle(item.reviewed ? Palette.inkMuted : Palette.warning)
+            }
+        }
+        .onChange(of: editSignature) { _, _ in item.reviewed = false }
     }
 }

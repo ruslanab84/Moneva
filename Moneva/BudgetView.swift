@@ -15,6 +15,7 @@ struct BudgetView: View {
         transactions.filter { $0.scope == scope && $0.currency == currencyCode && range.contains($0.date) }
     }
     private var spent: Decimal { Budgeting.spent(monthTransactions, in: range, scope: scope) }
+    private var daysRemaining: Int { Budgeting.daysRemaining(in: range) }
 
     var body: some View {
         ScreenScroll(title: range.lowerBound.formatted(.dateTime.month(.wide)), eyebrow: "Budget") {
@@ -53,7 +54,7 @@ struct BudgetView: View {
     @ViewBuilder
     private func totalCard(_ budget: Budget) -> some View {
         let progress = Budgeting.progress(spent: spent, limit: budget.total)
-        let state = Budgeting.LimitState(progress: progress)
+        let state = Budgeting.LimitState(progress: progress, daysRemaining: daysRemaining)
         let remaining = max(budget.total - spent, 0)
 
         VStack(alignment: .leading, spacing: 13) {
@@ -84,7 +85,7 @@ struct BudgetView: View {
     private func limitRow(_ limit: BudgetLimit) -> some View {
         let used = monthTransactions.filter { $0.kind == .expense }.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }
         let progress = Budgeting.progress(spent: used, limit: limit.amount)
-        let state = Budgeting.LimitState(progress: progress)
+        let state = Budgeting.LimitState(progress: progress, daysRemaining: daysRemaining)
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
