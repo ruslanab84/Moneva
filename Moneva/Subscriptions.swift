@@ -4,6 +4,67 @@ import SwiftData
 /// Every date and amount a recurring payment needs, in Swift. No model ever
 /// computes a billing date — it only ever suggests one for a human to confirm.
 enum Subscriptions {
+    static let unusedSkipThreshold = 3
+
+    /// Latest uninterrupted monthly run, ordered by billing period, not processing date.
+    /// Unknown outcomes, other payment modes, duplicate periods and gaps break the run.
+    static func consecutiveSkips(_ subscription: Subscription, calendar: Calendar = .current) -> Int {
+        guard subscription.paymentMode == .ask else { return 0 }
+        let payments = subscription.payments.sorted { $0.billingPeriod > $1.billingPeriod }
+        let periodCounts = Dictionary(grouping: payments, by: \.billingPeriod).mapValues(\.count)
+        var count = 0
+        var expected: String?
+        for payment in payments {
+            guard payment.subscription?.id == subscription.id,
+                  payment.status == .skip, payment.paymentMode == .ask,
+                  expected == nil || payment.billingPeriod == expected else { break }
+            let parts = payment.billingPeriod.split(separator: "-")
+            guard parts.count == 2, let year = Int(parts[0]), let month = Int(parts[1]),
+                  let date = calendar.date(from: DateComponents(year: year, month: month, day: 1)),
+                  billingPeriod(for: date, calendar: calendar) == payment.billingPeriod,
+                  let previous = calendar.date(byAdding: .month, value: -1, to: date),
+                  periodCounts[payment.billingPeriod] == 1 else { break }
+            count += 1
+            expected = billingPeriod(for: previous, calendar: calendar)
+        }
+        return count
+    }
+
+    static func isPotentiallyUnused(_ subscription: Subscription, threshold: Int = unusedSkipThreshold, calendar: Calendar = .current) -> Bool {
+        threshold > 0 && consecutiveSkips(subscription, calendar: calendar) >= threshold
+    }
+
+    /// Cost normalization only; the payment engine currently schedules monthly plans.
+    enum AnnualBillingPeriod: Int {
+        case weekly = 52, monthly = 12, quarterly = 4, annual = 1
+    }
+
+    /// Annualized run rate, not a forecast: 52 weeks / 12 months per year.
+    /// `interval: 2` means every two of the selected periods. No intermediate rounding.
+    static func annualCost(amount: Decimal, period: AnnualBillingPeriod, interval: Int = 1) -> Decimal {
+        guard !amount.isNaN, amount >= 0, interval > 0 else { return 0 }
+        return amount * Decimal(period.rawValue) / Decimal(interval)
+    }
+
+    static func annualCost(_ subscription: Subscription) -> Decimal {
+        switch subscription.frequency {
+        case .monthly: return annualCost(amount: subscription.amount, period: .monthly)
+        }
+    }
+
+    /// Active, unexpired run rates in one currency; nil scope aggregates both scopes.
+    /// Explicit periods support mixed-cycle estimates without changing stored schedules.
+    static func annualTotal(_ entries: [(subscription: Subscription, period: AnnualBillingPeriod, interval: Int)], scope: Scope? = nil, currency: String, now: Date, calendar: Calendar = .current) -> Decimal {
+        entries.filter {
+            $0.subscription.currency == currency && (scope == nil || $0.subscription.scope == scope)
+                && $0.subscription.status == .active && !hasEnded($0.subscription, on: now, calendar: calendar)
+        }.reduce(0) { $0 + annualCost(amount: $1.subscription.amount, period: $1.period, interval: $1.interval) }
+    }
+
+    static func annualTotal(_ subscriptions: [Subscription], scope: Scope? = nil, currency: String, now: Date, calendar: Calendar = .current) -> Decimal {
+        annualTotal(subscriptions.map { ($0, .monthly, 1) }, scope: scope, currency: currency, now: now, calendar: calendar)
+    }
+
     struct PriceChange {
         enum Direction { case increase, decrease }
 
@@ -243,7 +304,8 @@ enum SubscriptionEngine {
             context.insert(created)
             transaction = created
         }
-        let payment = SubscriptionPayment(billingPeriod: period, subscription: subscription, transaction: transaction)
+        let payment = SubscriptionPayment(billingPeriod: period, subscription: subscription, transaction: transaction,
+                                          status: addTransaction ? .paid : .skip, paymentMode: subscription.paymentMode)
         context.insert(payment)
         if !subscription.payments.contains(where: { $0 === payment }) { subscription.payments.append(payment) }
 

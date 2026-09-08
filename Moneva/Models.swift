@@ -254,6 +254,13 @@ final class Subscription {
 /// a subscription being charged twice for the same month.
 @Model
 final class SubscriptionPayment {
+    enum Status: String { case paid, skip }
+
+    /// Unknown for legacy rows: a deleted transaction is not evidence of a skip.
+    var statusRaw: String? = nil
+    var paymentModeRaw: String? = nil
+    var status: Status? { statusRaw.flatMap(Status.init(rawValue:)) }
+    var paymentMode: PaymentMode? { paymentModeRaw.flatMap(PaymentMode.init(rawValue:)) }
     /// "2026-09" — the month the charge belongs to, not when it was processed.
     var billingPeriod: String = ""
     var processedDate: Date = Date.now
@@ -263,11 +270,13 @@ final class SubscriptionPayment {
     @Relationship(deleteRule: .nullify)
     var transaction: Transaction?
 
-    init(billingPeriod: String, processedDate: Date = .now, subscription: Subscription?, transaction: Transaction?) {
+    init(billingPeriod: String, processedDate: Date = .now, subscription: Subscription?, transaction: Transaction?, status: Status? = nil, paymentMode: PaymentMode? = nil) {
         self.billingPeriod = billingPeriod
         self.processedDate = processedDate
         self.subscription = subscription
         self.transaction = transaction
+        self.statusRaw = status?.rawValue
+        self.paymentModeRaw = paymentMode?.rawValue
     }
 }
 

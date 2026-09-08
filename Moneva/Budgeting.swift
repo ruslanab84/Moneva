@@ -225,6 +225,64 @@ func monevaSelfCheck() {
     assert(Subscriptions.monthlyTotal([netflix, gym]) == 12, "a paused subscription costs nothing this month")
 
     let pricePlan = Subscription(name: "Price check", amount: 12, currency: "USD", nextPaymentDate: sept, category: food)
+    let unused = Subscription(name: "Skip check", amount: 10, currency: "USD", nextPaymentDate: sept, paymentMode: .ask, category: food)
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar))
+    let skips = (1...4).map {
+        SubscriptionPayment(billingPeriod: "2026-0\($0)", subscription: unused, transaction: nil, status: .skip, paymentMode: .ask)
+    }
+    unused.payments = Array(skips.prefix(2))
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "below the threshold")
+    unused.payments = [skips[2], skips[0], skips[1]]
+    assert(Subscriptions.consecutiveSkips(unused, calendar: calendar) == 3)
+    assert(Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "exact threshold, independent of array order")
+    assert(!Subscriptions.isPotentiallyUnused(unused, threshold: 4, calendar: calendar))
+    assert(!Subscriptions.isPotentiallyUnused(unused, threshold: 0, calendar: calendar))
+    unused.payments = skips
+    assert(Subscriptions.consecutiveSkips(unused, calendar: calendar) == 4)
+    skips[2].statusRaw = SubscriptionPayment.Status.paid.rawValue
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "a paid payment with a deleted transaction breaks the run")
+    skips[2].statusRaw = nil
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "unknown legacy history is not a skip")
+    skips[2].statusRaw = SubscriptionPayment.Status.skip.rawValue
+    skips[2].paymentModeRaw = PaymentMode.autoAdd.rawValue
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "other payment modes break the run")
+    skips[2].paymentModeRaw = PaymentMode.ask.rawValue
+    unused.paymentMode = .autoAdd
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar))
+    unused.paymentMode = .ask
+    unused.payments = [skips[0], skips[2], skips[3]]
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "missing months break consecutiveness")
+    let duplicateSkip = SubscriptionPayment(billingPeriod: skips[2].billingPeriod, subscription: unused, transaction: nil, status: .skip, paymentMode: .ask)
+    unused.payments = [skips[0], skips[1], skips[2], duplicateSkip]
+    assert(!Subscriptions.isPotentiallyUnused(unused, calendar: calendar), "duplicate periods cannot inflate the run")
+
+    assert(Subscriptions.annualCost(amount: 10, period: .weekly) == 520)
+    assert(Subscriptions.annualCost(amount: 10, period: .monthly) == 120)
+    assert(Subscriptions.annualCost(amount: 10, period: .quarterly) == 40)
+    assert(Subscriptions.annualCost(amount: 10, period: .annual) == 10)
+    assert(Subscriptions.annualCost(amount: 10, period: .weekly, interval: 2) == 260)
+    assert(Subscriptions.annualCost(amount: 10, period: .monthly, interval: 3) == 40)
+    assert(Subscriptions.annualCost(amount: Decimal(string: "9.99")!, period: .monthly) == Decimal(string: "119.88")!)
+    assert(Subscriptions.annualCost(amount: 10, period: .annual, interval: 2) == 5)
+    assert(Subscriptions.annualCost(amount: 10, period: .monthly, interval: 0) == 0)
+    assert(Subscriptions.annualCost(amount: -1, period: .monthly) == 0)
+    assert(Subscriptions.annualCost(amount: .nan, period: .monthly) == 0)
+    assert(Subscriptions.annualCost(unused) == 120)
+    let sharedPlan = Subscription(name: "Shared annual", amount: 100, currency: "USD", nextPaymentDate: sept, scope: .shared, category: food)
+    let annualEntries: [(subscription: Subscription, period: Subscriptions.AnnualBillingPeriod, interval: Int)] = [
+        (unused, .weekly, 1), (pricePlan, .monthly, 1), (sharedPlan, .annual, 1), (gym, .quarterly, 1)
+    ]
+    assert(Subscriptions.annualTotal(annualEntries, currency: "USD", now: sept, calendar: calendar) == 764)
+    assert(Subscriptions.annualTotal(annualEntries + [(unused, .quarterly, 1)], currency: "USD", now: sept, calendar: calendar) == 804, "all four billing periods aggregate in Decimal")
+    assert(Subscriptions.annualTotal(annualEntries, scope: .personal, currency: "USD", now: sept, calendar: calendar) == 664)
+    assert(Subscriptions.annualTotal(annualEntries, scope: .shared, currency: "USD", now: sept, calendar: calendar) == 100)
+    assert(Subscriptions.annualTotal(annualEntries, currency: "EUR", now: sept, calendar: calendar) == 0)
+    sharedPlan.status = .paused
+    assert(Subscriptions.annualTotal(annualEntries, currency: "USD", now: sept, calendar: calendar) == 664)
+    sharedPlan.status = .active
+    sharedPlan.endDate = jan31
+    assert(Subscriptions.annualTotal(annualEntries, currency: "USD", now: sept, calendar: calendar) == 664)
+    assert(Subscriptions.annualTotal([unused, pricePlan], currency: "USD", now: sept, calendar: calendar) == 264)
     assert(Subscriptions.priceChange(pricePlan, calendar: calendar) == nil, "empty history has no price change")
     let firstCharge = Transaction(amount: Decimal(string: "9.99")!, date: jan31, merchant: "Price check", category: food, currency: "USD")
     let secondCharge = Transaction(amount: Decimal(string: "12.49")!, date: feb, merchant: "Price check", category: food, currency: "USD")
@@ -343,6 +401,7 @@ func monevaSelfCheck() {
         let due = try SubscriptionEngine.catchUp(in: context, now: trialEnd, calendar: calendar)
         assert(due.count == 1 && due[0].date == trialEnd)
         try SubscriptionEngine.skip(due[0], in: context, calendar: calendar)
+        assert(trial.payments.first?.status == .skip && trial.payments.first?.paymentMode == .ask)
         assert(trial.nextPaymentDate == firstRenewal)
         let repeated = try SubscriptionEngine.catchUp(in: context, now: trialEnd, calendar: calendar)
         assert(repeated.isEmpty && trial.payments.count == 1)
