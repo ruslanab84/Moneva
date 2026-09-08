@@ -205,7 +205,7 @@ struct ReceiptScanView: View {
                 do {
                     let visible = CategoryLibrary.visible(categories, scope: receipt.draft.scope)
                     let result = try await OnDeviceAI.generate(DraftedReceipt.self,
-                        instructions: "Extract one expense using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
+                        instructions: "Extract one expense using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts to produce the total. Also extract every printed line item with its own amount and best existing category; leave items empty if the receipt has no readable line items. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
                         data: OnDeviceAI.context(categories: visible) + "\nReceipt text:\n" + ocr)
                     let date = DraftResolver.date(result.date)
                     let currency = result.currency.uppercased()
@@ -215,10 +215,20 @@ struct ReceiptScanView: View {
                     receipt.draft.date = date ?? .now
                     receipt.draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed final total against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")
                     receipt.draft.category = DraftResolver.category(named: result.category, in: visible)
+                    // The model's own line items checked against its own total: mismatched (>1%) collapses to
+                    // this single transaction (current behavior); reconciled proposes a split by category.
+                    switch ReceiptMath.resolveItems(result.items, total: receipt.draft.amount, categories: visible, input: ocr) {
+                    case .collapse:
+                        receipt.mode = .single
+                    case .split(let items):
+                        receipt.items = items
+                        receipt.mode = .split
+                        splitAttempted = true
+                    }
                 } catch is CancellationError { return } catch {
                     self.error = error.localizedDescription + " Enter the receipt details manually. OCR items remain available."
                 }
-                if receipt.mode == .split { await categorize() }
+                if receipt.mode == .split && !splitAttempted { await categorize() }
             } catch is CancellationError {} catch {
                 self.error = "Could not read this receipt. Try a clearer image or enter the details and items manually."
             }

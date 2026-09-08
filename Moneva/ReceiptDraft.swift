@@ -6,6 +6,16 @@ import SwiftData
 enum ReceiptLineKind: String, Codable, CaseIterable { case item, tax, discount }
 
 @Generable
+struct DraftedLineItem {
+    @Guide(description: "Exact item name copied from the printed line, or empty if unclear")
+    var name: String
+    @Guide(description: "Printed line total as decimal digits with a dot, without symbols; negative for discounts. Never calculate.")
+    var amount: String
+    @Guide(description: "One existing category for this line, empty if unclear")
+    var category: String
+}
+
+@Generable
 struct DraftedReceipt {
     var merchant: String
     var date: DraftDate
@@ -14,6 +24,8 @@ struct DraftedReceipt {
     var total: String
     @Guide(description: "One existing category for the whole receipt, empty if unclear")
     var category: String
+    @Guide(description: "Every printed line item with its own amount and category; empty if the receipt has no readable line items", .count(0...30))
+    var items: [DraftedLineItem]
     var clarification: String
 }
 
@@ -75,6 +87,11 @@ struct Receipt {
         }) : nil
         try DraftStore.save([savedDraft], in: context, allocations: allocations, receiptImage: image, receiptItems: details)
     }
+}
+
+enum ReceiptItemsResolution {
+    case collapse
+    case split([ReceiptItem])
 }
 
 struct CategoryBreakdown: Identifiable {
@@ -166,6 +183,19 @@ enum ReceiptMath {
         return Money.valid(total, currency: currency) && !allocations.isEmpty &&
             items.allSatisfy { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (Money.valid($0.amount, currency: currency) || ($0.alreadyIncluded && $0.amount == 0)) && ($0.alreadyIncluded || CategoryLibrary.isSelectable($0.category, scope: scope)) } &&
             allocations.allSatisfy { $0.amount >= 0 } && allocations.reduce(0) { $0 + $1.amount } == total
+    }
+
+    /// The model's own line items checked against its own printed total, from the same extraction pass.
+    /// >1% mismatch means the extraction is unreliable — collapse to one transaction (current behavior)
+    /// instead of proposing a split whose per-line categories can't be trusted either.
+    static func resolveItems(_ items: [DraftedLineItem], total: Decimal, categories: [SpendingCategory], input: String) -> ReceiptItemsResolution {
+        guard total > 0, !items.isEmpty else { return .collapse }
+        let sum = items.reduce(Decimal.zero) { $0 + (Money.parse($1.amount) ?? 0) }
+        guard abs(sum - total) / total <= 0.01 else { return .collapse }
+        return .split(items.map { item in
+            ReceiptItem(name: DraftResolver.grounded(item.name, in: input), amount: Money.parse(item.amount) ?? 0,
+                category: DraftResolver.category(named: item.category, in: categories))
+        })
     }
 
     static func duplicates(_ draft: TransactionDraft, in transactions: [Transaction], calendar: Calendar = .current) -> [Transaction] {

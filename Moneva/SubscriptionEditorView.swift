@@ -77,6 +77,9 @@ struct SubscriptionEditorView: View {
                     if let existing, let change = Subscriptions.priceChange(existing), change.currency == currency {
                         SubscriptionPriceChangeBadge(change: change)
                     }
+                    if let existing, paymentMode == .ask, Subscriptions.isPotentiallyUnused(existing) {
+                        unusedSubscriptionHint
+                    }
                 }
 
                 Section {
@@ -166,6 +169,16 @@ struct SubscriptionEditorView: View {
                 if category == nil { category = CategoryLibrary.visible(categories, scope: scope).first }
             }
         }
+    }
+
+    private var unusedSubscriptionHint: some View {
+        Label("You’ve skipped several payments in a row. Are you still using this subscription? Skipped payments don’t confirm service usage.", systemImage: "info.circle")
+            .font(.footnote)
+            .foregroundStyle(Palette.inkMuted)
+            .padding(10)
+            .background(Palette.ground, in: .rect(cornerRadius: 8))
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
     }
 
     private func save() {

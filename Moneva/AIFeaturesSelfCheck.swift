@@ -172,6 +172,17 @@ func aiFeaturesSelfCheck() {
         assert(ReceiptText.amount("12,34.56") == nil, "malformed grouping is rejected")
         assert(ReceiptText.amount("1,234,56") == nil, "grouping and decimal separators must differ")
         assert(ReceiptText.items(from: [.init(text: "COUPON -2.00", confidence: 1)])[0].contribution == -2)
+        let reconciledLines = [DraftedLineItem(name: "Milk", amount: "80", category: "Food"), DraftedLineItem(name: "Soap", amount: "72", category: "Home")]
+        switch ReceiptMath.resolveItems(reconciledLines, total: 152, categories: [food, home], input: "Milk 80 Soap 72") {
+        case .split(let resolved):
+            assert(resolved.count == 2 && resolved[0].category === food && resolved[1].category === home, "reconciled model items propose a split with their own categories")
+        case .collapse: assertionFailure("reconciled items must propose a split")
+        }
+        let mismatchedLines = [DraftedLineItem(name: "Milk", amount: "80", category: "Food")]
+        switch ReceiptMath.resolveItems(mismatchedLines, total: 200, categories: [food, home], input: "Milk 80") {
+        case .collapse: break
+        case .split: assertionFailure(">1% mismatch between summed items and total must collapse to a single transaction")
+        }
         ReceiptCategorizer.apply([
             ReceiptLineSuggestion(lineID: 0, categoryID: 999, confidence: .likely, kind: .item, alreadyIncluded: false, reason: "unknown"),
             ReceiptLineSuggestion(lineID: 1, categoryID: 0, confidence: .likely, kind: .item, alreadyIncluded: false, reason: "duplicate"),
