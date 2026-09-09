@@ -8,6 +8,7 @@ struct TransactionEditView: View {
     let transaction: Transaction
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query private var accounts: [Account]
 
     @State private var kind: TransactionKind
     @State private var amount: Decimal
@@ -15,12 +16,14 @@ struct TransactionEditView: View {
     @State private var note: String
     @State private var date: Date
     @State private var category: SpendingCategory?
+    @State private var account: Account?
     @State private var picking = false
     @State private var confirmingDelete = false
 
     private var scope: Scope { transaction.scope }
     private var currency: String { transaction.currency }
     private var isSplit: Bool { !transaction.allocations.isEmpty }
+    private var usableAccounts: [Account] { Accounts.visible(accounts).filter { $0.currency == currency } }
 
     init(transaction: Transaction) {
         self.transaction = transaction
@@ -30,6 +33,7 @@ struct TransactionEditView: View {
         _note = State(initialValue: transaction.note)
         _date = State(initialValue: transaction.date)
         _category = State(initialValue: transaction.category)
+        _account = State(initialValue: transaction.account)
     }
 
     private var canSave: Bool {
@@ -55,10 +59,17 @@ struct TransactionEditView: View {
                 Button {
                     picking = true
                 } label: {
-                    Label(category?.name ?? "Choose category", systemImage: category?.symbol ?? "square.grid.2x2")
+                    Label(category?.name ?? String(localized: "Choose category"), systemImage: category?.symbol ?? "square.grid.2x2")
                 }
                 .disabled(isSplit)
                 TextField("Merchant or source", text: $merchant)
+                // Only accounts in this transaction's currency: a balance never converts money.
+                if !usableAccounts.isEmpty {
+                    Picker("Account", selection: $account) {
+                        Text("None").tag(Account?.none)
+                        ForEach(usableAccounts, id: \.persistentModelID) { Text($0.name).tag(Account?.some($0)) }
+                    }
+                }
                 DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 TextField("Note", text: $note, axis: .vertical)
             }
@@ -67,7 +78,7 @@ struct TransactionEditView: View {
             if isSplit {
                 Section("Saved category split") {
                     ForEach(transaction.allocations) { allocation in
-                        LabeledContent(allocation.category?.name ?? "Deleted category", value: allocation.amount.money(currency))
+                        LabeledContent(allocation.category?.name ?? String(localized: "Deleted category"), value: allocation.amount.money(currency))
                     }
                     Text("The total, type and categories are fixed for this saved split. To replace the split, delete this expense and review the receipt again.")
                         .font(.caption)
@@ -133,6 +144,7 @@ struct TransactionEditView: View {
             transaction.note = note
             transaction.date = date
             transaction.category = category
+            transaction.account = account
         }
         dismiss()
     }

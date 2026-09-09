@@ -1,0 +1,144 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategoryEditorView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New income category",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "New category",
+        "location": {
+          "startingColumn": 91,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit category",
+        "location": {
+          "startingColumn": 109,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "Icon",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Colour",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "",
+        "key": "Monthly limit",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scope",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preview: %@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category name",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "A %@ category is already called that.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "A limit has to be more than zero.",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set a limit",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "Limit",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "Colour %lld",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 169
+        }
+      }
+    ]
+  },
+  "version": 1
+}

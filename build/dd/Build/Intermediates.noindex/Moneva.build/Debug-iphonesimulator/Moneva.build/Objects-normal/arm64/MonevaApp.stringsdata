@@ -1,0 +1,24 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/MonevaApp.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Scheduled payments",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 50
+        }
+      }
+    ]
+  },
+  "version": 1
+}

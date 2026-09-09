@@ -1,0 +1,37 @@
+{
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/BudgetView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/BudgetView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/BudgetView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/BudgetView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/BudgetView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/BudgetView.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Categories.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Categories.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Categories.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Categories.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Categories.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategoryClassifier.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryClassifier.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryClassifier.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryClassifier.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryClassifier.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryClassifier.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategoryEditorView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryEditorView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryEditorView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryEditorView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryEditorView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryEditorView.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategoryManagerView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryManagerView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryManagerView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryManagerView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryManagerView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/CategoryManagerView.swiftdeps"
+  }
+}

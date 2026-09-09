@@ -1,0 +1,30 @@
+{
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/HomeView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/HomeView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/HomeView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/HomeView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/HomeView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/HomeView.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/MerchantEmbedding.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantEmbedding.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantEmbedding.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantEmbedding.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantEmbedding.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantEmbedding.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/MerchantSeeds.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantSeeds.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantSeeds.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantSeeds.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantSeeds.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/MerchantSeeds.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Models.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Models.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Models.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Models.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Models.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Models.swiftdeps"
+  }
+}

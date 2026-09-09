@@ -1,9 +1,16 @@
 import SwiftUI
+import SwiftData
+import CloudKit
 
 struct SettingsView: View {
     @AppStorage(AppTheme.storageKey) private var themeRaw = AppTheme.system.rawValue
     @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Environment(\.dismiss) private var dismiss
+    @Query private var members: [FamilyMember]
+    @State private var activeShare: ShareBox?
+    @State private var shareError: String?
+    @State private var isLeaving = false
+    private var status = FamilySyncStatus.shared
 
     var body: some View {
         NavigationStack {
@@ -29,15 +36,84 @@ struct SettingsView: View {
                 } footer: {
                     Text("Moneva shows every amount in this currency. Past transactions keep the code they were saved with.")
                 }
+
+                Section {
+                    NavigationLink {
+                        StatementImportView()
+                    } label: {
+                        Label("Import statement", systemImage: "tablecells")
+                    }
+                } footer: {
+                    Text("Read a CSV export from your bank, tick what to keep, and save it as transactions.")
+                }
+
+                Section {
+                    if status.role == nil {
+                        Button("Invite someone", systemImage: "person.badge.plus") { presentShare() }
+                    } else {
+                        ForEach(members.sorted { $0.name < $1.name }, id: \.persistentModelID) { member in
+                            LabeledContent(member.name) {
+                                if member.isMe { Text("You").foregroundStyle(Palette.inkMuted) }
+                            }
+                        }
+                        if status.role == .owner {
+                            Button("Manage sharing", systemImage: "person.2") { presentShare() }
+                        }
+                        Button("Stop sharing", systemImage: "person.badge.minus", role: .destructive) { isLeaving = true }
+                    }
+                } header: {
+                    Text("Family")
+                } footer: {
+                    Text(familyFooter)
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
+            .sheet(item: $activeShare) { box in
+                CloudSharingSheet(share: box.share, container: .default())
+            }
+            .alert("Could not create share", isPresented: Binding(get: { shareError != nil }, set: { if !$0 { shareError = nil } })) {
+                Button("OK") { shareError = nil }
+            } message: { Text(shareError ?? "") }
+            .confirmationDialog("Stop sharing this budget?", isPresented: $isLeaving, titleVisibility: .visible) {
+                Button("Stop sharing", role: .destructive) { FamilySyncEngine.shared.stopSharing() }
+            } message: {
+                Text("Shared transactions stay on this device. They just stop syncing.")
+            }
         }
         .tint(Palette.accent)
     }
+
+    private var familyFooter: String {
+        if let error = status.lastError { return error }
+        switch status.role {
+        case nil:
+            return String(localized: "Share the Shared side of Moneva with one other person. Personal transactions never leave this device.")
+        case .owner:
+            return syncedLine ?? String(localized: "You started this family budget.")
+        case .participant:
+            return syncedLine ?? String(localized: "You joined this family budget.")
+        }
+    }
+
+    private var syncedLine: String? {
+        status.lastSyncedAt.map { String(localized: "Last synced \($0.formatted(date: .omitted, time: .shortened)).") }
+    }
+
+    private func presentShare() {
+        Task {
+            do { activeShare = ShareBox(share: try await FamilySyncEngine.shared.makeOrFetchShare()) }
+            catch { shareError = error.localizedDescription }
+        }
+    }
+}
+
+private struct ShareBox: Identifiable {
+    let id = UUID()
+    let share: CKShare
 }
 
 /// Flag, code and symbol — the three things that tell one currency from another
@@ -46,11 +122,11 @@ struct CurrencyLabel: View {
     let code: String
 
     var body: some View {
-        let symbol = Money.symbol(for: code)
+        let symbol = Money.displaySymbol(for: code)
         HStack(spacing: 8) {
             Text(Money.flag(for: code)).accessibilityHidden(true)
             Text(code).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-            // Some locales print the code itself as the symbol — "ALL ALL"
+            // A few currencies (CHF) have no symbol but their code — "CHF CHF"
             // reads like a bug, so the repeat is dropped.
             if symbol != code {
                 Text(symbol).font(.subheadline).foregroundStyle(Palette.inkMuted)

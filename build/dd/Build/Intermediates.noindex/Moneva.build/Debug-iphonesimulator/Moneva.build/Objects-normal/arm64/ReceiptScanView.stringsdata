@@ -1,0 +1,432 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/ReceiptScanView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Receipt review",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "",
+        "key": "How would you like to categorize this receipt?",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "Possible duplicate receipt",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipt saved",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "Assign the full receipt to one category.",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Review each item. Category amounts and percentages update as you edit.",
+        "location": {
+          "startingColumn": 97,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Check every line, including excluded summaries. Add missing items or adjustments; swipe to delete incorrect rows. Amounts are printed line totals, not unit prices.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add missing item",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "Line items",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm and save one expense",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "Review all lines and receipt details, select valid categories, and match the printed total to save.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter a valid amount, choose a category, and confirm you checked the details to save.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved to %@ · %@. It won't show in this month's %@ list.",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "",
+        "key": "Single category — full receipt total",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "",
+        "key": "Split by category — individual items",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save another copy",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "An expense with this merchant, date, currency and total already exists. Save only if this is a different purchase.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "Images stay on this iPhone. Keep image is off by default. Manual entry is always available.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scan with camera",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipt preview",
+        "location": {
+          "startingColumn": 106,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Keep this receipt image",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "Read receipt",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reading receipt on device…",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recognized text",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import receipt image",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "",
+        "key": "Percentages use the printed total. Rounded percentages may not add to 100%. Taxes and discounts affect their assigned category.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "Printed total",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 299
+        }
+      },
+      {
+        "comment": "",
+        "key": "Matched",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "Difference to resolve",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ (%@)",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 294
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose category",
+        "location": {
+          "startingColumn": 84,
+          "startingLine": 293
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category breakdown · %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scanned: %@",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "OCR confidence: %@. This measures text recognition, not category accuracy.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Item description",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Printed line total",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Line type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity (reference only)",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 325
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unit price (reference only)",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "Already included / summary — exclude",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category suggestion: likely (not a calibrated probability).",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category suggestion: uncertain — choose or verify manually.",
+        "location": {
+          "startingColumn": 119,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "I verified this line",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 340
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose category",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 330
+        }
+      },
+      {
+        "comment": "",
+        "key": "Excluded",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 344
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ · %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 344
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reviewed",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Needs review",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose category",
+        "location": {
+          "startingColumn": 121,
+          "startingLine": 344
+        }
+      }
+    ]
+  },
+  "version": 1
+}

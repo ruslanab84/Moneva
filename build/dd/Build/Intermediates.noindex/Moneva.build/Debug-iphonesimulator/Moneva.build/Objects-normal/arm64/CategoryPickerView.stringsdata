@@ -1,0 +1,96 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategoryPickerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Search categories",
+        "location": {
+          "startingColumn": 80,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "",
+        "key": "Income category",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "No category matches",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add one to get started.",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Try another word, or make a new category.",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manage",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 55
+        }
+      },
+      {
+        "comment": "",
+        "key": "New category",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick an icon and a colour",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick an icon, a colour and a limit",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 78
+        }
+      }
+    ]
+  },
+  "version": 1
+}

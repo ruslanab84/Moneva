@@ -78,10 +78,45 @@ enum Money {
             .filter { !$0.isNumber && !$0.isWhitespace }
     }
 
-    /// "USD $", but plain "AED" where the locale has no distinct symbol —
+    /// The glyph shown beside a code in pickers — never just the code again.
+    /// The locale's own symbol wins ("A$"); where it only has the code, fall back
+    /// to the narrow form ("₼", "Kz"), then to what the currency's home locale
+    /// prints ("د.إ", "Ksh"), then to a short table for the few ICU leaves bare.
+    static func displaySymbol(for code: String) -> String {
+        let standard = symbol(for: code)
+        if standard != code { return standard }
+        let narrow = Decimal.zero
+            .formatted(.currency(code: code).precision(.fractionLength(0)).presentation(.narrow))
+            .filter { !$0.isNumber && !$0.isWhitespace }
+        if narrow != code { return narrow }
+        if let native = nativeSymbols[code], native != code { return native }
+        return fallbackSymbols[code] ?? code
+    }
+
+    /// Symbol each currency's home locale prints, stripped of the RTL marks and
+    /// spacing ICU wraps around some of them.
+    private static let nativeSymbols: [String: String] = {
+        var symbols: [String: String] = [:]
+        for id in Locale.availableIdentifiers {
+            let locale = Locale(identifier: id)
+            guard let code = locale.currency?.identifier, let raw = locale.currencySymbol else { continue }
+            let symbol = String(String.UnicodeScalarView(raw.unicodeScalars.filter {
+                !$0.properties.isWhitespace && $0.properties.generalCategory != .format
+            }))
+            if !symbol.isEmpty, symbol != code, symbols[code] == nil { symbols[code] = symbol }
+        }
+        return symbols
+    }()
+
+    private static let fallbackSymbols = [
+        "ANG": "ƒ", "BGN": "лв", "CVE": "$", "LSL": "L", "RSD": "дин",
+        "SLL": "Le", "TMT": "m", "VES": "Bs.", "ZWG": "ZiG",
+    ]
+
+    /// "USD $", but plain "CHF" where no distinct symbol exists —
     /// repeating the code twice reads like a bug.
     static func label(for code: String) -> String {
-        let symbol = self.symbol(for: code)
+        let symbol = displaySymbol(for: code)
         return symbol == code ? code : "\(code) \(symbol)"
     }
 
@@ -145,18 +180,23 @@ enum AppTheme: String, CaseIterable, Identifiable {
 }
 
 extension Decimal {
+    /// Formatted with the currency's glyph rather than its code — the locale
+    /// prints "AZN 26.50" for anything foreign to it, which reads like a label.
     func money(_ code: String = Money.code) -> String {
-        formatted(.currency(code: code))
+        let text = formatted(.currency(code: code))
+        let symbol = Money.displaySymbol(for: code)
+        return symbol == code ? text : text.replacingOccurrences(of: code, with: symbol)
     }
 
     var doubleValue: Double { NSDecimalNumber(decimal: self).doubleValue }
 }
 
 struct CardBackground: ViewModifier {
-    var padding: CGFloat = 18
+    @ScaledMetric private var scaledPadding: CGFloat
+    init(padding: CGFloat = 18) { _scaledPadding = ScaledMetric(wrappedValue: padding) }
     func body(content: Content) -> some View {
         content
-            .padding(padding)
+            .padding(scaledPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Palette.card, in: .rect(cornerRadius: 24))
             .shadow(color: .black.opacity(0.06), radius: 18, x: 0, y: 10)
@@ -167,32 +207,52 @@ extension View {
     func monevaCard(padding: CGFloat = 18) -> some View { modifier(CardBackground(padding: padding)) }
 }
 
+/// Small caps section label. Two initialisers — like `Text` itself — so a
+/// literal ("Budget") reaches the localization catalog while data already in
+/// hand (a category name) renders verbatim instead of doing a doomed catalog
+/// lookup on arbitrary user content.
 struct Eyebrow: View {
-    let text: String
-    init(_ text: String) { self.text = text }
+    private let content: Text
+    init(_ key: LocalizedStringKey) { content = Text(key) }
+    init<S: StringProtocol>(_ content: S) { self.content = Text(content) }
+
     var body: some View {
-        Text(text.uppercased())
+        content
             .font(.caption2.weight(.semibold))
             .tracking(1.1)
+            .textCase(.uppercase) // locale-correct casing; VoiceOver still reads the natural-case string
             .foregroundStyle(Palette.inkFaint)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
-/// Bar that shows budget usage. Colour never carries the state alone —
-/// callers pair it with the amount label.
+/// Bar that shows budget usage. Exposes its own percentage to VoiceOver —
+/// callers that already build an adjacent combined label (e.g. a row using
+/// `.accessibilityElement(children: .combine)` with an explicit label) should
+/// hide their redundant percent text instead of double-announcing it.
 struct ProgressBar: View {
     let progress: Double
     var tint: Color = Palette.accent
     var height: CGFloat = 8
+    var accessibilityLabel: LocalizedStringKey = "Progress"
+
+    private static let percentFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .percent
+        return formatter
+    }()
 
     var body: some View {
+        let clamped = min(max(progress, 0), 1)
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Palette.line)
-                Capsule().fill(tint).frame(width: geo.size.width * min(max(progress, 0), 1))
+                Capsule().fill(tint).frame(width: geo.size.width * clamped)
             }
         }
         .frame(height: height)
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(Self.percentFormatter.string(from: NSNumber(value: clamped)) ?? "\(Int((clamped * 100).rounded()))%")
     }
 }

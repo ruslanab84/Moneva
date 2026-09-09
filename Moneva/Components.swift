@@ -27,6 +27,33 @@ struct CategoryBadge: View {
     }
 }
 
+struct TypewriterText: View {
+    let text: String
+    var interval: Double = 0.04
+    var animate: Bool = true
+    @State private var shownWords: Int
+
+    init(text: String, interval: Double = 0.04, animate: Bool = true) {
+        self.text = text
+        self.interval = interval
+        self.animate = animate
+        _shownWords = State(initialValue: animate ? 0 : Int.max)
+    }
+
+    private var words: [String] { text.split(separator: " ").map(String.init) }
+
+    var body: some View {
+        Text(words.prefix(shownWords).joined(separator: " "))
+            .task {
+                guard animate else { return }
+                for count in 1...max(words.count, 1) {
+                    shownWords = count
+                    try? await Task.sleep(for: .seconds(interval))
+                }
+            }
+    }
+}
+
 struct TransactionRow: View {
     let transaction: Transaction
 
@@ -34,7 +61,7 @@ struct TransactionRow: View {
         HStack(spacing: 12) {
             CategoryBadge(category: transaction.category)
             VStack(alignment: .leading, spacing: 2) {
-                Text(transaction.merchant.isEmpty ? (transaction.category?.name ?? "Transaction") : transaction.merchant)
+                Text(transaction.merchant.isEmpty ? (transaction.category?.name ?? String(localized: "Transaction")) : transaction.merchant)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.ink)
                 Text(subtitle)
@@ -52,9 +79,14 @@ struct TransactionRow: View {
     }
 
     private var subtitle: String {
-        var parts = [transaction.allocations.isEmpty ? (transaction.category?.name ?? "Uncategorised") : transaction.allocations.map { "\($0.category?.name ?? "Uncategorised"): \($0.amount.money(transaction.currency))" }.joined(separator: ", ")]
+        let uncategorised = String(localized: "Uncategorised")
+        var parts = [transaction.allocations.isEmpty ? (transaction.category?.name ?? uncategorised) : transaction.allocations.map { "\($0.category?.name ?? uncategorised): \($0.amount.money(transaction.currency))" }.joined(separator: ", ")]
         parts.append(transaction.date.formatted(date: .omitted, time: .shortened))
-        if transaction.scope == .shared { parts.append("Shared") }
+        if transaction.scope == .shared {
+            // Who entered it beats the bare word "Shared": in a family budget
+            // that is the part nobody can infer from the amount.
+            parts.append(FamilySyncEngine.shared.memberName(for: transaction.authorID) ?? String(localized: "Shared"))
+        }
         if transaction.source != .manual { parts.append(transaction.source.rawValue) }
         return parts.joined(separator: " · ")
     }
@@ -64,22 +96,28 @@ struct TransactionRow: View {
     }
 
     private var accessibilityLabel: String {
-        "\(transaction.merchant), \(transaction.category?.name ?? "uncategorised"), \(amountText), \(transaction.date.formatted(date: .abbreviated, time: .shortened))"
+        "\(transaction.merchant), \(transaction.category?.name ?? String(localized: "uncategorised")), \(amountText), \(transaction.date.formatted(date: .abbreviated, time: .shortened))"
     }
 }
 
 struct EmptyHint: View {
-    let title: String
-    let message: String
+    let title: Text
+    let message: Text
     let symbol: String
+
+    init(title: LocalizedStringKey, message: LocalizedStringKey, symbol: String) {
+        self.title = Text(title)
+        self.message = Text(message)
+        self.symbol = symbol
+    }
 
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(.title2)
                 .foregroundStyle(Palette.accent)
-            Text(title).font(.headline).foregroundStyle(Palette.ink)
-            Text(message)
+            title.font(.headline).foregroundStyle(Palette.ink)
+            message
                 .font(.footnote)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Palette.inkMuted)
@@ -91,13 +129,22 @@ struct EmptyHint: View {
 }
 
 /// Screen chrome shared by every tab: warm ground, generous top spacing.
+/// `title`/`eyebrow` take `Text` so callers can pass either a localized
+/// literal ("Budget") or an already-formatted value (a localized month
+/// string) through the same initializer, like `Text` itself does.
 struct ScreenScroll<Content: View>: View {
-    let title: String
-    let eyebrow: String?
+    let title: Text
+    let eyebrow: Text?
     @ViewBuilder var content: Content
 
-    init(title: String, eyebrow: String? = nil, @ViewBuilder content: () -> Content) {
-        self.title = title
+    init(title: LocalizedStringKey, eyebrow: Text? = nil, @ViewBuilder content: () -> Content) {
+        self.title = Text(title)
+        self.eyebrow = eyebrow
+        self.content = content()
+    }
+
+    init<S: StringProtocol>(title: S, eyebrow: Text? = nil, @ViewBuilder content: () -> Content) {
+        self.title = Text(title)
         self.eyebrow = eyebrow
         self.content = content()
     }
@@ -106,8 +153,14 @@ struct ScreenScroll<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 2) {
-                    if let eyebrow { Eyebrow(eyebrow) }
-                    Text(title)
+                    if let eyebrow {
+                        eyebrow
+                            .font(.caption2.weight(.semibold))
+                            .tracking(1.1)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Palette.inkFaint)
+                    }
+                    title
                         .font(.money(.largeTitle))
                         .foregroundStyle(Palette.ink)
                 }
@@ -126,7 +179,7 @@ struct ScreenScroll<Content: View>: View {
 /// keystroke and drops characters typed during the round-trip, so the field
 /// holds plain text and parses on change instead.
 struct AmountField: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var value: Decimal
     /// Read once per field so the symbol matches whatever the settings say.
     var currencyCode: String = Money.code

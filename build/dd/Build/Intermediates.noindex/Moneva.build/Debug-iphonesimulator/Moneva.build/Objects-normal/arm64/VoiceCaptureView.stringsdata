@@ -1,0 +1,200 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/VoiceCaptureView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Smart subscription",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "Text & voice",
+        "location": {
+          "startingColumn": 69,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "Netflix, 15 USD monthly, next payment September 20",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "Today, coffee 5 AZN, taxi 12 AZN",
+        "location": {
+          "startingColumn": 102,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "Transcript: %@",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter manually",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create editable drafts",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Processing on this iPhone…",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save this transaction",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove draft",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. that was for two people, wrong currency",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "Refine",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "Discard drafts and revise text",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm and save %lld transactions",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nothing is saved until you confirm. Currency totals are kept separate.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "Discard remaining drafts",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 154
+        }
+      },
+      {
+        "comment": "",
+        "key": "Each draft saves separately. Nothing is saved until you tap Save on it.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stop listening",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use microphone",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "Listening…",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap to speak",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap again to stop",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 338
+        }
+      },
+      {
+        "comment": "",
+        "key": "Or type it below",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 338
+        }
+      }
+    ]
+  },
+  "version": 1
+}

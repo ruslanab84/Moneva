@@ -1,0 +1,72 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Components.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Scope",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 7
+        }
+      },
+      {
+        "comment": "",
+        "key": "Transaction",
+        "location": {
+          "startingColumn": 102,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Uncategorised",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shared",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "uncategorised",
+        "location": {
+          "startingColumn": 85,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kind",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "",
+        "key": "Currency",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 245
+        }
+      }
+    ]
+  },
+  "version": 1
+}

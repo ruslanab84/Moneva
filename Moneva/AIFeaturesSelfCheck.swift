@@ -8,8 +8,8 @@ import FoundationModels
 func aiFeaturesSelfCheck() {
     do {
         let container = try ModelContainer(for: Transaction.self, SpendingCategory.self, TransactionAllocation.self,
-            MerchantCategoryRule.self, Subscription.self, SubscriptionPayment.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+            MerchantCategoryRule.self, Subscription.self, SubscriptionPayment.self, CategoryExemplar.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let context = container.mainContext
         context.autosaveEnabled = false
         let food = SpendingCategory(name: "Food", symbol: "cart", tintHex: "B5813F", softHex: "F0E6D6")
@@ -21,6 +21,23 @@ func aiFeaturesSelfCheck() {
         calendar.timeZone = TimeZone(identifier: "Asia/Baku")!
         assert(DraftResolver.grounded("Coffee Shop", in: "coffee 5 AZN").isEmpty, "invented merchant labels are removed")
         assert(DraftResolver.grounded("Bravo", in: "Spent 5 AZN at Bravo") == "Bravo")
+
+        // preferFuture: a bare "5 october" with no year, said in September, must roll to this
+        // October (subscription "next payment"), not silently resolve to nil -> today.
+        let septemberNow = calendar.date(from: DateComponents(year: 2026, month: 9, day: 12))!
+        let bareOctober = DraftDate(offsetDays: nil, year: nil, month: 10, day: 5)
+        let resolvedOctober = DraftResolver.date(bareOctober, now: septemberNow, calendar: calendar, preferFuture: true)
+        assert(resolvedOctober == calendar.date(from: DateComponents(year: 2026, month: 10, day: 5)), "a bare month/day resolves to this year when it is still upcoming")
+        let bareJanuary = DraftDate(offsetDays: nil, year: nil, month: 1, day: 5)
+        let resolvedJanuary = DraftResolver.date(bareJanuary, now: septemberNow, calendar: calendar, preferFuture: true)
+        assert(resolvedJanuary == calendar.date(from: DateComponents(year: 2027, month: 1, day: 5)), "a bare month/day already past this year rolls to next year")
+        assert(DraftResolver.date(bareOctober, now: septemberNow, calendar: calendar) == nil, "transactions keep requiring an explicit year for a bare month/day")
+
+        // Generable output isn't guaranteed sparse: the model can fill offsetDays: 0 alongside a real
+        // month/day. Explicit month/day must still win, not silently fail and fall back to today.
+        let octoberWithStrayOffset = DraftDate(offsetDays: 0, year: nil, month: 10, day: 5)
+        let resolvedDespiteStrayOffset = DraftResolver.date(octoberWithStrayOffset, now: septemberNow, calendar: calendar, preferFuture: true)
+        assert(resolvedDespiteStrayOffset == calendar.date(from: DateComponents(year: 2026, month: 10, day: 5)), "an explicit month/day wins even when the model also fills offsetDays")
 
         let dynamicContent = GeneratedContent(properties: [
             "kind": DraftKind.expense, "amount": "12.5", "currency": "AZN",
@@ -37,10 +54,28 @@ func aiFeaturesSelfCheck() {
         ]))
         let unmatched = DraftResolver.resolve(nearMiss, categories: [food], rules: [], scope: .personal, source: .text, input: "")
         assert(unmatched.category == nil && unmatched.suggestedName == "Foods extra", "fuzzy category matching is removed; a near-miss name falls to the new-category suggestion instead of silently attaching to an unrelated category")
+        // refine() re-resolves the model's corrected GeneratedContent the same way as a first draft —
+        // this checks the resolver side of that path (session/transcript continuity needs a real device).
+        let refinedContent = GeneratedContent(properties: [
+            "kind": DraftKind.expense, "amount": "6.25", "currency": "AZN",
+            "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
+            "merchant": "Cafe", "note": "split with a friend", "category": "Food", "symbol": "cart", "clarification": "",
+        ])
+        let refinedDraft = try DraftedTransaction(decoding: refinedContent)
+        let resolvedRefinement = DraftResolver.resolve(refinedDraft, categories: [food], rules: [], scope: .personal, source: .text, input: "coffee 5 AZN\nthat was 6.25, split with a friend")
+        assert(resolvedRefinement.amount == Decimal(string: "6.25") && resolvedRefinement.note == "split with a friend" && resolvedRefinement.category === food,
+            "a refine correction resolves through the same grounding/category rules as the first draft")
         let batchDrafts = DraftResolver.resolve([nearMiss, decodedDraft], categories: [food], rules: [], scope: .personal, source: .text, input: "")
         assert(batchDrafts.count == 2, "batch resolve returns one draft per item")
         assert(batchDrafts[0].category == nil && batchDrafts[0].suggestedName == "Foods extra", "batch resolve preserves each item's own resolution")
         assert(batchDrafts[1].currency == "AZN" && batchDrafts[1].scope == .personal, "batch resolve takes scope from the caller's context, not the drafted item")
+        let phantomBlank = try DraftedTransaction(decoding: GeneratedContent(properties: [
+            "kind": DraftKind.income, "amount": "", "currency": "USD",
+            "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
+            "merchant": "", "note": "", "category": "Other income", "symbol": "cart", "clarification": "",
+        ]))
+        let batchWithPhantom = DraftResolver.resolve([decodedDraft, phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN")
+        assert(batchWithPhantom.count == 1, "a fully blank item the model hallucinated alongside a real one (no amount, no grounded merchant or note) is dropped, not surfaced as a second draft to review")
         let date = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!
         let forecastStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 6))!
         let forecastEnd = calendar.date(byAdding: .month, value: 12, to: forecastStart)!
@@ -61,6 +96,7 @@ func aiFeaturesSelfCheck() {
         let combinedAnswer = SubscriptionDigest.costAnswer(.nextTwelveMonths, subscriptions: [iCloud, otherCurrency], now: forecastStart, calendar: calendar)
         assert(combinedAnswer.contains(Decimal(120).money("USD")) && combinedAnswer.contains(Decimal(36).money("AZN")), "currencies must not be summed together")
         assert(SubscriptionDigest.costAnswer(.restOfYear, subscriptions: [iCloud], now: forecastStart, calendar: calendar).hasPrefix("iCloud: \(Decimal(12).money("AZN"))"), "remaining calendar year differs from a full year")
+        assert(SubscriptionDigest.costAnswer(.nextMonth, subscriptions: [iCloud], now: forecastStart, calendar: calendar).hasPrefix("iCloud: \(Decimal(3).money("AZN")) next month"), "a next-month question must not answer with the 12-month total")
         iCloud.endDate = calendar.date(from: DateComponents(year: 2026, month: 12, day: 8))!
         assert(Subscriptions.projectedCost(iCloud, in: forecastRange, calendar: calendar) == 12, "the final payment date is inclusive")
         iCloud.status = .paused
@@ -85,9 +121,46 @@ func aiFeaturesSelfCheck() {
         try DraftStore.save([first, second], in: context)
         let savedCount = try context.fetchCount(FetchDescriptor<Transaction>())
         assert(savedCount == 2, "retry must not duplicate saves")
+        let exemplars = try context.fetch(FetchDescriptor<CategoryExemplar>())
+        assert(exemplars.contains { $0.normalizedMerchant == CategoryLibrary.fold("Cafe") && $0.category === food },
+            "a confirmed save teaches CategoryExemplar independent of the opt-in merchant rule")
         let rules = try context.fetch(FetchDescriptor<MerchantCategoryRule>())
         assert(rules.count == 1 && CategoryLibrary.ruleCategory(merchant: " cafe ", scope: .personal, rules: rules) === food)
         assert(CategoryLibrary.ruleCategory(merchant: "Cafe", scope: .shared, rules: rules) == nil)
+        let rescued = DraftResolver.ruleFallback(input: "coffee at Cafe today", rules: rules, scope: .personal, source: .voice)
+        assert(rescued.category === food && !rescued.canSave, "GenerationError fallback matches a known merchant rule and still needs manual review before saving")
+        let unrescued = DraftResolver.ruleFallback(input: "mystery charge", rules: rules, scope: .personal, source: .voice)
+        assert(unrescued.category == nil, "an unmatched fallback leaves category for the user to pick, not a guess")
+
+        // DraftResolver.resolveCategory: MerchantRule -> CategoryClassifier priority chain. Pure and
+        // synchronous, so this exercises the exact decision a caller uses to skip a Foundation Models
+        // call — no real model, no CategoryIndex, no async classify() involved.
+        let confidentMatch = ClassificationResult(category: home, confidence: 0.9, margin: 0.3)
+        let ruleWins = DraftResolver.resolveCategory(merchant: " cafe ", scope: .personal, kind: .expense, categories: [food, home], rules: rules, classification: confidentMatch)
+        assert(ruleWins.category === food && ruleWins.confident, "an exact merchant rule outranks a confident classifier match for the same merchant")
+        let classifierWins = DraftResolver.resolveCategory(merchant: "Unknown Kiosk", scope: .personal, kind: .expense, categories: [food, home], rules: rules, classification: confidentMatch)
+        assert(classifierWins.category === home && classifierWins.confident, "with no matching rule, a confident+high-margin classifier result resolves on its own")
+        let contested = ClassificationResult(category: home, confidence: 0.9, margin: 0.05)
+        let contestedResolution = DraftResolver.resolveCategory(merchant: "Unknown Kiosk", scope: .personal, kind: .expense, categories: [food, home], rules: rules, classification: contested)
+        assert(!contestedResolution.confident && contestedResolution.category == nil,
+            "high confidence with a thin margin must not auto-resolve — the whole point of gating on both")
+        let noSignal = DraftResolver.resolveCategory(merchant: "Unknown Kiosk", scope: .personal, kind: .expense, categories: [food, home], rules: rules, classification: nil)
+        assert(!noSignal.confident && noSignal.category == nil, "no rule and no classification falls through, leaving room for Foundation Models")
+
+        // resolve() end-to-end: a confident classification must win over the model's own `category`
+        // guess, not just sit alongside it — this is the order-of-calls guarantee the ticket asks for.
+        let modelGuessedWrong = try DraftedTransaction(decoding: GeneratedContent(properties: [
+            "kind": DraftKind.expense, "amount": "5", "currency": "AZN",
+            "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
+            "merchant": "Kiosk", "note": "", "category": "Home", "symbol": "cart", "clarification": "",
+        ]))
+        let overridden = DraftResolver.resolve(modelGuessedWrong, categories: [food, home], rules: [], scope: .personal, source: .text, input: "Kiosk 5 AZN", classification: ClassificationResult(category: food, confidence: 0.9, margin: 0.3))
+        assert(overridden.category === food && overridden.categoryConfident && overridden.categoryMargin == 0.3,
+            "a confident classifier match overrides the model's own category guess, and the draft records why")
+        let notOverridden = DraftResolver.resolve(modelGuessedWrong, categories: [food, home], rules: [], scope: .personal, source: .text, input: "Kiosk 5 AZN", classification: contested)
+        assert(notOverridden.category === home && !notOverridden.categoryConfident,
+            "without a confident classifier match, the model's own category guess is kept but flagged unconfident")
+
         first.category = shared
         assert(!first.canSave, "personal entry cannot use shared-only category")
 
@@ -196,6 +269,11 @@ func aiFeaturesSelfCheck() {
         let monday = calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!
         let weekend = try SpendingSearch.range(.lastWeekend, now: monday, calendar: calendar)!
         assert(weekend.contains(date) && !weekend.contains(monday), "local weekend range is half-open")
+        let tuesday = calendar.date(from: DateComponents(year: 2026, month: 9, day: 15))!
+        let thisWeek = try SpendingSearch.range(.thisWeek, now: tuesday, calendar: calendar)!
+        assert(thisWeek.contains(tuesday), "this week always contains today, never a computed custom range that excludes it")
+        let lastWeek = try SpendingSearch.range(.lastWeek, now: tuesday, calendar: calendar)!
+        assert(lastWeek.upperBound == thisWeek.lowerBound && !lastWeek.contains(tuesday), "last week ends exactly where this week starts")
         let subscription = Subscription(name: "Netflix", amount: 15, currency: "USD", nextPaymentDate: date, paymentMode: .ask, category: home, calendar: calendar)
         context.insert(subscription)
         try context.save()
@@ -223,6 +301,8 @@ func aiFeaturesSelfCheck() {
         try context.save()
         let afterDelete = try context.fetch(FetchDescriptor<Transaction>())
         assert(afterDelete.contains { $0 === past }, "deleting schedule preserves history")
+        try financialToolsSelfCheck()
+
         print("Moneva AI feature self-checks passed")
     } catch { assertionFailure("AI feature self-check failed: \(error)") }
 }

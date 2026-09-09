@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>13</integer>
+	<key>logs</key>
+	<dict>
+		<key>73318FEB-2CCE-453A-941F-9CEF2AF0A65D</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>73318FEB-2CCE-453A-941F-9CEF2AF0A65D.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>16</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>Moneva project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>Moneva</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project Moneva with scheme Moneva and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>811522974.91243899</real>
+			<key>timeStoppedRecording</key>
+			<real>811524021.41526604</real>
+			<key>title</key>
+			<string>Building project Moneva with scheme Moneva and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>73318FEB-2CCE-453A-941F-9CEF2AF0A65D</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

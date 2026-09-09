@@ -9,6 +9,7 @@ struct ReceiptScanView: View {
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
     @Query private var categories: [SpendingCategory]
     @Query private var transactions: [Transaction]
+    @Query private var rules: [MerchantCategoryRule]
     @State private var receipt = Receipt()
     @State private var pickingItem: ReceiptItem?
     @State private var image: UIImage?
@@ -25,6 +26,7 @@ struct ReceiptScanView: View {
     @State private var duplicateWarning = false
     @State private var saved = false
     @State private var task: Task<Void, Never>?
+    @State private var savedElsewhere: String?
 
     private var canSave: Bool { !busy && !saved && !choosingMode && receipt.canSave }
 
@@ -33,9 +35,6 @@ struct ReceiptScanView: View {
             Form {
                 captureSection
                 Section {
-                    Picker("Categorization", selection: $receipt.mode) {
-                        ForEach(ReceiptMode.allCases) { Text($0.title).tag($0) }
-                    }
                     Text(receipt.mode == .single ? "Assign the full receipt to one category." : "Review each item. Category amounts and percentages update as you edit.")
                         .font(.caption)
                 }
@@ -77,8 +76,10 @@ struct ReceiptScanView: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .disabled(!canSave)
-                    if receipt.mode == .split && !receipt.canSave {
-                        Text("Review all lines and receipt details, select valid categories, and match the printed total to save.")
+                    if !receipt.canSave {
+                        Text(receipt.mode == .split
+                            ? "Review all lines and receipt details, select valid categories, and match the printed total to save."
+                            : "Enter a valid amount, choose a category, and confirm you checked the details to save.")
                             .font(.caption).foregroundStyle(Palette.warning)
                     }
                 }
@@ -160,6 +161,9 @@ struct ReceiptScanView: View {
                 Button("Save another copy") { save() }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("An expense with this merchant, date, currency and total already exists. Save only if this is a different purchase.") }
+            .alert("Receipt saved", isPresented: Binding(get: { savedElsewhere != nil }, set: { if !$0 { savedElsewhere = nil } })) {
+                Button("OK") { dismiss() }
+            } message: { Text(savedElsewhere ?? "") }
             .onDisappear { task?.cancel() }
         }
     }
@@ -167,7 +171,9 @@ struct ReceiptScanView: View {
     private var captureSection: some View {
         Section {
             if VNDocumentCameraViewController.isSupported {
-                Button("Scan with camera", systemImage: "doc.viewfinder") { scanning = true }.disabled(busy)
+                Button("Scan with camera", systemImage: "doc.viewfinder") {
+                    DispatchQueue.main.async { scanning = true }
+                }.disabled(busy)
             }
             PhotosPicker(selection: $photo, matching: .images) { Label("Import receipt image", systemImage: "photo") }.disabled(busy)
             if let image {
@@ -205,16 +211,23 @@ struct ReceiptScanView: View {
                 do {
                     let visible = CategoryLibrary.visible(categories, scope: receipt.draft.scope)
                     let result = try await OnDeviceAI.generate(DraftedReceipt.self,
-                        instructions: "Extract one expense using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts to produce the total. Also extract every printed line item with its own amount and best existing category; leave items empty if the receipt has no readable line items. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
+                        instructions: "Extract one expense using only the printed final paid total. Never use subtotal, tendered cash or change, and never sum items, taxes or discounts to produce the total. Also extract every printed line item with its own amount and best existing category; leave items empty if the receipt has no readable line items. Use only a calendar date printed on the receipt, as year, month and day; never a relative day offset and never today's date as a guess. Missing date/currency/total must remain empty or nil and require clarification. Suggest one existing category for the whole receipt; leave it empty if unclear.",
                         data: OnDeviceAI.context(categories: visible) + "\nReceipt text:\n" + ocr)
-                    let date = DraftResolver.date(result.date)
+                    // A printed receipt never says "yesterday" — only an explicit printed date counts here.
+                    let date = DraftResolver.date(result.date, allowRelative: false)
                     let currency = result.currency.uppercased()
                     receipt.draft.amount = Money.parse(result.total) ?? 0
                     receipt.draft.currency = Money.pickerCodes.contains(currency) ? currency : Money.code
                     receipt.draft.merchant = DraftResolver.grounded(result.merchant, in: ocr)
                     receipt.draft.date = date ?? .now
                     receipt.draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed final total against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")
-                    receipt.draft.category = DraftResolver.category(named: result.category, in: visible)
+                    // Rule, then classifier, both outrank the model's own category guess — the receipt
+                    // path previously trusted only the model's raw name here, skipping both.
+                    let classification = await CategoryClassifier.classify(merchant: receipt.draft.merchant, scope: receipt.draft.scope, categories: visible, container: context.container)
+                    let resolution = DraftResolver.resolveCategory(merchant: receipt.draft.merchant, scope: receipt.draft.scope, kind: .expense, categories: categories, rules: rules, classification: classification)
+                    receipt.draft.category = resolution.category ?? DraftResolver.category(named: result.category, in: visible)
+                    receipt.draft.categoryConfident = resolution.category != nil
+                    receipt.draft.categoryMargin = resolution.margin
                     // The model's own line items checked against its own total: mismatched (>1%) collapses to
                     // this single transaction (current behavior); reconciled proposes a split by category.
                     switch ReceiptMath.resolveItems(result.items, total: receipt.draft.amount, categories: visible, input: ocr) {
@@ -253,7 +266,12 @@ struct ReceiptScanView: View {
         do {
             try receipt.save(in: context, image: retainImage ? image?.jpegData(compressionQuality: 0.8) : nil)
             saved = true
-            dismiss()
+            let currentScope = Scope(rawValue: scopeRaw) ?? .personal
+            if receipt.draft.scope != currentScope || !Budgeting.monthRange(for: .now).contains(receipt.draft.date) {
+                savedElsewhere = String(localized: "Saved to \(receipt.draft.scope.title) · \(receipt.draft.date.formatted(.dateTime.month(.wide).year())). It won't show in this month's \(currentScope.title) list.")
+            } else {
+                dismiss()
+            }
         } catch { self.error = error.localizedDescription }
     }
 }
@@ -273,7 +291,7 @@ struct ReceiptBreakdownSection: View {
                     }
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label(group.allocation.category?.name ?? "Choose category", systemImage: group.allocation.category?.symbol ?? "questionmark.circle")
+                        Label(group.allocation.category?.name ?? String(localized: "Choose category"), systemImage: group.allocation.category?.symbol ?? "questionmark.circle")
                         Text("\(group.allocation.amount.money(currency)) (\(group.fraction.map { $0.formatted(.percent.precision(.fractionLength(0...1))) } ?? "—"))")
                             .monospacedDigit()
                     }
@@ -310,7 +328,7 @@ struct ReceiptItemRow: View {
             Toggle("Already included / summary — exclude", isOn: $item.alreadyIncluded)
             if !item.alreadyIncluded {
                 Button(action: pickCategory) {
-                    Label(item.category?.name ?? "Choose category", systemImage: item.category?.symbol ?? "square.grid.2x2")
+                    Label(item.category?.name ?? String(localized: "Choose category"), systemImage: item.category?.symbol ?? "square.grid.2x2")
                 }
             }
             if !item.sourceText.isEmpty { Text("Scanned: \(item.sourceText)").font(.caption).textSelection(.enabled) }
@@ -324,7 +342,7 @@ struct ReceiptItemRow: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name.isEmpty ? "New item" : item.name)
-                Text("\(item.alreadyIncluded ? "Excluded" : item.category?.name ?? "Choose category") · \(item.contribution.money(currency))")
+                Text("\(item.alreadyIncluded ? String(localized: "Excluded") : item.category?.name ?? String(localized: "Choose category")) · \(item.contribution.money(currency))")
                     .font(.caption)
                 Label(item.reviewed ? "Reviewed" : "Needs review", systemImage: item.reviewed ? "checkmark.circle" : "exclamationmark.circle")
                     .font(.caption).foregroundStyle(item.reviewed ? Palette.inkMuted : Palette.warning)

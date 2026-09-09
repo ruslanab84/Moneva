@@ -1,0 +1,30 @@
+{
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/SpendingSearch.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SpendingSearch.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SpendingSearch.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SpendingSearch.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SpendingSearch.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SpendingSearch.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/SubscriptionEditorView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionEditorView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionEditorView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionEditorView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionEditorView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionEditorView.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/SubscriptionInsight.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionInsight.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionInsight.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionInsight.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionInsight.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/SubscriptionInsight.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Subscriptions.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Subscriptions.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Subscriptions.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Subscriptions.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Subscriptions.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/Subscriptions.swiftdeps"
+  }
+}

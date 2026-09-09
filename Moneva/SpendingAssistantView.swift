@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import FoundationModels
 
 struct SpendingAssistantView: View {
     let scope: Scope
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Query private var transactions: [Transaction]
     @Query private var categories: [SpendingCategory]
     @Query private var budgets: [Budget]
@@ -13,7 +15,9 @@ struct SpendingAssistantView: View {
     @State private var busy = false
     @State private var error: String?
     @State private var selectedFacts: [SpendingFact] = []
+    @State private var typedFactIDs: Set<Int> = []
     @State private var source: SpendingFact?
+    @State private var askAnswer: String?
     @State private var task: Task<Void, Never>?
     @State private var period: SearchPeriod = .thisMonth
     @State private var merchant = ""
@@ -39,6 +43,9 @@ struct SpendingAssistantView: View {
                     if let reason = TransactionDrafter.unavailableReason { Text(reason).font(.caption) }
                     if let error { Text(error).foregroundStyle(Palette.over) }
                 }
+                if let askAnswer {
+                    Section("Answer") { Text(askAnswer) }
+                }
                 Section {
                     DisclosureGroup("Manual search filters") {
                         Picker("Period", selection: $period) {
@@ -49,7 +56,7 @@ struct SpendingAssistantView: View {
                             DatePicker("Through", selection: $end, displayedComponents: .date)
                         }
                         TextField("Merchant contains", text: $merchant)
-                        Button(category?.name ?? "Any category") { picking = true }
+                        Button(category?.name ?? String(localized: "Any category")) { picking = true }
                         if category != nil { Button("Clear category") { category = nil } }
                         Picker("Currency", selection: $currency) {
                             Text("All, totaled separately").tag("")
@@ -65,6 +72,7 @@ struct SpendingAssistantView: View {
                         Button("Apply filters") { applyManual() }.disabled(busy)
                     }
                     Button("Show calculated spending report") {
+                        typedFactIDs = []
                         selectedFacts = SpendingReport.facts(transactions: transactions, categories: categories, budgets: budgets, subscriptions: subscriptions, scope: scope)
                     }.disabled(busy)
                 }
@@ -94,7 +102,13 @@ struct SpendingAssistantView: View {
                     Section("Calculated explanations") {
                         Text("This month is incomplete. Missing history may make comparisons incomplete. Each amount comes from stored records; currencies are kept separate.").font(.footnote)
                         ForEach(selectedFacts) { fact in
-                            Button { source = fact } label: { Text(fact.text).foregroundStyle(Palette.ink) }
+                            Button { source = fact } label: {
+                                HStack(spacing: 10) {
+                                    if let category = fact.category { CategoryBadge(category: category, size: 28) }
+                                    TypewriterText(text: fact.text, animate: !typedFactIDs.contains(fact.id)).foregroundStyle(Palette.ink)
+                                }
+                            }
+                            .onAppear { typedFactIDs.insert(fact.id) }
                         }
                     }
                 }
@@ -123,17 +137,15 @@ struct SpendingAssistantView: View {
         busy = true
         error = nil
         filter = nil
+        askAnswer = nil
         selectedFacts = []
+        typedFactIDs = []
         task = Task {
             defer { busy = false }
             do {
                 if explain {
-                    let facts = SpendingReport.facts(transactions: transactions, categories: categories, budgets: budgets, subscriptions: subscriptions, scope: scope)
-                    let result = try await OnDeviceAI.generate(SelectedFacts.self,
-                        instructions: "Select provided facts that answer the spending question. Only IDs, no new claims. Do not infer unused subscriptions or reasons not evidenced by purchases.",
-                        data: "Question: \(question.isEmpty ? "Explain my spending and budgets" : question)\nFacts:\n" + facts.map { "\($0.id): \($0.text)" }.joined(separator: "\n"))
-                    selectedFacts = Array(Set(result.ids)).sorted().filter { facts.indices.contains($0) }.map { facts[$0] }
-                    if selectedFacts.isEmpty { error = "Stored records do not provide enough information to answer that." }
+                    let service = FinancialToolService(context: modelContext, scope: scope, currency: currency.isEmpty ? Money.code : currency)
+                    askAnswer = try await FinancialToolRegistry.answer(question: question.isEmpty ? "Summarize my income and expenses this month" : question, service: service)
                 } else {
                     let result = try await OnDeviceAI.generate(DraftedSearch.self,
                         instructions: "Convert the question into narrow transaction filters. Prefer named period presets for relative dates. Custom dates are inclusive. Use only existing categories. Default kind is expense. Do not silently ignore unsupported or ambiguous conditions: ask for clarification. Never write a database query.",

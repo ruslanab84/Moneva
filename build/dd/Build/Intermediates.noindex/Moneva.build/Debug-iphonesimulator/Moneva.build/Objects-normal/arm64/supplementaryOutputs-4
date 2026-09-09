@@ -1,0 +1,30 @@
+{
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/FamilySync.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FamilySync.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FamilySync.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FamilySync.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FamilySync.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FamilySync.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/FinancialForecastView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialForecastView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialForecastView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialForecastView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialForecastView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialForecastView.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/FinancialToolsSelfCheck.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialToolsSelfCheck.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialToolsSelfCheck.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialToolsSelfCheck.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialToolsSelfCheck.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/FinancialToolsSelfCheck.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/GoalsView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GoalsView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GoalsView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GoalsView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GoalsView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GoalsView.swiftdeps"
+  }
+}

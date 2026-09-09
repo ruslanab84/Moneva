@@ -1,0 +1,128 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AddTransactionView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New transaction",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kind",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "Amount",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Currency",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Merchant or source",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 86
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scope",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Note",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "I checked and corrected these details",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Low-confidence match — check %@ is right.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saving with this enabled creates or replaces your rule for this merchant in this scope.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "Suggest category",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remember this merchant’s category",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 178
+        }
+      }
+    ]
+  },
+  "version": 1
+}

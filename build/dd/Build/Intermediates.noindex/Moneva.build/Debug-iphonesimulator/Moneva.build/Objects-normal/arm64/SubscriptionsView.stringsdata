@@ -1,0 +1,176 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/SubscriptionsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Every month",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add from text or voice",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add a service to see what leaves your account each month.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "No active subscriptions",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nothing is paused",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld active · %lld paused",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ was due on %@. Add %@ as an expense?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "Skip this month",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add it",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Looking through your history…",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ Track %@ at %@ a month?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "Draft",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ignore",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add it",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "Source: the schedules listed below. Payment history does not show service usage.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 212
+        }
+      },
+      {
+        "comment": "",
+        "key": "How much will subscriptions cost this month?",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ask",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@%@ · %@",
+        "location": {
+          "startingColumn": 15,
+          "startingLine": 280
+        }
+      },
+      {
+        "comment": "",
+        "key": "Price %@ by %@, %@",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 288
+        }
+      }
+    ]
+  },
+  "version": 1
+}

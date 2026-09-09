@@ -1,0 +1,16 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/SpendingSearch.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Uncategorised",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 147
+        }
+      }
+    ]
+  },
+  "version": 1
+}

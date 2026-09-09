@@ -4,11 +4,17 @@ import SwiftData
 
 @Generable
 struct DraftedMonthlySubscription {
+    @Guide(description: "Exact service name copied from input, e.g. Netflix, Claude, iCloud")
     var name: String
+    @Guide(description: "Exact price as decimal digits with a dot, without symbols; never a day-of-month or other date part. Never calculate.")
     var amount: String
+    @Guide(description: "ISO currency code explicitly stated; empty if missing or ambiguous")
     var currency: String
+    @Guide(description: "The next billing date, separate from the price. If the year is omitted, leave year nil so it resolves to the next occurrence of that month and day.")
     var nextPayment: DraftDate
+    @Guide(description: "Existing category name, or a suggested new name if no existing category fits")
     var category: String
+    @Guide(description: "Question about missing or ambiguous information; empty if clear")
     var clarification: String
 }
 
@@ -32,7 +38,7 @@ enum SubscriptionResolver {
 
     static func resolveInput(_ value: DraftedMonthlySubscription, categories: [SpendingCategory], scope: Scope, input: String, now: Date = .now) -> DetectedSubscription {
         let currency = value.currency.uppercased()
-        let date = DraftResolver.date(value.nextPayment, now: now)
+        let date = DraftResolver.date(value.nextPayment, now: now, preferFuture: true)
         return DetectedSubscription(name: DraftResolver.grounded(value.name, in: input), amount: Money.parse(value.amount) ?? 0, nextPaymentDate: date ?? now,
             category: DraftResolver.category(named: value.category, in: categories), scope: scope,
             reason: [value.clarification, date == nil ? "Choose the next payment date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the billing currency."].filter { !$0.isEmpty }.joined(separator: "\n"),
@@ -52,6 +58,10 @@ enum SubscriptionDigest {
         case .thisMonth:
             range = today..<calendar.dateInterval(of: .month, for: today)!.end
             label = "for the rest of this month"
+        case .nextMonth:
+            let start = calendar.dateInterval(of: .month, for: today)!.end
+            range = start..<calendar.dateInterval(of: .month, for: start)!.end
+            label = "next month"
         case .nextTwelveMonths:
             range = today..<calendar.date(byAdding: .month, value: 12, to: today)!
             label = "for the next 12 months"
@@ -94,13 +104,13 @@ enum SubscriptionDigest {
 }
 
 @Generable
-enum SubscriptionPeriod { case monthly, thisMonth, nextTwelveMonths, restOfYear, details, unsupported }
+enum SubscriptionPeriod { case monthly, thisMonth, nextMonth, nextTwelveMonths, restOfYear, details, unsupported }
 
 @Generable
 struct SubscriptionQuestion {
     @Guide(description: "Copy the exact name of the service from the question. Use ALL when the question is about all subscriptions and does not name a particular service.")
     var name: String
-    @Guide(description: "monthly = monthly price; thisMonth = future costs this calendar month; nextTwelveMonths = annual cost, in a year, per year; restOfYear = until December 31 this year; details = next payment, status or price changes; unsupported = other periods or questions.")
+    @Guide(description: "monthly = monthly price; thisMonth = future costs this calendar month; nextMonth = cost for next calendar month only, not this month and not a year; nextTwelveMonths = annual cost, in a year, per year; restOfYear = until December 31 this year; details = next payment, status or price changes; unsupported = other periods or questions.")
     var period: SubscriptionPeriod
 
     static let instructions = """
@@ -110,6 +120,8 @@ struct SubscriptionQuestion {
         Examples:
         Question: How much will subscriptions cost this month?
         name: ALL, period: thisMonth
+        Question: How much will subscriptions cost next month?
+        name: ALL, period: nextMonth
         Question: How much will iCloud cost in a year?
         name: iCloud, period: nextTwelveMonths
         Question: When is the next Netflix payment?
@@ -153,13 +165,14 @@ final class SubscriptionAdvisor {
     private func performDetection(_ transactions: [Transaction], categories: [SpendingCategory], existing: [Subscription], scope: Scope) async {
         detected = []
         guard Self.unavailableReason == nil else { return }
-        let candidates = Self.candidates(transactions, categories: categories, existing: existing, scope: scope)
+        let candidates = Array(Self.candidates(transactions, categories: categories, existing: existing, scope: scope).prefix(8))
         guard !candidates.isEmpty else { phase = .idle; return }
         phase = .working
         do {
             let result = try await OnDeviceAI.generate(SelectedFacts.self,
-                instructions: "Select candidate IDs that plausibly represent monthly subscription services. Exclude ordinary groceries and variable purchases. These are suggestions only.",
-                data: candidates.enumerated().map { "\($0.offset): \($0.element.name), \($0.element.amount.money($0.element.currency)) monthly." }.joined(separator: "\n"))
+                instructions: "Call getCalculatedFacts, then select candidate IDs that plausibly represent monthly subscription services. Exclude ordinary groceries and variable purchases. These are suggestions only.",
+                data: "Select recurring subscription candidates.",
+                tools: [try FinancialFactsTool(facts: candidates.map { "\($0.name), \($0.amount.money($0.currency)) monthly." })])
             detected = Array(Set(result.ids)).sorted().filter { candidates.indices.contains($0) }.map { candidates[$0] }.filter { !ignored.contains(Self.key($0)) }
             phase = .ready
         } catch { phase = .failed("Could not inspect recurring expenses. Manual subscription entry is available.") }
@@ -167,26 +180,15 @@ final class SubscriptionAdvisor {
 
     func ask(_ question: String, subscriptions: [Subscription], scope: Scope) async {
         if case .working = phase { return }
-        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
         phase = .working
         answer = ""
         answerScope = scope
         do {
-            let query = try await OnDeviceAI.generate(SubscriptionQuestion.self, instructions: SubscriptionQuestion.instructions,
-                data: question, options: GenerationOptions(sampling: .greedy))
-            let selected = query.selectedSubscriptions(in: subscriptions, scope: scope, question: question)
-            if selected.isEmpty {
-                answer = "No matching subscription was found in this scope."
-            } else if query.period == .details {
-                let facts = SubscriptionDigest.lines(for: selected)
-                let result = try await OnDeviceAI.generate(SelectedFacts.self,
-                    instructions: "Select supplied facts answering the question. Do not infer usage from payment history.",
-                    data: "Question: \(question)\nFacts:\n" + facts.enumerated().map { "\($0.offset): \($0.element)" }.joined(separator: "\n"))
-                answer = Array(Set(result.ids)).sorted().filter { facts.indices.contains($0) }.map { facts[$0] }.joined(separator: "\n\n")
-                if answer.isEmpty { answer = "The stored schedules do not provide enough information to answer that." }
-            } else {
-                answer = SubscriptionDigest.costAnswer(query.period, subscriptions: selected)
-            }
+            let parsed = try await OnDeviceAI.generate(SubscriptionQuestion.self, instructions: SubscriptionQuestion.instructions, data: trimmed)
+            let selected = parsed.selectedSubscriptions(in: subscriptions, scope: scope, question: trimmed)
+            answer = selected.isEmpty ? "No matching subscriptions found." : SubscriptionDigest.costAnswer(parsed.period, subscriptions: selected)
             phase = .ready
         } catch { phase = .failed(error.localizedDescription) }
     }

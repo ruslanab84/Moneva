@@ -1,0 +1,30 @@
+{
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/VoiceCaptureView.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceCaptureView.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceCaptureView.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceCaptureView.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceCaptureView.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceCaptureView.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/VoiceDraft.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceDraft.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceDraft.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceDraft.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceDraft.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/VoiceDraft.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps"
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "const-values" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftconstvalues",
+    "dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.d",
+    "diagnostics" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.dia",
+    "object" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "swift-dependencies" : "/Users/ruslanabdulov/Desktop/Moneva/build/dd/Build/Intermediates.noindex/Moneva.build/Debug-iphonesimulator/Moneva.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftdeps"
+  }
+}

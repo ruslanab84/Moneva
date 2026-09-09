@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import FoundationModels
 
 struct VoiceCaptureView: View {
     var subscriptions = false
@@ -12,6 +13,8 @@ struct VoiceCaptureView: View {
     @State private var text = ""
     @State private var drafts: [TransactionDraft] = []
     @State private var subscriptionDraft: DetectedSubscription?
+    @State private var drafter: TransactionDrafter?
+    @State private var refinement = ""
     @State private var busy = false
     @State private var microphoneBusy = false
     @State private var error: String?
@@ -90,8 +93,6 @@ struct VoiceCaptureView: View {
                         AmountHero(draft: $draft)
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
-                    } header: {
-                        Eyebrow("Draft — not saved")
                     }
                     Section {
                         DraftFields(draft: $draft, allowKind: false, showsAmount: false)
@@ -100,8 +101,30 @@ struct VoiceCaptureView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .disabled(busy || !draft.canSave)
                         }
-                        Button("Remove draft", role: .destructive) { drafts.removeAll { $0.id == draft.id } }
+                        Button("Remove draft", role: .destructive) {
+                            drafts.removeAll { $0.id == draft.id }
+                            // Last one out also clears the source text — otherwise the form still
+                            // shows the same input sitting there ready to redraft, which reads as
+                            // "removing did nothing."
+                            if drafts.isEmpty { text = ""; refinement = "" }
+                        }
                             .font(.subheadline)
+                    }
+                    .listRowBackground(Palette.card)
+                }
+
+                if !drafts.isEmpty {
+                    Section {
+                        TextField("e.g. that was for two people, wrong currency", text: $refinement, axis: .vertical)
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.ink)
+                            .lineLimit(1...4)
+                            .disabled(busy)
+                        Button("Refine", systemImage: "arrow.triangle.2.circlepath") { refine() }
+                            .font(.subheadline.weight(.semibold))
+                            .disabled(busy || refinement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } header: {
+                        Eyebrow("Correct the draft above")
                     }
                     .listRowBackground(Palette.card)
                 }
@@ -117,7 +140,7 @@ struct VoiceCaptureView: View {
                                 .padding(.vertical, 4)
                         }
                         .disabled(busy || !drafts.allSatisfy(\.canSave))
-                        Button("Discard drafts and revise text", role: .destructive) { drafts = [] }
+                        Button("Discard drafts and revise text", role: .destructive) { discard() }
                             .font(.subheadline)
                             .frame(maxWidth: .infinity)
                     } footer: {
@@ -128,7 +151,7 @@ struct VoiceCaptureView: View {
                     .listRowBackground(Palette.card)
                 } else if !drafts.isEmpty {
                     Section {
-                        Button("Discard remaining drafts", role: .destructive) { drafts = [] }
+                        Button("Discard remaining drafts", role: .destructive) { discard() }
                             .font(.subheadline)
                             .frame(maxWidth: .infinity)
                     } footer: {
@@ -158,6 +181,13 @@ struct VoiceCaptureView: View {
             .onDisappear {
                 task?.cancel()
                 Task { await speech.stop() }
+            }
+            .onAppear {
+                guard !subscriptions, drafter == nil else { return }
+                let library = CategoryLibrary.visible(categories, scope: scope, kind: nil)
+                let session = TransactionDrafter(categories: library)
+                drafter = session
+                session.prewarm()
             }
         }
     }
@@ -194,12 +224,75 @@ struct VoiceCaptureView: View {
                         data: OnDeviceAI.context(categories: visible, now: now) + "\nRequest: " + input)
                     subscriptionDraft = SubscriptionResolver.resolveInput(result, categories: visible, scope: activeScope, input: input, now: now)
                 } else {
-                    let items = try await TransactionDrafter(categories: library).draftTransactions(from: input, now: now)
-                    drafts = DraftResolver.resolve(items, categories: library, rules: rules, scope: activeScope, source: source, input: input, now: now)
-                    if drafts.isEmpty { error = "No transactions found. Add amounts and currencies, or enter manually." }
+                    // Reuse the session warmed on sheet appear when its category set still applies.
+                    let session = drafter ?? TransactionDrafter(categories: library)
+                    drafter = session
+                    let items = try await session.draftTransactions(from: input, now: now)
+                    let classifications = await CategoryClassifier.classify(items, scope: activeScope, categories: library, container: context.container)
+                    drafts = DraftResolver.resolve(items, categories: library, rules: rules, scope: activeScope, source: source, input: input, now: now, classifications: classifications)
+                    if drafts.isEmpty {
+                        error = "No transactions found. Add amounts and currencies, or enter manually."
+                    } else if drafts.allSatisfy({ $0.clarification.isEmpty && Money.valid($0.amount, currency: $0.currency)
+                        && CategoryLibrary.isSelectable($0.category, scope: $0.scope, kind: $0.kind) }) {
+                        // Clean extraction, nothing the model flagged — save straight through instead
+                        // of making the user re-confirm what it already got right. Anything ambiguous
+                        // (missing amount/category, a clarification question) still falls through to
+                        // the editable review section below, since there's nothing valid to save yet.
+                        for index in drafts.indices { drafts[index].reviewed = true }
+                        do { try DraftStore.save(drafts, in: context); dismiss() }
+                        catch { self.error = error.localizedDescription }
+                    }
                 }
-            } catch is CancellationError {} catch { self.error = error.localizedDescription }
+            } catch is CancellationError {
+            } catch let failure as LanguageModelSession.GenerationError {
+                switch failure {
+                case .guardrailViolation, .assetsUnavailable, .exceededContextWindowSize:
+                    drafts = [DraftResolver.ruleFallback(input: input, rules: rules, scope: activeScope, source: source)]
+                    error = "On-device drafting could not finish. A draft was started from known merchant rules — review it below."
+                default:
+                    self.error = failure.localizedDescription
+                }
+            } catch { self.error = error.localizedDescription }
         }
+    }
+
+    /// Regenerates over the same live session so the model sees its own prior draft — the sheet's
+    /// "Refine" field, distinct from `draft()` which always starts a new topic/session.
+    private func refine() {
+        guard let drafter, !refinement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        busy = true
+        error = nil
+        let now = Date.now
+        let activeScope = scope
+        let correction = refinement
+        let groundingText = text + "\n" + correction
+        let library = CategoryLibrary.visible(categories, scope: activeScope, kind: nil)
+        task = Task {
+            defer { busy = false }
+            do {
+                let items = try await drafter.refine(correction, now: now)
+                let classifications = await CategoryClassifier.classify(items, scope: activeScope, categories: library, container: context.container)
+                drafts = DraftResolver.resolve(items, categories: library, rules: rules, scope: activeScope, source: source, input: groundingText, now: now, classifications: classifications)
+                refinement = ""
+            } catch is CancellationError {
+            } catch let failure as LanguageModelSession.GenerationError {
+                switch failure {
+                case .guardrailViolation, .assetsUnavailable, .exceededContextWindowSize:
+                    error = "On-device drafting could not finish. The draft above is kept as-is — edit it manually."
+                default:
+                    self.error = failure.localizedDescription
+                }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func discard() {
+        drafts = []
+        refinement = ""
+        let library = CategoryLibrary.visible(categories, scope: scope, kind: nil)
+        let session = TransactionDrafter(categories: library)
+        drafter = session
+        session.prewarm()
     }
 
     private func save() {

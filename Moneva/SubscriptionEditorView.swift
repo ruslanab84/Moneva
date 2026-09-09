@@ -8,6 +8,7 @@ struct SubscriptionEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(Money.storageKey) private var appCurrency = Money.code
     @Query private var categories: [SpendingCategory]
+    @Query private var accounts: [Account]
 
     private let existing: Subscription?
     private let draftID: UUID?
@@ -26,12 +27,19 @@ struct SubscriptionEditorView: View {
     /// date so turning it off does not lose what was typed.
     @State private var hasEndDate: Bool
     @State private var endDate: Date
+    /// Trial only ever applies at creation — it fixes the anchor day, so an
+    /// already-saved subscription has no way to edit it back in.
+    @State private var hasTrial: Bool
+    @State private var trialEndsAt: Date
     /// 0 means no reminder. An optional Picker selection has to carry nil tags,
     /// and SwiftUI mis-reads those across a Form.
     @State private var reminderDays: Int
     @State private var paymentMode: PaymentMode
     @State private var note: String
     @State private var scope: Scope
+    /// Which account the charge leaves from. Optional: a subscription paid in
+    /// cash, or one whose account was deleted, still bills normally.
+    @State private var account: Account?
     @State private var isPickingCategory = false
     @State private var showDeleteConfirm = false
 
@@ -50,14 +58,17 @@ struct SubscriptionEditorView: View {
         _nextPaymentDate = State(initialValue: first)
         _hasEndDate = State(initialValue: subscription?.endDate != nil)
         _endDate = State(initialValue: subscription?.endDate ?? Calendar.current.date(byAdding: .month, value: 11, to: first) ?? first)
+        _hasTrial = State(initialValue: subscription?.trialEndsAt != nil)
+        _trialEndsAt = State(initialValue: subscription?.trialEndsAt ?? Calendar.current.date(byAdding: .day, value: 7, to: first) ?? first)
         _reminderDays = State(initialValue: subscription?.reminderDays ?? 0)
+        _account = State(initialValue: subscription?.account)
         _paymentMode = State(initialValue: subscription?.paymentMode ?? .ask)
         _note = State(initialValue: subscription?.note ?? "")
         _scope = State(initialValue: subscription?.scope ?? draft?.scope ?? scope)
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
-    private var canSave: Bool { !saved && !trimmedName.isEmpty && Money.valid(amount, currency: currency) && CategoryLibrary.isSelectable(category, scope: scope) && (draftID == nil || reviewed) && Calendar.current.startOfDay(for: nextPaymentDate) >= Calendar.current.startOfDay(for: .now) && (!hasEndDate || Calendar.current.startOfDay(for: endDate) >= Calendar.current.startOfDay(for: nextPaymentDate)) }
+    private var canSave: Bool { !saved && !trimmedName.isEmpty && Money.valid(amount, currency: currency) && CategoryLibrary.isSelectable(category, scope: scope) && (draftID == nil || reviewed) && Calendar.current.startOfDay(for: nextPaymentDate) >= Calendar.current.startOfDay(for: .now) && (!hasEndDate || Calendar.current.startOfDay(for: endDate) >= Calendar.current.startOfDay(for: nextPaymentDate)) && (!hasTrial || existing != nil || (Calendar.current.startOfDay(for: trialEndsAt) >= Calendar.current.startOfDay(for: nextPaymentDate) && (!hasEndDate || Calendar.current.startOfDay(for: trialEndsAt) <= Calendar.current.startOfDay(for: endDate)))) }
 
     /// How many charges the chosen term covers, so 24 monthly instalments can
     /// be checked against the date before saving.
@@ -86,10 +97,13 @@ struct SubscriptionEditorView: View {
                     Button { isPickingCategory = true } label: {
                         HStack(spacing: 12) {
                             CategoryBadge(category: category, size: 32)
-                            Text(category?.name ?? "Choose a category")
+                            Text(category?.name ?? String(localized: "Choose a category"))
                                 .foregroundStyle(category == nil ? Palette.inkMuted : Palette.ink)
                             Spacer()
-                            Image(systemName: "chevron.right").font(.footnote).foregroundStyle(Palette.inkFaint)
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundStyle(Palette.inkFaint)
+                                .flipsForRightToLeftLayoutDirection(true)
                         }
                     }
                     // Monthly is the only frequency in this version; the row
@@ -100,8 +114,26 @@ struct SubscriptionEditorView: View {
                     if hasEndDate {
                         DatePicker("Last payment", selection: $endDate, in: nextPaymentDate..., displayedComponents: .date)
                     }
+                    if existing == nil {
+                        Toggle("Free trial", isOn: $hasTrial)
+                        if hasTrial {
+                            DatePicker("Trial ends", selection: $trialEndsAt, in: nextPaymentDate..., displayedComponents: .date)
+                        }
+                    }
                     Picker("Scope", selection: $scope) {
                         ForEach(Scope.allCases) { Text($0.title).tag($0) }
+                    }
+                    // Only accounts holding this price's currency: a balance is
+                    // never converted, so no other account could pay it.
+                    let usable = Accounts.visible(accounts).filter { $0.currency == currency }
+                    if !usable.isEmpty {
+                        Picker("Account", selection: $account) {
+                            Text("None").tag(Account?.none)
+                            ForEach(usable, id: \.persistentModelID) { Text($0.name).tag(Account?.some($0)) }
+                        }
+                        .onChange(of: currency) { _, code in
+                            account = Accounts.holder(account, currency: code)
+                        }
                     }
                 } footer: {
                     if let plannedPayments {
@@ -203,6 +235,7 @@ struct SubscriptionEditorView: View {
             existing.paymentMode = paymentMode
             existing.note = note
             existing.scope = scope
+            existing.account = Accounts.holder(account, currency: currency)
             subscription = existing
         } else {
             let created = Subscription(
@@ -211,12 +244,14 @@ struct SubscriptionEditorView: View {
                 currency: currency,
                 nextPaymentDate: nextPaymentDate,
                 endDate: hasEndDate ? endDate : nil,
+                trialEndsAt: hasTrial ? trialEndsAt : nil,
                 reminderDays: reminderDays == 0 ? nil : reminderDays,
                 paymentMode: paymentMode,
                 note: note,
                 scope: scope,
                 category: category
             )
+            created.account = Accounts.holder(account, currency: currency)
             context.insert(created)
             subscription = created
         }

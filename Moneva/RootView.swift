@@ -8,7 +8,7 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            Tab("Home", systemImage: "house") { HomeView() }
+            Tab("Home", systemImage: "house") { NavigationStack { HomeView() } }
             Tab("Transactions", systemImage: "list.bullet") { TransactionsView() }
             Tab("Budget", systemImage: "chart.pie") { BudgetView() }
             Tab("Goals", systemImage: "flag") { GoalsView() }

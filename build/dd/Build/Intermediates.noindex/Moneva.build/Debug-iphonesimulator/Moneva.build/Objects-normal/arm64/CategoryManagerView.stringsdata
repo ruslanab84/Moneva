@@ -1,0 +1,72 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategoryManagerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Income categories",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Categories",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Archived",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Every category is archived.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Archive",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "Restore",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 61
+        }
+      }
+    ]
+  },
+  "version": 1
+}

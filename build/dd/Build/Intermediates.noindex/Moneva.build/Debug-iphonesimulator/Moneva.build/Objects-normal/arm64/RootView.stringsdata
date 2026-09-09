@@ -1,0 +1,72 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/RootView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Home",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 11
+        }
+      },
+      {
+        "comment": "",
+        "key": "Transactions",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 12
+        }
+      },
+      {
+        "comment": "",
+        "key": "Budget",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 13
+        }
+      },
+      {
+        "comment": "",
+        "key": "Goals",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 14
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subs",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 15
+        }
+      },
+      {
+        "comment": "",
+        "key": "Scan a receipt",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add by text or voice",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add transaction",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 48
+        }
+      }
+    ]
+  },
+  "version": 1
+}

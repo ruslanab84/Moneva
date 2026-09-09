@@ -9,7 +9,7 @@ struct CategorySpendingChart: View {
     let currencyCode: String
 
     enum ChartKind: String, CaseIterable, Identifiable {
-        case donut = "Donut", pie = "Pie", bar = "Bar", horizontalBar = "Horizontal", stackedBar = "Stacked"
+        case petal = "Flower", donut = "Donut", pie = "Pie", bar = "Bar", horizontalBar = "Horizontal", stackedBar = "Stacked"
         var id: String { rawValue }
     }
     enum LabelMode: String, CaseIterable, Identifiable {
@@ -25,11 +25,12 @@ struct CategorySpendingChart: View {
         var id: String { rawValue }
     }
 
-    @State private var chartKind: ChartKind = .stackedBar
+    @State private var chartKind: ChartKind = .petal
     @State private var labelMode: LabelMode = .percent
     @State private var sort: CategorySort = .descending
     @State private var paletteMode: PaletteMode = .categoryTint
     @State private var settingsOpen = false
+    @State private var detailOpen = false
     @State private var selectedID: String?
     // Charts needs a real backing store to read back, not just write to — a
     // proxy Binding whose getter always returns nil never sees a tap land.
@@ -137,27 +138,30 @@ struct CategorySpendingChart: View {
             }
 
             chart
-                .frame(height: chartKind == .stackedBar ? 36 : chartKind == .bar || chartKind == .horizontalBar ? 160 : 190)
+                .frame(height: chartKind == .stackedBar ? 36 : chartKind == .bar || chartKind == .horizontalBar ? 160 : chartKind == .petal ? 330 : 190)
+                // Overlay, not onTapGesture on the chart: Swift Charts selection
+                // gestures swallow taps, so only the Canvas petal chart opened.
+                .overlay {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { detailOpen = true }
+                }
                 .animation(.snappy(duration: 0.35), value: chartKind)
                 .animation(.snappy(duration: 0.35), value: sort)
                 .animation(.snappy(duration: 0.35), value: paletteMode)
-
-            VStack(spacing: 10) {
-                ForEach(slices) { slice in
-                    legendRow(slice)
-                        .onTapGesture { selectedID = selectedID == slice.id ? nil : slice.id }
-                }
-            }
-            .animation(.snappy(duration: 0.35), value: sort)
         }
         .monevaCard(padding: 16)
         .sheet(isPresented: $settingsOpen) { settingsSheet }
+        .sheet(isPresented: $detailOpen) { detailSheet }
     }
 
     @ChartContentBuilder
     private func mark(for slice: Slice) -> some ChartContent {
         let dimmed = selectedID != nil && selectedID != slice.id
         switch chartKind {
+        case .petal:
+            // Never rendered — the `chart` view draws petals with Canvas, not marks.
+            PointMark(x: .value("x", 0), y: .value("y", 0)).opacity(0)
         case .donut, .pie:
             SectorMark(angle: .value("Total", slice.value), innerRadius: .ratio(chartKind == .donut ? 0.62 : 0), angularInset: 1.5)
                 .foregroundStyle(slice.color)
@@ -181,9 +185,70 @@ struct CategorySpendingChart: View {
         }
     }
 
+    /// Apple Health-style ring: equal rounded-triangle petals around an open
+    /// center, one per category, white category icon on each. Custom Canvas
+    /// since Swift Charts has no petal mark — no tap-to-select; amounts live
+    /// in the detail sheet.
+    private func petal(inner: CGFloat, outer: CGFloat, halfAngle: Double, gap: CGFloat) -> Path {
+        func lerp(_ p: CGPoint, _ q: CGPoint, _ t: CGFloat) -> CGPoint { CGPoint(x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t) }
+        // Sides run parallel to the sector boundary, inset by half the gap, so
+        // neighbouring petals keep an even gutter; outer corners sit on the rim.
+        let side = CGPoint(x: sin(halfAngle), y: -cos(halfAngle))
+        let normal = CGPoint(x: -cos(halfAngle), y: -sin(halfAngle))
+        let reach = sqrt(outer * outer - gap * gap / 4)
+        let apex = CGPoint(x: 0, y: -inner)
+        let right = CGPoint(x: side.x * reach + normal.x * gap / 2, y: side.y * reach + normal.y * gap / 2)
+        let left = CGPoint(x: -right.x, y: right.y)
+
+        let apexRight = lerp(apex, right, 0.3), sideRight = lerp(right, apex, 0.2)
+        let sideLeft = lerp(left, apex, 0.2), apexLeft = lerp(apex, left, 0.3)
+        // Rim is a true arc of the outer circle; corners round into it.
+        let rightAngle = atan2(right.y, right.x), leftAngle = atan2(left.y, left.x)
+        let inset = (rightAngle - leftAngle) * 0.18
+        func rim(_ angle: Double) -> CGPoint { CGPoint(x: outer * cos(angle), y: outer * sin(angle)) }
+
+        var path = Path()
+        path.move(to: apexRight)
+        path.addLine(to: sideRight)
+        path.addQuadCurve(to: rim(rightAngle - inset), control: right)
+        for step in 1...16 {
+            path.addLine(to: rim(rightAngle - inset - (rightAngle - leftAngle - 2 * inset) * Double(step) / 16))
+        }
+        path.addQuadCurve(to: sideLeft, control: left)
+        path.addLine(to: apexLeft)
+        path.addQuadCurve(to: apexRight, control: apex)
+        path.closeSubpath()
+        return path
+    }
+
+    private func drawPetals(context: GraphicsContext, size: CGSize) {
+        // Reuses the bar chart's top-5-plus-Others cap (barSlices) — a ring with
+        // 10+ thin petals is as unreadable as the bar chart's overlapping labels.
+        let petals = barSlices
+        guard !petals.isEmpty else { return }
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let outer = min(size.width, size.height) / 2
+        let inner = outer * 0.3
+        let angleStep = 2 * Double.pi / Double(petals.count)
+        let halfAngle = min(angleStep / 2, .pi / 6)
+        let shape = petal(inner: inner, outer: outer, halfAngle: halfAngle, gap: outer * 0.03)
+        for (index, slice) in petals.enumerated() {
+            let transform = CGAffineTransform(translationX: center.x, y: center.y).rotated(by: angleStep * Double(index))
+            context.fill(shape.applying(transform), with: .color(slice.color))
+
+            var icon = context.resolve(Image(systemName: slice.category.symbol))
+            icon.shading = .color(.white)
+            let iconRadius = inner + (outer - inner) * 0.4
+            let angle = angleStep * Double(index) - .pi / 2
+            context.draw(icon, at: CGPoint(x: center.x + iconRadius * CGFloat(cos(angle)), y: center.y + iconRadius * CGFloat(sin(angle))))
+        }
+    }
+
     @ViewBuilder
     private var chart: some View {
         switch chartKind {
+        case .petal:
+            Canvas { context, size in drawPetals(context: context, size: size) }
         case .donut, .pie:
             Chart(slices) { mark(for: $0) }
                 .chartAngleSelection(value: $angleSelection)
@@ -259,6 +324,36 @@ struct CategorySpendingChart: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { settingsOpen = false } }
+            }
+        }
+        .tint(Palette.accent)
+        .presentationDetents([.medium, .large])
+    }
+
+    private var detailSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    chart
+                        .frame(height: chartKind == .stackedBar ? 48 : chartKind == .bar || chartKind == .horizontalBar ? 200 : 240)
+
+                    VStack(spacing: 10) {
+                        ForEach(slices) { slice in
+                            legendRow(slice)
+                                .onTapGesture { selectedID = selectedID == slice.id ? nil : slice.id }
+                        }
+                    }
+                    .animation(.snappy(duration: 0.35), value: sort)
+                }
+                .padding(16)
+            }
+            .navigationTitle("Spending by category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Done") { detailOpen = false } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { settingsOpen = true } label: { Image(systemName: "slider.horizontal.3") }
+                }
             }
         }
         .tint(Palette.accent)

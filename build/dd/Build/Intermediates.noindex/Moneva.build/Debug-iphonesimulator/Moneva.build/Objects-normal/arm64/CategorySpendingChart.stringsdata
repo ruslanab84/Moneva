@@ -1,0 +1,176 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/CategorySpendingChart.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "x",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "y",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total",
+        "location": {
+          "startingColumn": 75,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 176
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 176
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spending",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chart settings",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chart type",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data labels",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sort",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Colors",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 316
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chart type",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data labels",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sort",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "Colors",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 317
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spending by category",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 350
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 353
+        }
+      }
+    ]
+  },
+  "version": 1
+}

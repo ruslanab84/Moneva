@@ -14,7 +14,7 @@ struct GoalsView: View {
     private var visible: [Goal] { goals.filter { $0.scope == scope } }
 
     var body: some View {
-        ScreenScroll(title: "Savings goals", eyebrow: "Goals") {
+        ScreenScroll(title: "Savings goals", eyebrow: Text("Goals")) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
 
             if visible.isEmpty {
@@ -44,7 +44,7 @@ struct GoalsView: View {
                 topUpText = ""
             }
         } message: {
-            Text(topUpTarget.map { "Put money aside for \($0.name)." } ?? "")
+            Text(topUpTarget.map { String(localized: "Put money aside for \($0.name).") } ?? "")
         }
     }
 
@@ -67,13 +67,14 @@ struct GoalsView: View {
                 Text("\(Int(progress * 100))%")
                     .font(.money(.title3))
                     .foregroundStyle(Palette.ink)
+                    .accessibilityHidden(true) // ProgressBar already speaks this value
             }
 
             Text("\(goal.saved.money(currencyCode)) of \(goal.target.money(currencyCode))")
                 .font(.money(.title))
                 .foregroundStyle(Palette.ink)
 
-            ProgressBar(progress: progress, tint: Color(hex: goal.tintHex), height: 10)
+            ProgressBar(progress: progress, tint: Color(hex: goal.tintHex), height: 10, accessibilityLabel: "Goal progress")
 
             HStack {
                 Text("\(goal.remaining.money(currencyCode)) to go")
@@ -139,6 +140,7 @@ struct GoalEditor: View {
                                     .background(symbol == candidate ? Palette.accentSoft : Color.clear, in: .rect(cornerRadius: 14))
                                     .foregroundStyle(symbol == candidate ? Palette.accent : Palette.inkMuted)
                             }
+                            .buttonStyle(.plain)
                             .accessibilityLabel(candidate)
                         }
                     }

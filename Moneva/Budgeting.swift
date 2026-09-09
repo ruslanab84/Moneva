@@ -7,6 +7,73 @@ import UserNotifications
 
 /// Every number the app shows is computed here, in Swift — never by a model.
 enum Budgeting {
+    struct Forecast: Hashable {
+        var currency: String
+        var balance: Decimal
+        var income: Decimal
+        var subscriptions: Decimal
+        var expenses: Decimal?
+        var historyMonths: Int
+        var available: Decimal? { expenses.map { balance + income - subscriptions - $0 } }
+
+        var signal: SpendingSignal {
+            let detail = expenses == nil
+                ? "Record at least three ordinary expenses across a completed month to estimate remaining spending."
+                : "Remaining expenses use the daily average of \(historyMonths) completed month(s), excluding subscription charges, and include at least your future-dated expenses."
+            let result = available.map { "Estimated month-end balance: \($0.money(currency)). " } ?? ""
+            return SpendingSignal(id: "forecast", kind: .projected, title: "End of month forecast", explanations: [
+                result + "Recorded balance plus future-dated income, minus unpaid subscriptions and estimated remaining expenses. " + detail,
+                result + detail + " The forecast adds expected income to your recorded balance and subtracts the remaining outgoings."
+            ])
+        }
+    }
+
+    static func forecast(_ transactions: [Transaction], subscriptions: [Subscription], scope: Scope, currency: String, now: Date, calendar: Calendar = .current) -> Forecast {
+        let month = monthRange(for: now, calendar: calendar)
+        let today = calendar.startOfDay(for: now)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let rows = transactions.filter { $0.scope == scope && $0.currency == currency && Money.valid($0.amount, currency: currency) }
+        // Date-only ledger entries on today's date are already recorded.
+        let recorded = rows.filter { $0.date < tomorrow }
+        let future = rows.filter { $0.date >= tomorrow && $0.date < month.upperBound }
+        let linked = Set(subscriptions.flatMap { $0.payments.compactMap { $0.transaction?.cloudID } })
+        func ordinary(_ row: Transaction) -> Bool { row.kind == .expense && row.source != .subscription && !linked.contains(row.cloudID) }
+        let balance = recorded.reduce(Decimal.zero) { $0 + ($1.kind == .income ? $1.amount : -$1.amount) }
+        let income = future.filter { $0.kind == .income }.reduce(Decimal.zero) { $0 + $1.amount }
+        let unpaid = subscriptions.filter { $0.scope == scope && $0.currency == currency && $0.status == .active && Money.valid($0.amount, currency: currency) }.reduce(Decimal.zero) { sum, plan in
+            let charges = Subscriptions.duePeriods(nextPaymentDate: Subscriptions.firstFutureDate(plan, now: month.lowerBound, calendar: calendar), anchorDay: plan.anchorDay,
+                processed: Set(plan.payments.map(\.billingPeriod)), endDate: plan.endDate, trialEndsAt: plan.trialEndsAt,
+                now: month.upperBound.addingTimeInterval(-1), calendar: calendar)
+            return sum + Decimal(charges.filter { $0.date >= month.lowerBound }.count) * plan.amount
+        }
+        // Already-created future subscription transactions still need to be paid.
+        let scheduled = unpaid + future.filter { $0.kind == .expense && !ordinary($0) }.reduce(Decimal.zero) { $0 + $1.amount }
+        var baseline: [Transaction] = []
+        var days = 0
+        var months = 0
+        if let first = recorded.map(\.date).min() {
+            for offset in 1...3 {
+                let start = calendar.date(byAdding: .month, value: -offset, to: month.lowerBound)!
+                // Skip the first partial month of a newly started ledger.
+                guard calendar.startOfDay(for: first) <= start else { continue }
+                let range = monthRange(for: start, calendar: calendar)
+                baseline += recorded.filter { ordinary($0) && range.contains($0.date) }
+                days += calendar.dateComponents([.day], from: range.lowerBound, to: range.upperBound).day!
+                months += 1
+            }
+        }
+        var expenses: Decimal?
+        // ponytail: daily historical average; add seasonal/category forecasting only with enough history to validate it.
+        if days > 0 && baseline.count >= 3 {
+            let daily = baseline.reduce(Decimal.zero) { $0 + $1.amount } / Decimal(days)
+            let remainingDays = calendar.dateComponents([.day], from: today, to: month.upperBound).day!
+            let spentToday = recorded.filter { ordinary($0) && $0.date >= today }.reduce(Decimal.zero) { $0 + $1.amount }
+            let known = future.filter(ordinary).reduce(Decimal.zero) { $0 + $1.amount }
+            expenses = max(known, daily * Decimal(max(0, remainingDays - 1)) + max(0, daily - spentToday))
+        }
+        return Forecast(currency: currency, balance: balance, income: income, subscriptions: scheduled, expenses: expenses, historyMonths: months)
+    }
+
     enum LimitState {
         case ok, nearingLimit, atLimit
 
@@ -29,6 +96,13 @@ enum Budgeting {
     static func monthRange(for date: Date, calendar: Calendar = .current) -> Range<Date> {
         let start = monthStart(for: date, calendar: calendar)
         let end = calendar.date(byAdding: .month, value: 1, to: start) ?? date
+        return start..<end
+    }
+
+    /// Rolling window of `days` whole days ending with today (inclusive).
+    static func recentRange(days: Int, from now: Date = .now, calendar: Calendar = .current) -> Range<Date> {
+        let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        let start = calendar.date(byAdding: .day, value: -days, to: end) ?? now
         return start..<end
     }
 
@@ -63,8 +137,8 @@ enum Budgeting {
     /// This month's expense total per category, categories with nothing spent
     /// omitted. `amount(in:)` (not the raw transaction amount) so a shared
     /// transaction only counts the caller's split.
-    static func spendingByCategory(_ transactions: [Transaction], categories: [SpendingCategory], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> [(category: SpendingCategory, total: Decimal)] {
-        let month = transactions.filter { $0.kind == .expense && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
+    static func spendingByCategory(_ transactions: [Transaction], categories: [SpendingCategory], in range: Range<Date>, scope: Scope, currency: String = Money.code, kind: TransactionKind = .expense) -> [(category: SpendingCategory, total: Decimal)] {
+        let month = transactions.filter { $0.kind == kind && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
         return categories.compactMap { category in
             let total = month.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
             return total > 0 ? (category, total) : nil
@@ -93,6 +167,68 @@ enum Budgeting {
         let months = Int(ceil((remaining / monthlyRate).doubleValue))
         return calendar.date(byAdding: .month, value: months, to: from)
     }
+
+    // MARK: Family budget
+
+    /// A shared transaction's author, with "written before family sync / by
+    /// me" collapsed onto this device's own id in one place.
+    static func author(of transaction: Transaction, meID: String) -> String {
+        transaction.authorID.isEmpty ? meID : transaction.authorID
+    }
+
+    /// Who spent how much on the shared side this period. Personal scope is
+    /// never included: it is nobody else's business by construction.
+    static func spentByMember(_ transactions: [Transaction], in range: Range<Date>, currency: String = Money.code, meID: String) -> [String: Decimal] {
+        transactions
+            .filter { $0.kind == .expense && $0.scope == .shared && $0.currency == currency && range.contains($0.date) }
+            .reduce(into: [String: Decimal]()) { totals, transaction in
+                totals[author(of: transaction, meID: meID), default: 0] += transaction.amount
+            }
+    }
+
+    /// Splits one shared expense between the members. Each share is rounded at
+    /// the currency's own precision and the residual goes to the payer, so the
+    /// shares always add back up to exactly the amount — a 50/50 split of 0.01
+    /// is 0.01 and 0.00, never two half-cents.
+    static func shares(of amount: Decimal, currency: String = Money.code, split: FamilyBudget, members: [String], payer: String) -> [String: Decimal] {
+        guard !members.isEmpty else { return [:] }
+        var result: [String: Decimal] = [:]
+        for member in members {
+            let percent = Decimal(split.percent(for: member, members: members))
+            result[member] = rounded(amount * percent / 100, currency: currency)
+        }
+        let residual = amount - result.values.reduce(Decimal.zero, +)
+        let target = members.contains(payer) ? payer : members.sorted()[0]
+        result[target, default: 0] += residual
+        return result
+    }
+
+    /// Positive means the family owes this member, negative means they owe it.
+    /// Every balance in the map sums to zero, settlements included.
+    static func balances(_ transactions: [Transaction], settlements: [Settlement], in range: Range<Date>, currency: String = Money.code, split: FamilyBudget, members: [String], meID: String) -> [String: Decimal] {
+        var balance = members.reduce(into: [String: Decimal]()) { $0[$1] = 0 }
+        for transaction in transactions where transaction.kind == .expense && transaction.scope == .shared
+            && transaction.currency == currency && range.contains(transaction.date) {
+            let payer = author(of: transaction, meID: meID)
+            balance[payer, default: 0] += transaction.amount
+            for (member, share) in shares(of: transaction.amount, currency: currency, split: split, members: members, payer: payer) {
+                balance[member, default: 0] -= share
+            }
+        }
+        for settlement in settlements where settlement.currency == currency && range.contains(settlement.date) {
+            balance[settlement.fromMemberID.isEmpty ? meID : settlement.fromMemberID, default: 0] += settlement.amount
+            balance[settlement.toMemberID.isEmpty ? meID : settlement.toMemberID, default: 0] -= settlement.amount
+        }
+        return balance
+    }
+
+    static func rounded(_ amount: Decimal, currency: String = Money.code) -> Decimal {
+        var original = amount
+        var result = Decimal.zero
+        NSDecimalRound(&result, &original, Money.fractionDigits(currency), .plain)
+        return result
+    }
+
 }
 
 #if DEBUG
@@ -164,6 +300,13 @@ func monevaSelfCheck() {
     let today = calendar.date(from: DateComponents(year: 2026, month: 9, day: 3))!
     assert(DraftResolver.date(DraftDate(offsetDays: -1, year: nil, month: nil, day: nil), now: today, calendar: calendar) == calendar.date(from: DateComponents(year: 2026, month: 9, day: 2))!)
     assert(DraftResolver.date(DraftDate(offsetDays: nil, year: 2026, month: 2, day: 30), calendar: calendar) == nil, "invalid dates never normalize silently")
+    let nowWithTime = calendar.date(byAdding: .hour, value: 14, to: today)!
+    assert(DraftResolver.date(DraftDate(offsetDays: 0, year: nil, month: nil, day: nil), now: nowWithTime, calendar: calendar) == nowWithTime, "a same-day transaction keeps the real add time, not midnight")
+    assert(DraftResolver.date(DraftDate(offsetDays: nil, year: 2026, month: 9, day: 3), now: nowWithTime, calendar: calendar) == nowWithTime, "an explicit y/m/d for today also keeps the real add time")
+    // Receipt OCR has no "yesterday" to read, so a bare offset there is invented — it must not
+    // silently backdate the scan; the caller falls back to now and asks the user to check the date.
+    assert(DraftResolver.date(DraftDate(offsetDays: -1, year: nil, month: nil, day: nil), now: nowWithTime, calendar: calendar, allowRelative: false) == nil, "a receipt never resolves a relative day offset")
+    assert(DraftResolver.date(DraftDate(offsetDays: -1, year: 2026, month: 9, day: 1), now: nowWithTime, calendar: calendar, allowRelative: false) == calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!, "a printed receipt date still wins over a stray offset")
 
     // The exact glyph is the locale's business — "$", "US$" and "USD" are all
     // correct answers. Only the shape is asserted.
@@ -172,6 +315,14 @@ func monevaSelfCheck() {
         assert(!symbol.isEmpty, "\(code) must print something to put beside the field")
         assert(symbol.allSatisfy { !$0.isNumber && !$0.isWhitespace }, "\(code) symbol must carry no digits or spaces")
     }
+
+    for code in Locale.commonISOCurrencyCodes where code != "CHF" {
+        assert(Money.displaySymbol(for: code) != code, "\(code) needs a symbol in the picker, not its code twice")
+    }
+
+    assert(!Decimal(26.5).money("AZN").contains("AZN"), "a listed amount shows the glyph, not the code")
+    assert(Decimal(26.5).money("AZN").contains(Money.displaySymbol(for: "AZN")), "and the glyph is the one the picker shows")
+    assert(Decimal(26.5).money("CHF").contains("CHF"), "currencies without a glyph keep their code")
 
     assert(Money.flag(for: "USD") == "🇺🇸", "a currency code opens with its country")
     assert(Money.flag(for: "AZN") == "🇦🇿", "and so does every other one")
@@ -374,7 +525,7 @@ func monevaSelfCheck() {
     assert(Subscriptions.duePeriods(nextPaymentDate: sept, anchorDay: 31, processed: [], trialEndsAt: trialEnd, now: trialEnd, calendar: calendar).map(\.date) == [trialEnd])
     do {
         let container = try ModelContainer(for: Subscription.self, SubscriptionPayment.self, Transaction.self, SpendingCategory.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let context = container.mainContext
         let trial = Subscription(name: "Trial", amount: 12, nextPaymentDate: sept, trialEndsAt: trialEnd,
             paymentMode: .ask, category: nil, calendar: calendar)
@@ -407,7 +558,43 @@ func monevaSelfCheck() {
         assert(repeated.isEmpty && trial.payments.count == 1)
     } catch { assertionFailure("Trial boundary self-check failed: \(error)") }
 
+    // Transactions list window: 62 whole days ending with today.
+    let recent = Budgeting.recentRange(days: 62, from: calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 15))!, calendar: calendar)
+    assert(calendar.dateComponents([.day], from: recent.lowerBound, to: recent.upperBound).day == 62)
+    assert(recent.contains(calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 23))!))
+    assert(recent.contains(calendar.date(from: DateComponents(year: 2026, month: 7, day: 21))!))
+    assert(!recent.contains(calendar.date(from: DateComponents(year: 2026, month: 7, day: 20, hour: 23))!))
+
+    smartInsightsSelfCheck()
     aiFeaturesSelfCheck()
+    merchantEmbeddingSelfCheck()
+    categoryClassifierSelfCheck()
+    // Family balances: what one person paid minus what they owed, and a
+    // settlement for exactly that closes it.
+    let meID = "me", partnerID = "partner"
+    let members = [meID, partnerID]
+    let month = Budgeting.monthRange(for: .now)
+    let lunch = Transaction(amount: 80, date: .now, merchant: "Lunch", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    let groceries = Transaction(amount: 20, date: .now, merchant: "Groceries", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    groceries.authorID = partnerID
+    let mine = Transaction(amount: 500, date: .now, merchant: "Solo", kind: .expense, scope: .personal, category: nil, currency: "AZN")
+    assert(mine.authorID.isEmpty, "a personal transaction has nobody to attribute it to")
+
+    let spent = Budgeting.spentByMember([lunch, groceries, mine], in: month, currency: "AZN", meID: meID)
+    assert(spent[meID] == 80 && spent[partnerID] == 20, "personal spending never leaks into the family breakdown")
+
+    let open = Budgeting.balances([lunch, groceries, mine], settlements: [], in: month, currency: "AZN", split: FamilyBudget(), members: members, meID: meID)
+    assert(open[meID] == 30 && open[partnerID] == -30, "paying 80 of a 100 split evenly leaves 30 owed")
+    assert(open.values.reduce(Decimal.zero, +) == 0, "balances always net to zero")
+
+    let settled = Budgeting.balances(
+        [lunch, groceries, mine],
+        settlements: [Settlement(amount: 30, currency: "AZN", date: .now, fromMemberID: partnerID, toMemberID: meID)],
+        in: month, currency: "AZN", split: FamilyBudget(), members: members, meID: meID
+    )
+    assert(settled[meID] == 0 && settled[partnerID] == 0, "settling the exact balance clears it")
+
+    familySyncSelfCheck()
 
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")
@@ -415,5 +602,112 @@ func monevaSelfCheck() {
 
     assert(AmountField.editable(0).isEmpty, "an empty amount field never seeds a leading zero to type around")
     assert(AmountField.editable(Decimal(string: "1250.75")!) == "1250.75", "an existing amount comes back editable, unrounded and ungrouped")
+
+    let merchantSeeds = MerchantSeeds.load()
+    assert(!merchantSeeds.isEmpty, "merchant-seeds.json must parse into at least one seed")
+    let expenseCatalogue = SeedData.defaultCategories.map { SpendingCategory(name: $0.name, symbol: $0.symbol, tintHex: $0.tint, softHex: $0.soft, kind: .expense) }
+    let resolvedSeeds = MerchantSeeds.resolved(merchantSeeds, categories: expenseCatalogue)
+    assert(resolvedSeeds.count == merchantSeeds.count, "every merchant-seeds.json category must resolve against the default categories")
+
+    // A live user's categories are user-editable and can legitimately drop one a
+    // seed references (e.g. renaming/removing "Entertainment") — that must be
+    // skipped, not asserted, or CategoryClassifier's rebuild crashes on launch.
+    let missingOneCategory = expenseCatalogue.filter { $0.name != "Entertainment" }
+    let lenientlyResolved = MerchantSeeds.resolved(merchantSeeds, categories: missingOneCategory, strict: false)
+    assert(lenientlyResolved.count < merchantSeeds.count, "a category missing from the live catalogue must be skipped, not asserted, in non-strict mode")
+
+    // Accounts: a balance is opening plus its own transactions, in its own
+    // currency only, plus transfers in or out.
+    let cash = Account(name: "Cash", kind: .cash, currency: "AZN", openingBalance: 100)
+    let card = Account(name: "Card", kind: .card, currency: "AZN", openingBalance: 500)
+    let dollars = Account(name: "Dollars", kind: .savings, currency: "USD", openingBalance: 0)
+    let coffee = Transaction(amount: 10, date: .now, merchant: "Coffee", category: nil, currency: "AZN")
+    coffee.account = cash
+    let wage = Transaction(amount: 50, date: .now, merchant: "Wage", kind: .income, category: nil, currency: "AZN")
+    wage.account = cash
+    let abroad = Transaction(amount: 25, date: .now, merchant: "Abroad", category: nil, currency: "USD")
+    abroad.account = cash
+    let unassigned = Transaction(amount: 999, date: .now, merchant: "No account", category: nil, currency: "AZN")
+    let accountLedger = [coffee, wage, abroad, unassigned]
+
+    assert(Accounts.balance(cash, transactions: accountLedger, transfers: []) == 140, "100 opening, minus a 10 expense, plus 50 income")
+    assert(Accounts.balance(dollars, transactions: accountLedger, transfers: []) == 0, "a USD transaction on an AZN account is never converted into its balance")
+    assert(Accounts.balance(card, transactions: accountLedger, transfers: []) == 500, "a transaction with no account belongs to no balance")
+
+    let moved = [Transfer(amount: 40, currency: "AZN", date: .now, from: card, to: cash)]
+    assert(Accounts.balance(cash, transactions: accountLedger, transfers: moved) == 180, "a transfer in adds to the balance")
+    assert(Accounts.balance(card, transactions: accountLedger, transfers: moved) == 460, "a transfer out takes from the balance")
+    assert(Accounts.balance(cash, transactions: accountLedger, transfers: moved) + Accounts.balance(card, transactions: accountLedger, transfers: moved)
+        == Accounts.balance(cash, transactions: accountLedger, transfers: []) + Accounts.balance(card, transactions: accountLedger, transfers: []),
+        "moving your own money never changes how much of it there is")
+    assert(Budgeting.spent(accountLedger, in: Budgeting.monthRange(for: .now), scope: .personal) == 1009,
+        "accounts are an attribute, not a partition: spending totals still cover every account")
+
+    assert(!Accounts.canTransfer(from: cash, to: cash, amount: 10), "an account cannot pay itself")
+    assert(!Accounts.canTransfer(from: cash, to: dollars, amount: 10), "no conversion, so no cross-currency transfer")
+    assert(!Accounts.canTransfer(from: cash, to: card, amount: 0), "a transfer needs a real amount")
+    assert(Accounts.canTransfer(from: cash, to: card, amount: 10))
+
+    // A recurring charge lands in the subscription's account, unless the price
+    // is in a currency that account cannot hold.
+    assert(Accounts.holder(cash, currency: "AZN") === cash, "a subscription charged in the account's own currency lands in it")
+    assert(Accounts.holder(cash, currency: "USD") == nil, "a charge in another currency leaves no balance, it is never converted")
+    assert(Accounts.holder(nil, currency: "AZN") == nil, "a subscription with no account still bills, unattributed")
+
+    dollars.isArchived = true
+    assert(Accounts.holder(dollars, currency: "USD") === dollars, "archiving hides an account from pickers, it does not stop charges already pointed at it")
+    assert(Accounts.visible([cash, card, dollars]).count == 2, "an archived account leaves the pickers")
+    assert(Accounts.nextSortIndex([cash, card, dollars]) == 1, "the next account sorts after the highest existing index")
+
+    // Money tips: 31 of them, one per day, wrapping every 31 days.
+    let tipsNewYear = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!
+    assert(MoneyTips.all.count == 31, "the home card promises 31 tips")
+    assert(MoneyTips.index(for: tipsNewYear, calendar: calendar) == 0)
+    assert(MoneyTips.index(for: calendar.date(byAdding: .day, value: 1, to: tipsNewYear)!, calendar: calendar) == 1, "the tip changes every day")
+    assert(MoneyTips.index(for: calendar.date(byAdding: .day, value: 31, to: tipsNewYear)!, calendar: calendar) == 0, "the rotation wraps after 31 days")
+
+    // CSV / bank-statement import: cells first, then whole rows.
+    // Decimals built from digits, never from a float literal: `Decimal(1234.56)`
+    // carries binary-float noise and would never equal a parsed amount.
+    let statementValue = { (text: String) in Decimal(string: text, locale: Locale(identifier: "en_US_POSIX"))! }
+    assert(StatementImport.amount("-12.30") == statementValue("-12.30"), "a minus is money leaving")
+    assert(StatementImport.amount("1 234,56") == statementValue("1234.56"), "a European statement groups with spaces and decimates with a comma")
+    assert(StatementImport.amount("1,234.56") == statementValue("1234.56"))
+    assert(StatementImport.amount("1,500") == 1500, "a lone separator with three digits behind it is a thousands mark")
+    assert(StatementImport.amount("(45.00)") == -45, "accounting parentheses are a minus")
+    assert(StatementImport.amount("45.00-") == -45, "so is a trailing minus")
+    assert(StatementImport.amount("-12.30 USD") == statementValue("-12.30"), "a currency glued to the number is not part of it")
+    assert(StatementImport.amount("") == nil && StatementImport.amount("pending") == nil, "an unreadable cell is skipped, never guessed at")
+
+    let statementDay = calendar.date(from: DateComponents(year: 2026, month: 4, day: 3))!
+    assert(StatementImport.date("2026-04-03", calendar: calendar) == statementDay)
+    assert(StatementImport.date("03.04.2026", calendar: calendar) == statementDay)
+    assert(StatementImport.date("03/04/2026", calendar: calendar) == statementDay, "a slashed date is read day first")
+    assert(StatementImport.date("2026-04-03 13:02", calendar: calendar) == statementDay, "only the day survives, at midnight")
+    assert(StatementImport.date("not a date", calendar: calendar) == nil)
+
+    let statementCSV = "Date;Description;Amount;Currency\n03.04.2026;\"COFFEE; BAKU\";-4,50;AZN\n04.04.2026;Salary;1 200,00;AZN\n05.04.2026;broken;;AZN\n"
+    assert(StatementImport.delimiter(statementCSV) == ";", "a European statement separates with semicolons")
+    let statementFields = StatementImport.fields(statementCSV, delimiter: ";")
+    assert(statementFields.count == 4, "three data rows plus the header, blank lines dropped")
+    assert(statementFields[1][1] == "COFFEE; BAKU", "a quoted field keeps its delimiter")
+    let statementMapping = StatementImport.guessMapping(header: statementFields[0])
+    assert(statementMapping?.date == 0 && statementMapping?.merchant == 1 && statementMapping?.amount == 2 && statementMapping?.currency == 3)
+    assert(StatementImport.guessMapping(header: ["foo", "bar"]) == nil, "a file with no recognisable header needs the user to map columns")
+    let statementRows = StatementImport.rows(statementFields, mapping: statementMapping!, defaultCurrency: "AZN", skipFirst: true, calendar: calendar)
+    assert(statementRows.count == 2, "the row with no amount is skipped")
+    assert(statementRows[0].kind == .expense && statementRows[0].amount == statementValue("4.50") && statementRows[0].currency == "AZN")
+    assert(statementRows[1].kind == .income && statementRows[1].amount == 1200, "a positive amount is money arriving")
+    var forcedMapping = statementMapping!
+    forcedMapping.sign = .allExpense
+    assert(StatementImport.rows(statementFields, mapping: forcedMapping, defaultCurrency: "AZN", skipFirst: true, calendar: calendar).allSatisfy { $0.kind == .expense },
+           "a Debit column is all spending whatever the sign")
+
+    let statementTwin = Transaction(amount: statementValue("4.50"), date: calendar.date(byAdding: .hour, value: 9, to: statementRows[0].date)!,
+                                    merchant: "coffee; baku", kind: .expense, scope: .personal, category: nil, currency: "AZN")
+    assert(StatementImport.isDuplicate(statementRows[0], of: statementTwin, calendar: calendar), "the same charge on the same day is a re-import, whatever the time")
+    assert(!StatementImport.isDuplicate(statementRows[1], of: statementTwin, calendar: calendar))
+    statementTwin.amount = statementValue("4.51")
+    assert(!StatementImport.isDuplicate(statementRows[0], of: statementTwin, calendar: calendar), "a different amount is a different charge")
 }
 #endif

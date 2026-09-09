@@ -48,7 +48,7 @@ struct SubscriptionsView: View {
 
     var body: some View {
         NavigationStack {
-            ScreenScroll(title: "Subscriptions", eyebrow: "Every month") {
+            ScreenScroll(title: "Subscriptions", eyebrow: Text("Every month")) {
                 ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
                 totals
                 Button("Add from text or voice", systemImage: "sparkles") { isSmartCreating = true }
@@ -94,7 +94,7 @@ struct SubscriptionsView: View {
         }
     }
 
-    private var emptyTitle: String {
+    private var emptyTitle: LocalizedStringKey {
         switch filter {
         case .active: return "No active subscriptions"
         case .paused: return "Nothing is paused"
@@ -239,7 +239,7 @@ struct SubscriptionsView: View {
             CategoryBadge(category: subscription.category)
             VStack(alignment: .leading, spacing: 2) {
                 Text(subscription.name).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-                Text(subtitle(for: subscription)).font(.footnote).foregroundStyle(Palette.inkMuted)
+                Text(subtitle(for: subscription)).font(.footnote).foregroundStyle(Palette.inkMuted).lineLimit(2)
                 if let change = Subscriptions.priceChange(subscription) {
                     SubscriptionPriceChangeBadge(change: change)
                 }
@@ -254,20 +254,12 @@ struct SubscriptionsView: View {
     }
 
     private func subtitle(for subscription: Subscription) -> String {
-        var parts = [subscription.nextPaymentDate.formatted(date: .abbreviated, time: .omitted)]
-        parts.append(subscription.frequency.title.lowercased())
-        if subscription.scope == .shared { parts.append("Shared") }
-        if subscription.status == .paused { parts.append("Paused") }
-        if let end = subscription.endDate {
-            parts.append(Subscriptions.hasEnded(subscription, on: .now) ? "Finished" : "ends \(end.formatted(date: .abbreviated, time: .omitted))")
-        }
-        if let days = subscription.reminderDays { parts.append("reminder \(days)d before") }
-        return parts.joined(separator: " · ")
+        subscription.nextPaymentDate.formatted(date: .abbreviated, time: .omitted)
     }
 
     private func askQuestion() {
         questionFocused = false
-        Task { await advisor.ask(question, subscriptions: subscriptions.filter { $0.scope == scope }, scope: scope) }
+        Task { await advisor.ask(question, subscriptions: subscriptions, scope: scope) }
     }
 
     private func refresh() async {

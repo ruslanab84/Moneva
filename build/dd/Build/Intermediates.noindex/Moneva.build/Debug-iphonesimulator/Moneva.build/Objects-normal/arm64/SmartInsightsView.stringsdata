@@ -1,0 +1,80 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/SmartInsightsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Opens the smart insights details",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Smart insights",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 14
+        }
+      },
+      {
+        "comment": "",
+        "key": "Checking your spending patterns…",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 19
+        }
+      },
+      {
+        "comment": "",
+        "key": "No significant changes detected",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Keep recording expenses to reveal new patterns.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "View",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Checking your spending patterns…",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "No significant changes detected",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "Insights appear when there is enough recorded spending to compare. Trends need three months of history and seven completed days this month.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 81
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -96,10 +96,29 @@ final class Transaction {
     }
 
     var draftID: String?
+    /// Which account the money moved through. Optional and additive: rows
+    /// written before accounts existed simply have none, and nothing that
+    /// totals money requires it.
+    var account: Account?
     @Attribute(.externalStorage) var receiptImage: Data?
     var receiptItems: Data?
     @Relationship(deleteRule: .cascade, inverse: \TransactionAllocation.transaction)
     var allocations: [TransactionAllocation] = []
+
+    /// Stable across devices, unlike `persistentModelID` — doubles as the
+    /// CKRecord name for shared-scope family sync. Default-initialized, so
+    /// this is a safe additive column, not the `SpendingCategory.scopeRaw`
+    /// enum-backfill landmine.
+    var cloudID: UUID = UUID()
+    /// Archived CKRecord system fields (change tag included), cached so a
+    /// later edit round-trips through CloudKit instead of conflicting with
+    /// itself. nil means this transaction has never been synced.
+    var ckSystemFields: Data?
+    /// CloudKit user record name of whoever entered this. Empty means "me, or
+    /// written before family sync existed" — same safe additive-default shape
+    /// as `cloudID`, not the `scopeRaw` enum-backfill landmine. Personal-scope
+    /// rows keep it empty: there is nobody to attribute them to.
+    var authorID: String = ""
 
     func amount(in category: SpendingCategory?) -> Decimal {
         if allocations.isEmpty { return self.category?.persistentModelID == category?.persistentModelID ? amount : 0 }
@@ -120,6 +139,16 @@ final class Budget {
 
     @Relationship(deleteRule: .cascade, inverse: \BudgetLimit.budget)
     var limits: [BudgetLimit] = []
+
+    /// See `Transaction.ckSystemFields`. Only shared-scope budgets ever sync.
+    var ckSystemFields: Data?
+    /// `FamilyBudget` as JSON: who splits this budget in what proportion, and
+    /// each member's personal ceiling inside the shared total.
+    /// ponytail: the whole family side of a budget is one JSON column and one
+    /// CKRecord, last-write-wins as a unit. Split it into real columns and
+    /// child records if a family ever grows past two people, or if partners
+    /// report clobbered edits.
+    var familyJSON: String?
 
     init(monthStart: Date, total: Decimal, scope: Scope = .personal) {
         self.monthStart = monthStart
@@ -213,6 +242,10 @@ final class Subscription {
     var status: SubscriptionStatus = SubscriptionStatus.active
     var createdAt: Date = Date.now
     var category: SpendingCategory?
+    /// Which account the charge leaves from. Optional and additive, exactly
+    /// like `Transaction.account`: subscriptions written before accounts
+    /// existed simply have none, and nothing that totals money requires it.
+    var account: Account?
 
     @Relationship(deleteRule: .cascade, inverse: \SubscriptionPayment.subscription)
     var payments: [SubscriptionPayment] = []
@@ -300,5 +333,132 @@ final class MerchantCategoryRule {
         self.merchant = merchant
         self.scopeRaw = scope.rawValue
         self.category = category
+    }
+}
+
+/// One participant of the family share, cached locally so a transaction can
+/// show a name without a CloudKit round-trip. Never synced — each device
+/// rebuilds it from `CKShare.participants`.
+@Model
+final class FamilyMember {
+    /// CloudKit user record name. Matches `Transaction.authorID`.
+    var memberID: String = ""
+    var name: String = ""
+    var isMe: Bool = false
+
+    init(memberID: String, name: String, isMe: Bool) {
+        self.memberID = memberID
+        self.name = name
+        self.isMe = isMe
+    }
+}
+
+/// Money moved between family members to clear a balance. Deliberately not a
+/// `Transaction`: paying your partner back is not spending, and keeping it out
+/// of that type means no existing total, chart, budget or AI tool has to learn
+/// to exclude it.
+@Model
+final class Settlement {
+    var cloudID: UUID = UUID()
+    var amount: Decimal = Decimal.zero
+    var currency: String = "AZN"
+    var date: Date = Date.now
+    /// Who paid.
+    var fromMemberID: String = ""
+    /// Who was paid.
+    var toMemberID: String = ""
+    var ckSystemFields: Data?
+
+    init(amount: Decimal, currency: String = Money.code, date: Date = .now, fromMemberID: String, toMemberID: String) {
+        self.amount = amount
+        self.currency = currency
+        self.date = date
+        self.fromMemberID = fromMemberID
+        self.toMemberID = toMemberID
+    }
+}
+
+enum AccountKind: String, Codable, CaseIterable, Identifiable {
+    case cash, card, bank, savings
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .cash: return "Cash"
+        case .card: return "Card"
+        case .bank: return "Bank"
+        case .savings: return "Savings"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .cash: return "banknote"
+        case .card: return "creditcard"
+        case .bank: return "building.columns"
+        case .savings: return "lock.square"
+        }
+    }
+}
+
+/// Where the money actually sits. Deliberately *not* a partition like `Scope`:
+/// every existing total, chart, budget and AI tool keeps summing across all
+/// accounts. Only the accounts screen filters by one.
+@Model
+final class Account {
+    var name: String = ""
+    /// Stored as a raw string for the same reason as `SpendingCategory.scopeRaw`:
+    /// SwiftData cannot fill an enum column rows written before it existed never had.
+    var kindRaw: String?
+    var tintHex: String = "78746A"
+    /// The account's own currency. A transaction in any other currency is not
+    /// part of this balance — the app never converts money.
+    var currency: String = "AZN"
+    /// What was on the account the day it was added here.
+    var openingBalance: Decimal = Decimal.zero
+    /// Archived accounts leave the picker but keep every transaction they held.
+    var isArchived: Bool = false
+    var sortIndex: Int = 0
+    var createdAt: Date = Date.now
+
+    var kind: AccountKind {
+        get { kindRaw.flatMap(AccountKind.init(rawValue:)) ?? .cash }
+        set { kindRaw = newValue.rawValue }
+    }
+
+    @Relationship(deleteRule: .nullify, inverse: \Transaction.account)
+    var transactions: [Transaction] = []
+
+    init(name: String, kind: AccountKind = .cash, tintHex: String = "78746A", currency: String = Money.code, openingBalance: Decimal = 0, sortIndex: Int = 0) {
+        self.name = name
+        self.kindRaw = kind.rawValue
+        self.tintHex = tintHex
+        self.currency = currency
+        self.openingBalance = openingBalance
+        self.sortIndex = sortIndex
+    }
+
+    var symbol: String { kind.symbol }
+    var tint: Color { Color(hex: tintHex) }
+}
+
+/// Money moved between your own accounts. Deliberately not a `Transaction`, for
+/// the same reason as `Settlement`: moving your own money is not spending, and
+/// keeping it out of that type means no existing total, chart, budget or AI
+/// tool has to learn to exclude it.
+@Model
+final class Transfer {
+    var amount: Decimal = Decimal.zero
+    var currency: String = "AZN"
+    var date: Date = Date.now
+    var note: String = ""
+    @Relationship(deleteRule: .nullify) var from: Account?
+    @Relationship(deleteRule: .nullify) var to: Account?
+
+    init(amount: Decimal, currency: String = Money.code, date: Date = .now, note: String = "", from: Account?, to: Account?) {
+        self.amount = amount
+        self.currency = currency
+        self.date = date
+        self.note = note
+        self.from = from
+        self.to = to
     }
 }

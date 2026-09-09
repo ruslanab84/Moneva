@@ -1,0 +1,144 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/FinancialForecastView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Opens the financial forecast details",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "Financial forecast",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 12
+        }
+      },
+      {
+        "comment": "",
+        "key": "Building your forecast",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 24
+        }
+      },
+      {
+        "comment": "",
+        "key": "≈ %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 17
+        }
+      },
+      {
+        "comment": "",
+        "key": "Projected shortfall",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 20
+        }
+      },
+      {
+        "comment": "",
+        "key": "Available at month end",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 20
+        }
+      },
+      {
+        "comment": "",
+        "key": "View",
+        "location": {
+          "startingColumn": 15,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "End of month forecast",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Building your forecast",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "≈ %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Balance uses recorded income minus expenses. Add an income with a future date to include an expected salary. Estimates are based only on your records.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "Projected shortfall",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Available",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recorded balance",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expected income",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upcoming subscriptions",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remaining expenses",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 74
+        }
+      }
+    ]
+  },
+  "version": 1
+}

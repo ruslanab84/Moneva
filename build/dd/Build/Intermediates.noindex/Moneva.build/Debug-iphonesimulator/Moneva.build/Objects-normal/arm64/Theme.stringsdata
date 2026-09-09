@@ -1,0 +1,16 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Theme.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Progress",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 233
+        }
+      }
+    ]
+  },
+  "version": 1
+}

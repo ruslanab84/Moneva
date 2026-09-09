@@ -301,6 +301,7 @@ enum SubscriptionEngine {
                 category: subscription.category,
                 currency: subscription.currency
             )
+            created.account = Accounts.holder(subscription.account, currency: subscription.currency)
             context.insert(created)
             transaction = created
         }

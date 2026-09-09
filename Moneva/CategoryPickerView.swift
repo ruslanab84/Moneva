@@ -47,7 +47,7 @@ struct CategoryPickerView: View {
                 .padding(.vertical, 12)
             }
             .background(Palette.ground)
-            .searchable(text: $query, prompt: "Search categories")
+            .searchable(text: $query, placement: .navigationBarDrawer, prompt: "Search categories")
             .navigationTitle(kind == .income ? "Income category" : "Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

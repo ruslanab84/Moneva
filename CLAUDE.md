@@ -8,7 +8,7 @@ Moneva: SwiftUI + SwiftData personal/shared expense tracker for iOS. No backend 
 
 ## Build / run / test
 
-Single target `Moneva`, no test target yet — correctness is enforced by an assert-based self-check (`monevaSelfCheck()` in [Budgeting.swift](Moneva/Budgeting.swift), run automatically in `#if DEBUG` from [MonevaApp.swift](Moneva/MonevaApp.swift) on every debug launch).
+Single target `Moneva`, no test target yet — correctness is enforced by an assert-based self-check (`monevaSelfCheck()` in [Budgeting.swift](Moneva/Budgeting.swift), run automatically in `#if DEBUG` from [MonevaApp.swift](Moneva/MonevaApp.swift) on every debug launch). It fans out into `aiFeaturesSelfCheck()` ([AIFeaturesSelfCheck.swift](Moneva/AIFeaturesSelfCheck.swift)) and `financialToolsSelfCheck()` ([FinancialToolsSelfCheck.swift](Moneva/FinancialToolsSelfCheck.swift)) — that's the whole regression net, so any change to money/date/AI logic needs a new assert in the matching file, not a new test target.
 
 ```bash
 xcodebuild -project Moneva.xcodeproj -scheme Moneva -destination 'generic/platform=iOS Simulator' -configuration Debug build
@@ -16,7 +16,11 @@ xcodebuild -project Moneva.xcodeproj -scheme Moneva -destination 'generic/platfo
 
 To actually verify a change, build for a concrete simulator, launch the `.app`, and tap through the changed flow — a compile-only build misses runtime issues like SwiftData migration crashes or a broken Cancel/redraw.
 
+Set `MONEVA_TOOL_MODEL_CHECK=1` in the Xcode scheme's Run environment (Apple Intelligence-capable device/sim only) to additionally run real `LanguageModelSession` evaluation of the nine financial tools against synthetic data — off by default since it needs a live model.
+
 Environment: Xcode 26.6, iOS deployment target 26.5, Swift 5.0.
+
+Commits: short imperative style, e.g. `Give subscriptions an optional end date` — not Conventional Commits.
 
 ## Working rules
 
@@ -38,6 +42,26 @@ The one pattern that spans the AI-touching files (voice capture, receipt OCR, su
 - [SpeechCapture.swift](Moneva/SpeechCapture.swift) — on-device transcription feeding the same `TransactionDrafter` in `.spoken` mode.
 
 Drafts from either source land in the same confirm-before-save UI; nothing from a model reaches the store un-reviewed.
+
+## Financial tool-calling layer (Ask/Search/Explain)
+
+A second, distinct AI pattern for read-only questions: `Question → typed Foundation Models tool selection → LanguageModelSession with selected tools → typed Tool → FinancialToolService.Request → validated domain calculation over local SwiftData → FinancialToolResult JSON → model explanation`. Defined in [AskTools.swift](Moneva/AskTools.swift) (nine registered tools, e.g. `GetTransactionsTool`, `GetBudgetTool`, `ComparePeriodsTool`) and [SpendingSearch.swift](Moneva/SpendingSearch.swift) (`DraftedSearch` → `SpendingFilter`). Full contract, JSON schema, and the authorization boundary (no login/tenant — isolation is local-store scope+currency, not authenticated multi-tenancy) are in [docs/AI_TOOL_LAYER.md](docs/AI_TOOL_LAYER.md).
+
+- The model never sees `ModelContext`, raw records, or SQL — only bounded argument strings in, bounded `FinancialToolResult` JSON out. `FinancialToolService` fixes `Scope`/currency from the UI; model arguments cannot override them.
+- All three entry points (Ask, Search, Explain in [SpendingAssistantView.swift](Moneva/SpendingAssistantView.swift), plus subscription Q&A in [SubscriptionInsight.swift](Moneva/SubscriptionInsight.swift), plus [SmartInsights.swift](Moneva/SmartInsights.swift)) must build their `LanguageModelSession` with the same category/date grounding via `OnDeviceAI.context(categories:)` — a session missing that context makes the model misfile category names into free-text filters instead of matching real categories, silently undercounting totals. If you add a new tool-calling entry point, copy an existing session-construction site rather than building context from scratch.
+- Comparison differences (`comparePeriods`) are computed by Swift and the explanation preserves the signed value verbatim — live testing found the model could restate a correct value incorrectly, so numeric claims never round-trip through model prose unchecked.
+
+## Smart Insights
+
+[SmartInsights.swift](Moneva/SmartInsights.swift) computes spending-trend/spike/budget-projection signals with pure `Decimal` statistics off the main actor; Foundation Models is only allowed to pick which of two app-authored explanation strings to show (a constrained choice index), never to write numbers. See [docs/smart-insights/README.md](docs/smart-insights/README.md) for the exact thresholds.
+
+## Family sharing (CloudKit)
+
+[FamilySync.swift](Moneva/FamilySync.swift) syncs `Transaction` records via `CKSyncEngine`, with `AppDelegate.swift` handling share acceptance and [CloudSharingSheet.swift](Moneva/CloudSharingSheet.swift) wrapping `UICloudSharingController` for invites. This is layered on top of, not a replacement for, local SwiftData — `Scope: .shared` remains a local partition, not proof of an accepted share. Treat any CloudKit-touching change as sync-conflict-sensitive: `FamilySyncEngine.catchUp()` runs at launch and is covered by `familySyncSelfCheck()`.
+
+## Merchant/category classification
+
+[MerchantSeeds.swift](Moneva/MerchantSeeds.swift) loads a bundled 241-entry merchant dataset ([Resources/merchant-seeds.json](Moneva/Resources)); [MerchantEmbedding.swift](Moneva/MerchantEmbedding.swift) and [CategoryClassifier.swift](Moneva/CategoryClassifier.swift) match free-text merchant names to the user's *live, editable* category list, not the seed data's own categories. `MerchantSeeds.resolved(strict:)` defaults `strict: true` (traps on an unresolvable seed) for the self-check fixture, but the live classifier call site must pass `strict: false` — a user can delete/rename categories the seed data references, and that must degrade to skipping the seed, not crashing mid-draft.
 
 ## Data model ([Models.swift](Moneva/Models.swift))
 

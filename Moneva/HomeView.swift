@@ -8,6 +8,7 @@ struct HomeView: View {
     // move to a predicate #Query if a month ever holds thousands of rows.
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query private var budgets: [Budget]
+    @Query private var subscriptions: [Subscription]
     @State private var isSettingsOpen = false
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
@@ -21,7 +22,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        ScreenScroll(title: greeting, eyebrow: range.lowerBound.formatted(.dateTime.month(.wide).year())) {
+        ScreenScroll(title: greeting, eyebrow: Text(range.lowerBound.formatted(.dateTime.month(.wide).year()))) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
 
             if let budget {
@@ -32,6 +33,39 @@ struct HomeView: View {
                     message: "Set a monthly limit and Moneva will track what is left of it.",
                     symbol: "chart.pie"
                 )
+            }
+
+            AccountsCard()
+
+            HomeAskCard(scope: scope)
+
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, scope: scope, currency: currencyCode, now: context.date)
+                let insightInput = InsightInput.snapshot(transactions, budget: budget, scope: scope, currency: currencyCode, now: context.date)
+
+                HStack(alignment: .top, spacing: 12) {
+                    NavigationLink {
+                        ScreenScroll(title: "Financial forecast", eyebrow: Text(forecast.currency)) {
+                            FinancialForecastView(forecast: forecast)
+                        }
+                        .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        FinancialForecastPreview(forecast: forecast)
+                    }
+
+                    NavigationLink {
+                        ScreenScroll(title: "Smart insights", eyebrow: Text(insightInput.currency)) {
+                            SmartInsightsView(input: insightInput)
+                        }
+                        .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        SmartInsightsPreview(input: insightInput)
+                    }
+                    .padding(.top, 38)
+                }
+                .buttonStyle(.plain)
+
+                MoneyTipCard(date: context.date)
             }
 
             HStack {
@@ -74,7 +108,7 @@ struct HomeView: View {
         .sheet(isPresented: $isSettingsOpen) { SettingsView() }
     }
 
-    private var greeting: String {
+    private var greeting: LocalizedStringKey {
         switch Calendar.current.component(.hour, from: .now) {
         case ..<5, 22...: "Good night"
         case ..<12: "Good morning"
@@ -103,13 +137,14 @@ struct HomeView: View {
                     .padding(.vertical, 5)
                     .background(Palette.line.opacity(0.6), in: .capsule)
                     .foregroundStyle(Palette.inkMuted)
+                    .accessibilityHidden(true) // ProgressBar already speaks this value
             }
 
             Text(spent.money(currencyCode))
                 .font(.money(.largeTitle))
                 .foregroundStyle(Palette.ink)
 
-            ProgressBar(progress: progress, tint: tint(for: state))
+            ProgressBar(progress: progress, tint: tint(for: state), accessibilityLabel: "Budget used")
 
             HStack {
                 Text("\(remaining.money(currencyCode)) left of \(budget.total.money(currencyCode))")

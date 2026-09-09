@@ -3,7 +3,7 @@ import FoundationModels
 import SwiftData
 
 @Generable
-enum SearchPeriod: String, CaseIterable { case all, today, yesterday, thisMonth, lastMonth, lastWeekend, custom }
+enum SearchPeriod: String, CaseIterable { case all, today, yesterday, thisWeek, lastWeek, thisMonth, lastMonth, lastWeekend, custom }
 
 @Generable
 struct DraftedSearch {
@@ -60,6 +60,13 @@ enum SpendingSearch {
         case .all: return nil
         case .today: return today..<calendar.date(byAdding: .day, value: 1, to: today)!
         case .yesterday: return calendar.date(byAdding: .day, value: -1, to: today)!..<today
+        case .thisWeek:
+            guard let week = calendar.dateInterval(of: .weekOfYear, for: today) else { throw Failure.invalid("Choose week dates manually.") }
+            return week.start..<week.end
+        case .lastWeek:
+            guard let week = calendar.dateInterval(of: .weekOfYear, for: today),
+                  let start = calendar.date(byAdding: .weekOfYear, value: -1, to: week.start) else { throw Failure.invalid("Choose week dates manually.") }
+            return start..<week.start
         case .thisMonth: return Budgeting.monthRange(for: now, calendar: calendar)
         case .lastMonth: return Budgeting.monthRange(for: calendar.date(byAdding: .month, value: -1, to: now)!, calendar: calendar)
         case .lastWeekend:
@@ -96,6 +103,7 @@ struct SpendingFact: Identifiable {
     let id: Int
     let text: String
     let transactions: [Transaction]
+    var category: SpendingCategory?
 }
 
 enum SpendingReport {
@@ -105,7 +113,7 @@ enum SpendingReport {
         let history = transactions.filter { $0.scope == scope && $0.kind == .expense && $0.date <= now }
         let hasPriorHistory = history.contains(where: { previous.contains($0.date) })
         var facts: [SpendingFact] = []
-        func add(_ text: String, _ source: [Transaction]) { facts.append(SpendingFact(id: facts.count, text: text, transactions: source)) }
+        func add(_ text: String, _ source: [Transaction], category: SpendingCategory? = nil) { facts.append(SpendingFact(id: facts.count, text: text, transactions: source, category: category)) }
         if hasPriorHistory {
             add("This month is incomplete. Comparisons below use this month so far and the full previous month; unrecorded spending is unknown.", [])
             if !history.contains(where: { $0.date < previous.lowerBound }) {
@@ -126,17 +134,17 @@ enum SpendingReport {
                 let before = prior.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
                 guard used > 0 || before > 0 else { continue }
                 if prior.isEmpty {
-                    add("\(category.name): \(used.money(currency)) this month so far.", month.filter { $0.amount(in: category) > 0 })
+                    add("\(category.name): \(used.money(currency)) this month so far.", month.filter { $0.amount(in: category) > 0 }, category: category)
                 } else {
                     let difference = used - before
-                    add("\(category.name): \(used.money(currency)) this month so far versus \(before.money(currency)) in the previous month; \(difference >= 0 ? "increase" : "decrease") of \(abs(difference).money(currency)). The difference reflects the linked recorded purchases, not a known change in habits or prices.", (month + prior).filter { $0.amount(in: category) > 0 })
+                    add("\(category.name): \(used.money(currency)) this month so far versus \(before.money(currency)) in the previous month; \(difference >= 0 ? "increase" : "decrease") of \(abs(difference).money(currency)). The difference reflects the linked recorded purchases, not a known change in habits or prices.", (month + prior).filter { $0.amount(in: category) > 0 }, category: category)
                 }
             }
             if let budget = budgets.first(where: { $0.scope == scope && $0.monthStart == current.lowerBound && ($0.currency ?? Money.code) == currency }) {
                 add("Budget: \(total.money(currency)) used of \(budget.total.money(currency)); \(max(budget.total - total, 0).money(currency)) remaining.", month)
                 for limit in budget.limits {
                     let used = month.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }
-                    add("\(limit.category?.name ?? "Uncategorised") budget: \(used.money(currency)) used of \(limit.amount.money(currency)).", month.filter { $0.amount(in: limit.category) > 0 })
+                    add("\(limit.category?.name ?? String(localized: "Uncategorised")) budget: \(used.money(currency)) used of \(limit.amount.money(currency)).", month.filter { $0.amount(in: limit.category) > 0 }, category: limit.category)
                 }
             }
         }

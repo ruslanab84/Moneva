@@ -1,0 +1,184 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/BudgetView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Budget",
+        "location": {
+          "startingColumn": 95,
+          "startingLine": 21
+        }
+      },
+      {
+        "comment": "",
+        "key": "No %@ budget yet",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "Give the month a total limit, then add per-category limits if you want them.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create budget",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit budget",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@, %@ of %@, %lld percent",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ left",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Budget used",
+        "location": {
+          "startingColumn": 97,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "On this pace you finish the month around %@.",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ spent of %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Uncategorised",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Uncategorised",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "New budget",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit budget",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Monthly total",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category limits",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total limit",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "None",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 154
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 155
+        }
+      }
+    ]
+  },
+  "version": 1
+}

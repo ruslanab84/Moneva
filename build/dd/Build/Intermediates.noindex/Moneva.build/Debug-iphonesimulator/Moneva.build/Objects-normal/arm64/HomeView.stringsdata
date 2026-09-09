@@ -1,0 +1,112 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/HomeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Good night",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Good morning",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "Good afternoon",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "Good evening",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "No budget for this month",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set a monthly limit and Moneva will track what is left of it.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nothing today",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap the plus button to add an expense or income.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spent %@ of %@, %lld percent, %@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Budget used",
+        "location": {
+          "startingColumn": 89,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%% used",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ left of %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 144
+        }
+      }
+    ]
+  },
+  "version": 1
+}

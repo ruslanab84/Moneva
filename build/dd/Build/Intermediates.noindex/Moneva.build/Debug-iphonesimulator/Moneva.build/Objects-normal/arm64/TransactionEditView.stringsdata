@@ -1,0 +1,176 @@
+{
+  "source": "/Users/ruslanabdulov/Desktop/Moneva/Moneva/TransactionEditView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Edit transaction",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete this transaction?",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved category split",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipt",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipt items",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Amount",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Merchant or source",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "Note",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose category",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "The total, type and categories are fixed for this saved split. To replace the split, delete this expense and review the receipt again.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Deleted category",
+        "location": {
+          "startingColumn": 87,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved receipt",
+        "location": {
+          "startingColumn": 88,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ · %@ · %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity: %@ · Unit price: %@",
+        "location": {
+          "startingColumn": 89,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Included in other lines; not added again.",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete transaction",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 124
+        }
+      }
+    ]
+  },
+  "version": 1
+}
