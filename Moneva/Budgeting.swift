@@ -5,6 +5,22 @@ import SwiftData
 import UserNotifications
 #endif
 
+/// Granularity for browsing transactions — the list groups by day either way,
+/// this only decides how much of the calendar is in view at once.
+enum TransactionPeriod: String, CaseIterable, Identifiable {
+    case day, week, month
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .day: return "Day"
+        case .week: return "Week"
+        case .month: return "Month"
+        }
+    }
+}
+
 /// Every number the app shows is computed here, in Swift — never by a model.
 enum Budgeting {
     enum LimitState {
@@ -30,6 +46,38 @@ enum Budgeting {
         let start = monthStart(for: date, calendar: calendar)
         let end = calendar.date(byAdding: .month, value: 1, to: start) ?? date
         return start..<end
+    }
+
+    static func dayRange(for date: Date, calendar: Calendar = .current) -> Range<Date> {
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+        return start..<end
+    }
+
+    static func weekRange(for date: Date, calendar: Calendar = .current) -> Range<Date> {
+        let start = calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .day, value: 7, to: start) ?? date
+        return start..<end
+    }
+
+    static func range(for period: TransactionPeriod, anchor: Date, calendar: Calendar = .current) -> Range<Date> {
+        switch period {
+        case .day: return dayRange(for: anchor, calendar: calendar)
+        case .week: return weekRange(for: anchor, calendar: calendar)
+        case .month: return monthRange(for: anchor, calendar: calendar)
+        }
+    }
+
+    /// Steps the anchor date one period at a time — a stride the calendar owns,
+    /// so week boundaries follow the user's locale instead of a fixed 7 days.
+    static func shift(_ period: TransactionPeriod, by amount: Int, from anchor: Date, calendar: Calendar = .current) -> Date {
+        let component: Calendar.Component
+        switch period {
+        case .day: component = .day
+        case .week: component = .weekOfYear
+        case .month: component = .month
+        }
+        return calendar.date(byAdding: component, value: amount, to: anchor) ?? anchor
     }
 
     static func daysRemaining(in range: Range<Date>, from now: Date = .now, calendar: Calendar = .current) -> Int {
@@ -108,6 +156,16 @@ func monevaSelfCheck() {
     let range = Budgeting.monthRange(for: calendar.date(from: DateComponents(year: 2026, month: 9, day: 17))!, calendar: calendar)
     assert(range.lowerBound == sept, "month range must start on the 1st")
     assert(range.upperBound == calendar.date(from: DateComponents(year: 2026, month: 10, day: 1))!, "month range must end at the next 1st")
+
+    let sept17 = calendar.date(from: DateComponents(year: 2026, month: 9, day: 17))!
+    let dayRange = Budgeting.dayRange(for: sept17, calendar: calendar)
+    assert(dayRange.lowerBound == sept17 && dayRange.upperBound == calendar.date(byAdding: .day, value: 1, to: sept17)!, "a day range is exactly one day")
+    let weekRange = Budgeting.weekRange(for: sept17, calendar: calendar)
+    assert(calendar.dateComponents([.day], from: weekRange.lowerBound, to: weekRange.upperBound).day == 7, "a week range spans 7 days")
+    assert(weekRange.contains(sept17), "the anchor date falls inside its own week range")
+    assert(Budgeting.range(for: .month, anchor: sept17, calendar: calendar) == range, "the month period matches monthRange")
+    assert(calendar.component(.day, from: Budgeting.shift(.day, by: 1, from: sept17, calendar: calendar)) == 18, "shifting a day moves the anchor forward one day")
+    assert(calendar.component(.month, from: Budgeting.shift(.month, by: -1, from: sept17, calendar: calendar)) == 8, "shifting a month back lands in August")
 
     let food = SpendingCategory(name: "Food", symbol: "fork.knife", tintHex: "B5813F", softHex: "F0E6D6")
     let inside = Transaction(amount: 42, date: calendar.date(from: DateComponents(year: 2026, month: 9, day: 3))!, merchant: "Bravo", category: food)
