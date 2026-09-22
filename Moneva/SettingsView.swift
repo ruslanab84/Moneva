@@ -43,8 +43,13 @@ struct SettingsView: View {
                     } label: {
                         Label("Import statement", systemImage: "tablecells")
                     }
+                    NavigationLink {
+                        StatementExportView()
+                    } label: {
+                        Label("Export statement", systemImage: "square.and.arrow.up")
+                    }
                 } footer: {
-                    Text("Read a CSV export from your bank, tick what to keep, and save it as transactions.")
+                    Text("Read a CSV export from your bank, tick what to keep, and save it as transactions. Or export your own transactions back out to CSV.")
                 }
 
                 Section {
