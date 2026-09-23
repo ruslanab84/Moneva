@@ -157,6 +157,19 @@ enum Budgeting {
         return (spent / limit).doubleValue
     }
 
+    /// Unused budget from last month's same-category limit, added on top of
+    /// this month's limit as a bonus. Only a positive leftover carries
+    /// forward — an overspent category starts fresh, never negative.
+    static func rolloverAmount(for category: SpendingCategory?, transactions: [Transaction], budgets: [Budget], monthStart: Date, scope: Scope, currency: String = Money.code, calendar: Calendar = .current) -> Decimal {
+        guard let category else { return 0 }
+        let prevStart = calendar.date(byAdding: .month, value: -1, to: monthStart) ?? monthStart
+        guard let prevBudget = budgets.first(where: { $0.scope == scope && ($0.currency ?? currency) == currency && $0.monthStart == prevStart }),
+              let prevLimit = prevBudget.limits.first(where: { $0.category == category }) else { return 0 }
+        let prevRange = monthRange(for: prevStart, calendar: calendar)
+        let spent = spendingByCategory(transactions, categories: [category], in: prevRange, scope: scope, currency: currency).first?.total ?? 0
+        return max(prevLimit.amount - spent, 0)
+    }
+
     /// Straight-line projection of the month's end total from the pace so far.
     /// Returns nil before a full day has elapsed — one morning is not a pace.
     static func projectedMonthTotal(spent: Decimal, now: Date, calendar: Calendar = .current) -> Decimal? {
@@ -297,6 +310,18 @@ func monevaSelfCheck() {
     assert(byCategory.map(\.category.name) == ["Food"], "only categories with spending show up, in catalogue order")
     assert(byCategory.first?.total == 42, "the category total matches the personal-scope spend")
     assert(Budgeting.spendingByCategory(all, categories: catalogue, in: range, scope: .shared).first?.total == 35, "a shared transaction counts on the shared side, not personal")
+
+    // Rollover: `outside` already spent 100 of food in August (see `all` above).
+    let augStart = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))!
+    let augFoodBudget = Budget(monthStart: augStart, total: 500, scope: .personal)
+    augFoodBudget.limits = [BudgetLimit(amount: 150, category: food)]
+    assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [augFoodBudget], monthStart: sept, scope: .personal, calendar: calendar) == 50, "50 unspent of August's 150 food limit carries into September")
+    let augOverBudget = Budget(monthStart: augStart, total: 500, scope: .personal)
+    augOverBudget.limits = [BudgetLimit(amount: 80, category: food)]
+    assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [augOverBudget], monthStart: sept, scope: .personal, calendar: calendar) == 0, "an overspent category never rolls a negative bonus")
+    assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [], monthStart: sept, scope: .personal, calendar: calendar) == 0, "no prior month's budget means no rollover")
+    assert(Budgeting.rolloverAmount(for: transport, transactions: all, budgets: [augFoodBudget], monthStart: sept, scope: .personal, calendar: calendar) == 0, "a category with no prior limit rolls nothing")
+    assert(Budgeting.rolloverAmount(for: nil, transactions: all, budgets: [augFoodBudget], monthStart: sept, scope: .personal, calendar: calendar) == 0, "no category means nothing to roll")
 
     assert(Money.parse("42.499") == Decimal(string: "42.499"), "exact model decimal survives without float conversion")
     assert(Money.parse("-5") == nil && Money.parse("NaN") == nil && Money.parse("5abc") == nil && Money.parse("1.2.3") == nil, "malformed money is rejected, not partially parsed")

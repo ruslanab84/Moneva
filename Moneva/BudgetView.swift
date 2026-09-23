@@ -98,8 +98,10 @@ struct BudgetView: View {
 
     @ViewBuilder
     private func limitRow(_ limit: BudgetLimit) -> some View {
+        let rollover = Budgeting.rolloverAmount(for: limit.category, transactions: transactions, budgets: budgets, monthStart: range.lowerBound, scope: scope, currency: currencyCode)
+        let effectiveLimit = limit.amount + rollover
         let used = monthTransactions.filter { $0.kind == .expense }.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }
-        let progress = Budgeting.progress(spent: used, limit: limit.amount)
+        let progress = Budgeting.progress(spent: used, limit: effectiveLimit)
         let state = Budgeting.LimitState(progress: progress, daysRemaining: daysRemaining)
 
         VStack(alignment: .leading, spacing: 8) {
@@ -109,14 +111,14 @@ struct BudgetView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.ink)
                 Spacer()
-                Text("\(used.money(currencyCode)) / \(limit.amount.money(currencyCode))")
+                Text("\(used.money(currencyCode)) / \(effectiveLimit.money(currencyCode))")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(state == .ok ? Palette.inkMuted : color(state))
             }
             ProgressBar(progress: progress, tint: color(state))
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(limit.category?.name ?? String(localized: "Uncategorised")), \(used.money(currencyCode)) of \(limit.amount.money(currencyCode)), \(Int(progress * 100)) percent")
+        .accessibilityLabel("\(limit.category?.name ?? String(localized: "Uncategorised")), \(used.money(currencyCode)) of \(effectiveLimit.money(currencyCode)), \(Int(progress * 100)) percent")
     }
 
     /// Who spent what, and how each person sits against their own ceiling.
