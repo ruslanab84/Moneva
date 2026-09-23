@@ -169,26 +169,29 @@ struct BudgetView: View {
             monthTransactions, settlements: settlements, in: range, currency: currencyCode,
             split: family(budget), members: familyIDs, meID: meID
         )
-        let mine = balances[meID] ?? 0
-        let creditor = balances.max { $0.value < $1.value }?.key ?? meID
-        let debtor = balances.min { $0.value < $1.value }?.key ?? meID
-        let owed = Budgeting.rounded(abs(mine), currency: currencyCode)
+        let plan = Budgeting.settlementPlan(balances, currency: currencyCode)
 
         VStack(alignment: .leading, spacing: 12) {
             Eyebrow("Settling up")
-            if owed == 0 {
+            if plan.isEmpty {
                 Label("Everyone is square this month.", systemImage: "checkmark.circle")
                     .font(.subheadline)
                     .foregroundStyle(Palette.inkMuted)
             } else {
-                Text("\(FamilyMembers.displayName(for: debtor, in: members)) owes \(FamilyMembers.displayName(for: creditor, in: members)) \(owed.money(currencyCode))")
-                    .font(.money(.title3))
-                    .foregroundStyle(Palette.ink)
-                Button("Settle up", systemImage: "arrow.left.arrow.right") {
-                    settle(amount: owed, from: debtor, to: creditor)
+                ForEach(plan.indices, id: \.self) { index in
+                    let transfer = plan[index]
+                    HStack {
+                        Text("\(FamilyMembers.displayName(for: transfer.from, in: members)) owes \(FamilyMembers.displayName(for: transfer.to, in: members)) \(transfer.amount.money(currencyCode))")
+                            .font(.money(.title3))
+                            .foregroundStyle(Palette.ink)
+                        Spacer()
+                        Button("Settle up", systemImage: "arrow.left.arrow.right") {
+                            settle(amount: transfer.amount, from: transfer.from, to: transfer.to)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Palette.accent)
+                    }
                 }
-                .buttonStyle(.bordered)
-                .tint(Palette.accent)
             }
         }
         .monevaCard()

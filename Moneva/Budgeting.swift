@@ -242,6 +242,26 @@ enum Budgeting {
         return balance
     }
 
+    /// Turns a net-balance map (must sum to zero) into concrete transfers: repeatedly
+    /// pays the largest creditor from the largest debtor until everyone is square.
+    /// Not guaranteed to be the transaction-count-minimal solution, but deterministic
+    /// (ties break on member id) and correct for any number of members — unlike
+    /// picking a single global max/min pair, every nonzero balance is covered.
+    static func settlementPlan(_ balances: [String: Decimal], currency: String = Money.code) -> [(from: String, to: String, amount: Decimal)] {
+        var remaining = balances.mapValues { rounded($0, currency: currency) }.filter { $0.value != 0 }
+        var plan: [(from: String, to: String, amount: Decimal)] = []
+        while true {
+            let sorted = remaining.sorted { $0.value != $1.value ? $0.value < $1.value : $0.key < $1.key }
+            guard let debtor = sorted.first, debtor.value < 0, let creditor = sorted.last, creditor.value > 0 else { break }
+            let amount = min(-debtor.value, creditor.value)
+            plan.append((from: debtor.key, to: creditor.key, amount: amount))
+            remaining[debtor.key] = debtor.value + amount
+            remaining[creditor.key] = creditor.value - amount
+            remaining = remaining.filter { $0.value != 0 }
+        }
+        return plan
+    }
+
     static func rounded(_ amount: Decimal, currency: String = Money.code) -> Decimal {
         var original = amount
         var result = Decimal.zero
@@ -641,6 +661,20 @@ func monevaSelfCheck() {
         in: month, currency: "AZN", split: FamilyBudget(), members: members, meID: meID
     )
     assert(settled[meID] == 0 && settled[partnerID] == 0, "settling the exact balance clears it")
+
+    // Multi-member settlement: three people, one owes two others different amounts.
+    let threeWay = ["a": Decimal(50), "b": Decimal(-30), "c": Decimal(-20)]
+    let plan = Budgeting.settlementPlan(threeWay, currency: "AZN")
+    assert(plan.count == 2, "two debtors settling one creditor takes exactly two transfers")
+    assert(plan.allSatisfy { $0.to == "a" }, "the only creditor is the one who gets paid")
+    assert(Set(plan.map(\.from)) == ["b", "c"], "every debtor appears in the plan")
+    assert(plan.reduce(Decimal.zero) { $0 + $1.amount } == 50, "transfers sum to exactly what was owed")
+
+    let twoWay = Budgeting.settlementPlan(["me": Decimal(30), "partner": Decimal(-30)], currency: "AZN")
+    assert(twoWay.count == 1 && twoWay[0].from == "partner" && twoWay[0].to == "me" && twoWay[0].amount == 30, "the existing two-person case still resolves to one transfer")
+
+    let square = Budgeting.settlementPlan(["me": Decimal(0), "partner": Decimal(0)], currency: "AZN")
+    assert(square.isEmpty, "zero balances need no transfers")
 
     familySyncSelfCheck()
 
