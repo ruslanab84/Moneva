@@ -21,6 +21,7 @@ struct SubscriptionEditorView: View {
     @State private var name: String
     @State private var amount: Decimal
     @State private var currency: String
+    @State private var kind: TransactionKind
     @State private var category: SpendingCategory?
     @State private var nextPaymentDate: Date
     /// A loan or any fixed-term plan stops on a date. Held as a flag plus a
@@ -53,6 +54,7 @@ struct SubscriptionEditorView: View {
         _name = State(initialValue: subscription?.name ?? draft?.name ?? "")
         _amount = State(initialValue: subscription?.amount ?? draft?.amount ?? 0)
         _currency = State(initialValue: subscription?.currency ?? draft?.currency ?? Money.code)
+        _kind = State(initialValue: subscription?.kind ?? .expense)
         _category = State(initialValue: subscription?.category ?? draft?.category)
         let first = subscription?.nextPaymentDate ?? draft?.nextPaymentDate ?? .now
         _nextPaymentDate = State(initialValue: first)
@@ -68,7 +70,7 @@ struct SubscriptionEditorView: View {
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
-    private var canSave: Bool { !saved && !trimmedName.isEmpty && Money.valid(amount, currency: currency) && CategoryLibrary.isSelectable(category, scope: scope) && (draftID == nil || reviewed) && Calendar.current.startOfDay(for: nextPaymentDate) >= Calendar.current.startOfDay(for: .now) && (!hasEndDate || Calendar.current.startOfDay(for: endDate) >= Calendar.current.startOfDay(for: nextPaymentDate)) && (!hasTrial || existing != nil || (Calendar.current.startOfDay(for: trialEndsAt) >= Calendar.current.startOfDay(for: nextPaymentDate) && (!hasEndDate || Calendar.current.startOfDay(for: trialEndsAt) <= Calendar.current.startOfDay(for: endDate)))) }
+    private var canSave: Bool { !saved && !trimmedName.isEmpty && Money.valid(amount, currency: currency) && CategoryLibrary.isSelectable(category, scope: scope, kind: kind) && (draftID == nil || reviewed) && Calendar.current.startOfDay(for: nextPaymentDate) >= Calendar.current.startOfDay(for: .now) && (!hasEndDate || Calendar.current.startOfDay(for: endDate) >= Calendar.current.startOfDay(for: nextPaymentDate)) && (!hasTrial || existing != nil || (Calendar.current.startOfDay(for: trialEndsAt) >= Calendar.current.startOfDay(for: nextPaymentDate) && (!hasEndDate || Calendar.current.startOfDay(for: trialEndsAt) <= Calendar.current.startOfDay(for: endDate)))) }
 
     /// How many charges the chosen term covers, so 24 monthly instalments can
     /// be checked against the date before saving.
@@ -80,6 +82,13 @@ struct SubscriptionEditorView: View {
         NavigationStack {
             Form {
                 Section {
+                    Picker("Type", selection: $kind) {
+                        ForEach(TransactionKind.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: kind) { _, newKind in
+                        if !CategoryLibrary.isSelectable(category, scope: scope, kind: newKind) { category = nil }
+                    }
                     TextField("Service name", text: $name)
                     AmountField(title: "Amount", value: $amount, currencyCode: currency)
                     Picker("Currency", selection: $currency) {
@@ -186,7 +195,7 @@ struct SubscriptionEditorView: View {
                 }
             }
             .sheet(isPresented: $isPickingCategory) {
-                CategoryPickerView(selection: $category, scope: scope)
+                CategoryPickerView(selection: $category, scope: scope, kind: kind)
             }
             .confirmationDialog("Delete this subscription?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) { delete() }
@@ -194,11 +203,11 @@ struct SubscriptionEditorView: View {
                 Text("Past transactions are kept.")
             }
             .onChange(of: scope) { _, scope in
-                if !CategoryLibrary.isSelectable(category, scope: scope) { category = nil }
+                if !CategoryLibrary.isSelectable(category, scope: scope, kind: kind) { category = nil }
             }
             .onAppear {
                 if existing == nil && draftID == nil { currency = appCurrency }
-                if category == nil { category = CategoryLibrary.visible(categories, scope: scope).first }
+                if category == nil { category = CategoryLibrary.visible(categories, scope: scope, kind: kind).first }
             }
         }
     }
@@ -228,6 +237,7 @@ struct SubscriptionEditorView: View {
             existing.amount = amount
             existing.currency = currency
             existing.category = category
+            existing.kind = kind
             existing.nextPaymentDate = nextPaymentDate
             existing.endDate = hasEndDate ? endDate : nil
             existing.anchorDay = calendar.component(.day, from: nextPaymentDate)
@@ -249,7 +259,8 @@ struct SubscriptionEditorView: View {
                 paymentMode: paymentMode,
                 note: note,
                 scope: scope,
-                category: category
+                category: category,
+                kind: kind
             )
             created.account = Accounts.holder(account, currency: currency)
             context.insert(created)

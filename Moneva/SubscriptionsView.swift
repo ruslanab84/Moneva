@@ -104,10 +104,10 @@ struct SubscriptionsView: View {
     private var totals: some View {
         VStack(alignment: .leading, spacing: 8) {
             Eyebrow("Active total · \(currencyCode)")
-            ForEach(Set(subscriptions.filter { $0.scope == scope && $0.status == .active }.map(\.currency)).sorted().filter { $0 != currencyCode }, id: \.self) { code in
-                Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.scope == scope }, currency: code).money(code))
+            ForEach(Set(subscriptions.filter { $0.scope == scope && $0.status == .active && $0.kind == .expense }.map(\.currency)).sorted().filter { $0 != currencyCode }, id: \.self) { code in
+                Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.scope == scope && $0.kind == .expense }, currency: code).money(code))
             }
-            Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.scope == scope && $0.status == .active }, currency: currencyCode).money(currencyCode))
+            Text(Subscriptions.monthlyTotal(subscriptions.filter { $0.scope == scope && $0.status == .active && $0.kind == .expense }, currency: currencyCode).money(currencyCode))
                 .font(.money(.largeTitle))
                 .foregroundStyle(Palette.ink)
             Text("\(subscriptions.filter { $0.scope == scope && $0.status == .active }.count) active · \(subscriptions.filter { $0.scope == scope && $0.status == .paused }.count) paused")

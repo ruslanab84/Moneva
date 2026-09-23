@@ -87,7 +87,7 @@ enum SubscriptionDigest {
     }
 
     static func lines(for subscriptions: [Subscription], now: Date = .now, calendar: Calendar = .current) -> [String] {
-        let active = subscriptions.filter { $0.status == .active && !Subscriptions.hasEnded($0, on: now, calendar: calendar) }
+        let active = subscriptions.filter { $0.status == .active && $0.kind == .expense && !Subscriptions.hasEnded($0, on: now, calendar: calendar) }
         var lines = ["\(active.count) active subscriptions. These are schedules, not charges made by Moneva."]
         for currency in Set(active.map(\.currency)).sorted() {
             lines.append("Scheduled monthly cost: \(Subscriptions.monthlyTotal(active, currency: currency, now: now, calendar: calendar).money(currency)).")
@@ -130,7 +130,7 @@ struct SubscriptionQuestion {
         """
 
     func selectedSubscriptions(in subscriptions: [Subscription], scope: Scope, question: String) -> [Subscription] {
-        let visible = subscriptions.filter { $0.scope == scope }
+        let visible = subscriptions.filter { $0.scope == scope && $0.kind == .expense }
         if name == "ALL" {
             guard !subscriptions.contains(where: { !DraftResolver.grounded($0.name, in: question).isEmpty }) else { return [] }
             return visible

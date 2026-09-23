@@ -258,7 +258,7 @@ final class FinancialToolService {
     private func activeSubscriptions(name: String = "") throws -> [Subscription] {
         try text(name)
         return try context.fetch(FetchDescriptor<Subscription>()).filter {
-            $0.scope == scope && $0.currency == currency && $0.status == .active && !Subscriptions.hasEnded($0, on: now, calendar: calendar)
+            $0.scope == scope && $0.currency == currency && $0.status == .active && $0.kind == .expense && !Subscriptions.hasEnded($0, on: now, calendar: calendar)
                 && (name.isEmpty || CategoryLibrary.fold($0.name).contains(CategoryLibrary.fold(name)))
         }.sorted { $0.name < $1.name }
     }

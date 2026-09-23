@@ -21,6 +21,11 @@ func financialToolsSelfCheck() throws {
     assert(forecast.balance == 2430 && forecast.income == 3500 && forecast.subscriptions == 87)
     assert(forecast.expenses == Decimal(900) / 31 * 16)
     assert(forecast.available == 2430 + 3500 - 87 - forecast.expenses!)
+    let freelance = Subscription(name: "Freelance", amount: 1200, currency: "USD", nextPaymentDate: forecastDate(9, 5),
+        category: nil, kind: .income, calendar: calendar)
+    let forecastWithIncomeSub = Budgeting.forecast(ledger, subscriptions: [plan, freelance], scope: .personal, currency: "USD", now: now, calendar: calendar)
+    assert(forecastWithIncomeSub.income == 3500 + 1200, "income folds in the projected income-subscription charge alongside the recorded salary transaction")
+    assert(forecastWithIncomeSub.subscriptions == 87, "an income subscription must never inflate the expense-side 'scheduled' total — regression guard for the unpaid-filter fix")
     let example = Budgeting.Forecast(currency: "USD", balance: 2430, income: 3500, subscriptions: 87, expenses: 1300, historyMonths: 1)
     assert(example.available == 4543)
     assert(Budgeting.forecast([], subscriptions: [], scope: .personal, currency: "USD", now: now, calendar: calendar).available == nil)

@@ -246,6 +246,14 @@ final class Subscription {
     /// like `Transaction.account`: subscriptions written before accounts
     /// existed simply have none, and nothing that totals money requires it.
     var account: Account?
+    /// Same optional-raw-string treatment as SpendingCategory.kindRaw: subscriptions
+    /// written before this existed read as expense.
+    var kindRaw: String? = nil
+
+    var kind: TransactionKind {
+        get { kindRaw.flatMap(TransactionKind.init(rawValue:)) ?? .expense }
+        set { kindRaw = newValue.rawValue }
+    }
 
     @Relationship(deleteRule: .cascade, inverse: \SubscriptionPayment.subscription)
     var payments: [SubscriptionPayment] = []
@@ -262,6 +270,7 @@ final class Subscription {
         note: String = "",
         scope: Scope = .personal,
         category: SpendingCategory?,
+        kind: TransactionKind = .expense,
         calendar: Calendar = .current
     ) {
         self.name = name
@@ -276,6 +285,7 @@ final class Subscription {
         self.note = note
         self.scope = scope
         self.category = category
+        self.kindRaw = kind.rawValue
     }
 
     var draftID: String?

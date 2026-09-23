@@ -76,7 +76,7 @@ struct FinancialForecastView: View {
             Divider().overlay(Palette.line)
             Text(explanation ?? forecast.signal.explanations[0])
                 .font(.footnote).foregroundStyle(Palette.inkMuted)
-            Text("Balance uses recorded income minus expenses. Add an income with a future date to include an expected salary. Estimates are based only on your records.")
+            Text("Balance uses recorded income minus expenses. Add a future-dated income, or set up a recurring income subscription, to include expected salary. Estimates are based only on your records.")
                 .font(.caption).foregroundStyle(Palette.inkMuted)
         }
         .monevaCard()

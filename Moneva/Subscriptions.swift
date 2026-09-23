@@ -289,13 +289,13 @@ enum SubscriptionEngine {
         var transaction: Transaction?
         if addTransaction {
             guard Money.valid(subscription.amount, currency: subscription.currency),
-                  CategoryLibrary.isSelectable(subscription.category, scope: subscription.scope) else { throw DraftStore.Failure.invalid }
+                  CategoryLibrary.isSelectable(subscription.category, scope: subscription.scope, kind: subscription.kind) else { throw DraftStore.Failure.invalid }
             let created = Transaction(
                 amount: subscription.amount,
                 date: date,
                 merchant: subscription.name,
                 note: subscription.note,
-                kind: .expense,
+                kind: subscription.kind,
                 scope: subscription.scope,
                 source: .subscription,
                 category: subscription.category,

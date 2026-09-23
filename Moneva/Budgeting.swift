@@ -39,13 +39,20 @@ enum Budgeting {
         let linked = Set(subscriptions.flatMap { $0.payments.compactMap { $0.transaction?.cloudID } })
         func ordinary(_ row: Transaction) -> Bool { row.kind == .expense && row.source != .subscription && !linked.contains(row.cloudID) }
         let balance = recorded.reduce(Decimal.zero) { $0 + ($1.kind == .income ? $1.amount : -$1.amount) }
-        let income = future.filter { $0.kind == .income }.reduce(Decimal.zero) { $0 + $1.amount }
-        let unpaid = subscriptions.filter { $0.scope == scope && $0.currency == currency && $0.status == .active && Money.valid($0.amount, currency: currency) }.reduce(Decimal.zero) { sum, plan in
-            let charges = Subscriptions.duePeriods(nextPaymentDate: Subscriptions.firstFutureDate(plan, now: month.lowerBound, calendar: calendar), anchorDay: plan.anchorDay,
-                processed: Set(plan.payments.map(\.billingPeriod)), endDate: plan.endDate, trialEndsAt: plan.trialEndsAt,
-                now: month.upperBound.addingTimeInterval(-1), calendar: calendar)
-            return sum + Decimal(charges.filter { $0.date >= month.lowerBound }.count) * plan.amount
+        // Remaining due charges this month, projected the same way for both
+        // sides of the ledger so an income subscription can never leak into
+        // the expense-side "scheduled" total (or vice versa).
+        func dueAmount(kind: TransactionKind) -> Decimal {
+            subscriptions.filter { $0.scope == scope && $0.currency == currency && $0.status == .active && $0.kind == kind && Money.valid($0.amount, currency: currency) }.reduce(Decimal.zero) { sum, plan in
+                let charges = Subscriptions.duePeriods(nextPaymentDate: Subscriptions.firstFutureDate(plan, now: month.lowerBound, calendar: calendar), anchorDay: plan.anchorDay,
+                    processed: Set(plan.payments.map(\.billingPeriod)), endDate: plan.endDate, trialEndsAt: plan.trialEndsAt,
+                    now: month.upperBound.addingTimeInterval(-1), calendar: calendar)
+                return sum + Decimal(charges.filter { $0.date >= month.lowerBound }.count) * plan.amount
+            }
         }
+        let unpaid = dueAmount(kind: .expense)
+        let unpaidIncome = dueAmount(kind: .income)
+        let income = future.filter { $0.kind == .income }.reduce(Decimal.zero) { $0 + $1.amount } + unpaidIncome
         // Already-created future subscription transactions still need to be paid.
         let scheduled = unpaid + future.filter { $0.kind == .expense && !ordinary($0) }.reduce(Decimal.zero) { $0 + $1.amount }
         var baseline: [Transaction] = []
@@ -557,6 +564,22 @@ func monevaSelfCheck() {
         let repeated = try SubscriptionEngine.catchUp(in: context, now: trialEnd, calendar: calendar)
         assert(repeated.isEmpty && trial.payments.count == 1)
     } catch { assertionFailure("Trial boundary self-check failed: \(error)") }
+
+    do {
+        let container = try ModelContainer(for: Subscription.self, SubscriptionPayment.self, Transaction.self, SpendingCategory.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        let context = container.mainContext
+        let salaryCategory = SpendingCategory(name: "Salary", symbol: "banknote", tintHex: "24544A", softHex: "DDE8DD", kind: .income)
+        context.insert(salaryCategory)
+        let salary = Subscription(name: "Salary", amount: 3500, currency: "USD", nextPaymentDate: sept,
+            paymentMode: .autoAdd, category: salaryCategory, kind: .income, calendar: calendar)
+        context.insert(salary)
+        let due = try SubscriptionEngine.catchUp(in: context, now: sept, calendar: calendar)
+        assert(due.isEmpty, "autoAdd never queues a Pending")
+        let recorded = try context.fetch(FetchDescriptor<Transaction>())
+        assert(recorded.count == 1 && recorded[0].kind == .income && recorded[0].amount == 3500 && recorded[0].merchant == "Salary",
+            "an income subscription's catchUp charge is recorded as income, not expense")
+    } catch { assertionFailure("Income subscription self-check failed: \(error)") }
 
     // Transactions list window: 62 whole days ending with today.
     let recent = Budgeting.recentRange(days: 62, from: calendar.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 15))!, calendar: calendar)

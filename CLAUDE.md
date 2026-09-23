@@ -8,7 +8,7 @@ Moneva: SwiftUI + SwiftData personal/shared expense tracker for iOS. No backend 
 
 ## Build / run / test
 
-Single target `Moneva`, no test target yet — correctness is enforced by an assert-based self-check (`monevaSelfCheck()` in [Budgeting.swift](Moneva/Budgeting.swift), run automatically in `#if DEBUG` from [MonevaApp.swift](Moneva/MonevaApp.swift) on every debug launch). It fans out into `aiFeaturesSelfCheck()` ([AIFeaturesSelfCheck.swift](Moneva/AIFeaturesSelfCheck.swift)) and `financialToolsSelfCheck()` ([FinancialToolsSelfCheck.swift](Moneva/FinancialToolsSelfCheck.swift)) — that's the whole regression net, so any change to money/date/AI logic needs a new assert in the matching file, not a new test target.
+Single target `Moneva`, no test target yet — correctness is enforced by an assert-based self-check (`monevaSelfCheck()` in [Budgeting.swift](Moneva/Budgeting.swift), run automatically in `#if DEBUG` from [MonevaApp.swift](Moneva/MonevaApp.swift) on every debug launch). It fans out into `smartInsightsSelfCheck()`, `aiFeaturesSelfCheck()` ([AIFeaturesSelfCheck.swift](Moneva/AIFeaturesSelfCheck.swift), which in turn calls `financialToolsSelfCheck()` in [FinancialToolsSelfCheck.swift](Moneva/FinancialToolsSelfCheck.swift)), `merchantEmbeddingSelfCheck()`, `categoryClassifierSelfCheck()` and `familySyncSelfCheck()` — that's the whole regression net, so any change to money/date/AI logic needs a new assert in the matching file, not a new test target.
 
 ```bash
 xcodebuild -project Moneva.xcodeproj -scheme Moneva -destination 'generic/platform=iOS Simulator' -configuration Debug build
@@ -40,8 +40,9 @@ The one pattern that spans the AI-touching files (voice capture, receipt OCR, su
 - The model is never asked to compute a calendar date — it emits `daysAgo: Int` and `DraftResolver.date` resolves it with `Calendar`.
 - [ReceiptScan.swift](Moneva/ReceiptScan.swift) — `DocumentScanner` wraps `VNDocumentCameraViewController`; `ReceiptText.read` does on-device Vision OCR, then reconstructs rows by vertical overlap and reads each row left-to-right. Its conservative rightmost-price heuristic is deliberately marked `ponytail:` with its upgrade boundary.
 - [SpeechCapture.swift](Moneva/SpeechCapture.swift) — on-device transcription feeding the same `TransactionDrafter` in `.spoken` mode.
+- [StatementImport.swift](Moneva/StatementImport.swift) — the third draft source, and the one with no model in it: pure CSV/bank-statement parsing (encoding sniffing, delimiter detection from the header line, RFC 4180 quoting) that emits ordinary `TransactionDraft`s, so every downstream guard (`Money.valid`, `CategoryLibrary.isSelectable`, `DraftStore.save`) applies unchanged.
 
-Drafts from either source land in the same confirm-before-save UI; nothing from a model reaches the store un-reviewed.
+Drafts from all three sources land in the same confirm-before-save UI; nothing from a model reaches the store un-reviewed.
 
 ## Financial tool-calling layer (Ask/Search/Explain)
 
@@ -54,6 +55,15 @@ A second, distinct AI pattern for read-only questions: `Question → typed Found
 ## Smart Insights
 
 [SmartInsights.swift](Moneva/SmartInsights.swift) computes spending-trend/spike/budget-projection signals with pure `Decimal` statistics off the main actor; Foundation Models is only allowed to pick which of two app-authored explanation strings to show (a constrained choice index), never to write numbers. See [docs/smart-insights/README.md](docs/smart-insights/README.md) for the exact thresholds.
+
+## Accounts and transfers
+
+[Accounts.swift](Moneva/Accounts.swift) (pure helpers) + [AccountsView.swift](Moneva/AccountsView.swift). `Account` is deliberately **not** a partition the way `Scope` is — totals, charts, budgets, forecasts and the AI tools are never filtered by account, and an assert in `monevaSelfCheck()` guards that. Accounts also sit outside scope: one list serves both personal and shared.
+
+- Balance = `openingBalance` + same-currency transactions + same-currency transfers. Nothing is converted; a transaction in another currency simply does not count toward that account's balance.
+- A cross-account move is its own `Transfer` `@Model`, never two `Transaction`s — that's why no existing total needed new exclusion logic. `Accounts.canTransfer` requires two distinct live accounts with matching currency.
+- `Transaction.account` and `Subscription.account` are optional relationships (additive column, lightweight migration). A recurring charge lands in the subscription's account only when the currency matches, otherwise it is recorded with no account. Archived accounts leave the pickers but keep receiving charges from subscriptions already pointing at them.
+- A SwiftUI `Picker` over `Account?` needs `.tag(Account?.some($0))`.
 
 ## Family sharing (CloudKit)
 
@@ -74,7 +84,7 @@ SwiftData `@Model` classes: `Transaction`, `SpendingCategory`, `Budget`/`BudgetL
 
 ## Business logic lives in enums, not views
 
-[Budgeting.swift](Moneva/Budgeting.swift), [Subscriptions.swift](Moneva/Subscriptions.swift), and category rules (`CategoryLibrary`) are plain enums of pure static functions over the model types — no `@Model` logic, no view-embedded math. `SubscriptionEngine` (also in Subscriptions.swift) is the one `@MainActor` piece that actually touches `ModelContext`, driven by `Subscriptions`' pure date/period math:
+[Budgeting.swift](Moneva/Budgeting.swift), [Subscriptions.swift](Moneva/Subscriptions.swift), [Accounts.swift](Moneva/Accounts.swift), and category rules (`CategoryLibrary`) are plain enums of pure static functions over the model types — no `@Model` logic, no view-embedded math. `SubscriptionEngine` (also in Subscriptions.swift) is the one `@MainActor` piece that actually touches `ModelContext`, driven by `Subscriptions`' pure date/period math:
 
 - A subscription's billing day is an **anchor**, not a stride — `Subscriptions.nextDate` clamps to the target month's length (31st → Feb 28th) but keeps the anchor for later months (March still lands on the 31st).
 - `SubscriptionEngine.catchUp` runs on launch and reconciles missed months via `duePeriods`, deduped against `SubscriptionPayment.billingPeriod` so a launch after weeks away can't double-charge. `paymentMode: .ask` never writes on its own — it queues a `Pending` the UI must `confirm`/`skip`.
@@ -84,3 +94,7 @@ When extending money/date logic, add it to these enums and extend `monevaSelfChe
 ## UI structure
 
 [RootView.swift](Moneva/RootView.swift) is a `TabView` (Home/Transactions/Budget/Goals/Subs) with a floating action stack (scan receipt / voice / add) presented as sheets. Views read `@Query`/`@Environment(\.modelContext)` directly (no view-model layer) and delegate all computation to the enums above. Shared visual primitives (`Palette`, `monevaCard`, `ProgressBar`, `Eyebrow`, currency formatting) live in [Theme.swift](Moneva/Theme.swift); design tokens there are hand-mirrored from `design/Foundations.dc.html`, so a design-token change needs updating both.
+
+Local payment reminders live in [Reminders.swift](Moneva/Reminders.swift): notification permission is only requested when a user actually switches a reminder on, and `Reminders.reschedule` replaces the subscription's pending notifications after every create/edit/pause/resume.
+
+[AGENTS.md](AGENTS.md) covers the same ground in a shorter, style-guide form (indentation, naming, PR expectations); this file is the fuller architecture doc. Keep the two consistent when a rule changes.
