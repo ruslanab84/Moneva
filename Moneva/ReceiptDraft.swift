@@ -190,12 +190,18 @@ enum ReceiptMath {
     /// instead of proposing a split whose per-line categories can't be trusted either.
     static func resolveItems(_ items: [DraftedLineItem], total: Decimal, categories: [SpendingCategory], input: String) -> ReceiptItemsResolution {
         guard total > 0, !items.isEmpty else { return .collapse }
-        let sum = items.reduce(Decimal.zero) { $0 + (Money.parse($1.amount) ?? 0) }
-        guard abs(sum - total) / total <= 0.01 else { return .collapse }
-        return .split(items.map { item in
-            ReceiptItem(name: DraftResolver.grounded(item.name, in: input), amount: Money.parse(item.amount) ?? 0,
+        // The guide asks for negative discounts and printed text may carry grouping separators;
+        // Money.parse rejects both, which left 0-amount lines that could never pass `reconciled`.
+        let resolved = items.map { item in
+            let discount = item.amount.contains("-") || item.amount.contains("−")
+            let name = DraftResolver.grounded(item.name, in: input)
+            return ReceiptItem(name: name.isEmpty ? item.name.trimmingCharacters(in: .whitespacesAndNewlines) : name,
+                kind: discount ? .discount : .item, amount: ReceiptText.amount(item.amount) ?? 0,
                 category: DraftResolver.category(named: item.category, in: categories))
-        })
+        }
+        let sum = resolved.reduce(Decimal.zero) { $0 + $1.contribution }
+        guard abs(sum - total) / total <= 0.01 else { return .collapse }
+        return .split(resolved)
     }
 
     static func duplicates(_ draft: TransactionDraft, in transactions: [Transaction], calendar: Calendar = .current) -> [Transaction] {

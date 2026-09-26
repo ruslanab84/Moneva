@@ -251,6 +251,16 @@ func aiFeaturesSelfCheck() {
             assert(resolved.count == 2 && resolved[0].category === food && resolved[1].category === home, "reconciled model items propose a split with their own categories")
         case .collapse: assertionFailure("reconciled items must propose a split")
         }
+        let discountedLines = [DraftedLineItem(name: "Milk", amount: "1,080.00", category: "Food"), DraftedLineItem(name: "Loyalty coupon", amount: "-8.00", category: "Food")]
+        switch ReceiptMath.resolveItems(discountedLines, total: 1072, categories: [food, home], input: "MILK 1,080.00 COUPON -8.00") {
+        case .split(var resolved):
+            assert(resolved[1].kind == .discount && resolved[1].amount == 8 && resolved[0].amount == 1080, "negative and grouped model amounts stay savable")
+            assert(resolved[1].name == "Loyalty coupon", "an ungrounded line name falls back to the model's text instead of blocking save")
+            for index in resolved.indices { resolved[index].reviewed = true }
+            assert(Receipt(draft: TransactionDraft(amount: 1072, category: food, currency: "AZN", source: .receipt, reviewed: true), mode: .split, items: resolved).canSave,
+                   "a reconciled model split with a discount can be saved once reviewed")
+        case .collapse: assertionFailure("a discount line must not collapse a reconciled split")
+        }
         let mismatchedLines = [DraftedLineItem(name: "Milk", amount: "80", category: "Food")]
         switch ReceiptMath.resolveItems(mismatchedLines, total: 200, categories: [food, home], input: "Milk 80") {
         case .collapse: break
