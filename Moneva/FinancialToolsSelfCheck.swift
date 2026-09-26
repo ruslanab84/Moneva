@@ -133,6 +133,11 @@ func financialToolsSelfCheck() throws {
     let capped = service()
     for _ in 0..<6 { _ = capped.execute(.summary(all)) }
     assert(capped.execute(.summary(all)).status == .limitReached)
+    let monthForecast = service().execute(.forecast)
+    assert(monthForecast.status == .ok && monthForecast.metrics["recordedBalance"] == "510" && monthForecast.metrics["projectedMonthEnd"] == nil
+        && monthForecast.message?.contains("Not enough history") == true, "forecast tool reuses Budgeting.forecast and never projects without history")
+    let forecastJSON = try monthForecast.json()
+    assert(!forecastJSON.contains("9999"), "forecast stays inside the authorized scope")
     for index in 0..<15 {
         context.insert(Transaction(amount: 1, date: now, merchant: "Record \(index)", note: "SECRET NOTE", category: restaurant, currency: "USD"))
     }

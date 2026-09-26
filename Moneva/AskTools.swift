@@ -107,6 +107,7 @@ final class FinancialToolService {
         case income(FinancialPeriod), budget(BudgetToolArguments)
         case subscriptions(SubscriptionToolArguments), compare(CompareToolArguments)
         case merchant(MerchantToolArguments), upcoming(UpcomingToolArguments), summary(FinancialPeriod)
+        case forecast
     }
     private let context: ModelContext
     private let scope: Scope
@@ -162,6 +163,7 @@ final class FinancialToolService {
         case .merchant: invokedTools.append("getMerchantSpending")
         case .upcoming: invokedTools.append("getUpcomingPayments")
         case .summary: invokedTools.append("getFinancialSummary")
+        case .forecast: invokedTools.append("getForecast")
         }
         let output: FinancialToolResult
         do {
@@ -371,6 +373,21 @@ final class FinancialToolService {
             output.truncated = payments.count > output.rows.count
             output.message = "Saved subscription schedules only, not bank bills or actual charges."
             return output
+        case .forecast:
+            // Same calculation as the Home forecast card, so Ask and the card can't disagree.
+            let forecast = Budgeting.forecast(try context.fetch(FetchDescriptor<Transaction>()), subscriptions: try context.fetch(FetchDescriptor<Subscription>()),
+                scope: scope, currency: currency, now: now, calendar: calendar)
+            var output = result(.ok)
+            output.metrics = ["recordedBalance": amount(forecast.balance), "expectedIncome": amount(forecast.income),
+                "scheduledSubscriptions": amount(forecast.subscriptions), "monthEnd": day(Budgeting.monthRange(for: now, calendar: calendar).upperBound.addingTimeInterval(-1))]
+            if let expenses = forecast.expenses, let available = forecast.available {
+                output.metrics["estimatedExpenses"] = amount(expenses)
+                output.metrics["projectedMonthEnd"] = amount(available)
+                output.message = available < 0 ? "Projected shortfall by month end." : "Projected to last until month end."
+            } else {
+                output.message = "Not enough history to forecast: record at least three ordinary expenses across a completed month."
+            }
+            return output
         }
     }
 }
@@ -483,10 +500,22 @@ struct GetFinancialSummaryTool: Tool {
     }
 }
 
+@MainActor
+struct GetForecastTool: Tool {
+    let service: FinancialToolService
+    let name = "getForecast"
+    let description = "Forecast whether money lasts until the end of this month: balance, expected income, subscriptions, estimated spending."
+    @Generable struct Arguments { }
+    func call(arguments: Arguments) async throws -> String {
+        try Task.checkCancellation()
+        return try service.execute(.forecast).json()
+    }
+}
+
 @Generable
 enum FinancialQuestionTool: String {
     case getTransactions, getSpendingByCategory, getIncome, getBudget, getSubscriptions
-    case comparePeriods, getMerchantSpending, getUpcomingPayments, getFinancialSummary
+    case comparePeriods, getMerchantSpending, getUpcomingPayments, getFinancialSummary, getForecast
 }
 
 @Generable
@@ -506,7 +535,8 @@ enum FinancialToolRegistry {
          ComparePeriodsTool(service: service),
          GetMerchantSpendingTool(service: service),
          GetUpcomingPaymentsTool(service: service),
-         GetFinancialSummaryTool(service: service)]
+         GetFinancialSummaryTool(service: service),
+         GetForecastTool(service: service)]
     }
 
     static func answer(question: String, service: FinancialToolService) async throws -> String {
@@ -518,6 +548,7 @@ enum FinancialToolRegistry {
                 Income: getIncome. Budget limits/remaining: getBudget. Subscription costs: getSubscriptions.
                 Compare two periods: comparePeriods. Merchant expense totals: getMerchantSpending.
                 Scheduled future payments: getUpcomingPayments. Income/expense/net overview: getFinancialSummary.
+                Will money last, end-of-month balance, affordability this month: getForecast.
                 "How much did I spend at a named shop?" uses getMerchantSpending.
                 "How much did I spend on a category?" uses getSpendingByCategory.
                 Select the single most specific tool. Select multiple only for distinct questions.

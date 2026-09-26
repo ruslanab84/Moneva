@@ -16,7 +16,7 @@ The model receives neither `ModelContext`, managed models, persistent IDs, notes
 
 ## Schemas and mapping
 
-Definitions and registry: `Moneva/AskTools.swift`. `FinancialToolSelection` restricts routing to an enum of the nine registered names and at most three tools per question. This keeps unrelated function schemas out of the execution session. `Tool.parameters` exposes the generated `GenerationSchema` for each typed `Arguments` contract.
+Definitions and registry: `Moneva/AskTools.swift`. `FinancialToolSelection` restricts routing to an enum of the ten registered names and at most three tools per question. This keeps unrelated function schemas out of the execution session. `Tool.parameters` exposes the generated `GenerationSchema` for each typed `Arguments` contract.
 
 `FinancialPeriod` requires `period` (`all`, `today`, `yesterday`, `thisMonth`, `lastMonth`, `lastWeekend`, `custom`). `start` and `end` are optional ISO `YYYY-MM-DD` strings. For presets they are ignored: the named period is authoritative and redundant model dates cannot widen it. For custom ranges both dates must resolve successfully. Custom endpoints are inclusive; the domain converts them to a half-open date range using `Calendar`.
 
@@ -33,6 +33,7 @@ All fields below are required unless explicitly described as optional. An empty 
 | `GetMerchantSpendingTool` / `getMerchantSpending` | dates, nonblank merchant | `merchant` → `SpendingFilter` with expense fixed | expense |
 | `GetUpcomingPaymentsTool` / `getUpcomingPayments` | days (1–366) | `upcoming` → `Subscriptions.firstFutureDate/nextDate/hasEnded` | scheduledTotal; future subscription occurrences |
 | `GetFinancialSummaryTool` / `getFinancialSummary` | FinancialPeriod | `summary` → separate expense/income totals, Decimal subtraction | expense, income, net |
+| `GetForecastTool` / `getForecast` | none | `forecast` → `Budgeting.forecast` (same as the Home forecast card) | recordedBalance, expectedIncome, scheduledSubscriptions, estimatedExpenses, projectedMonthEnd |
 
 Amount bounds must be nonnegative decimal strings (or null/empty), no more than 30 characters, with minimum ≤ maximum. Text filters are at most 100 characters. Unknown/ambiguous categories fail closed. No tool accepts currency, scope, user IDs, arbitrary predicates, table names, or SQL.
 
@@ -66,7 +67,7 @@ The answer wrapper rejects responses with no tool invocation or failed tool resu
 
 ## Verification
 
-`FinancialToolsSelfCheck.swift`, called by `aiFeaturesSelfCheck()` on every DEBUG launch, uses an isolated in-memory store. It covers all nine domain operations, JSON round-trip, generated argument decoding, mixed scopes/currencies/kinds, unknown category, malformed/reversed bounds, invalid periods, SQL-like text, deterministic empty/error answer fallbacks, revoked capability, call limits, unavailable budget state, and row/notes payload limits.
+`FinancialToolsSelfCheck.swift`, called by `aiFeaturesSelfCheck()` on every DEBUG launch, uses an isolated in-memory store. It covers all ten domain operations, JSON round-trip, generated argument decoding, mixed scopes/currencies/kinds, unknown category, malformed/reversed bounds, invalid periods, SQL-like text, deterministic empty/error answer fallbacks, revoked capability, call limits, unavailable budget state, and row/notes payload limits.
 
 Synthetic query evaluation is opt-in: set `MONEVA_TOOL_MODEL_CHECK=1` in the Xcode scheme's Run environment on an Apple Intelligence-capable device. It invokes the real registry/model, checks the selected tool, expected financial metric, and presence of the calculated amount in the final answer, and attempts a cross-scope/SQL prompt injection. Its data store is synthetic, never the user's store.
 
