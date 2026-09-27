@@ -48,6 +48,14 @@ func financialToolsSelfCheck() throws {
     assert(Budgeting.forecast(ledger, subscriptions: [plan], scope: .personal, currency: "USD", now: now, calendar: calendar).subscriptions == 87)
     plan.trialEndsAt = forecastDate(10, 20)
     assert(Budgeting.forecast(ledger, subscriptions: [plan], scope: .personal, currency: "USD", now: now, calendar: calendar).subscriptions == 0)
+    // One week of history (Sep 5-13) with no completed month: rolling window kicks in.
+    let week = [5, 8, 11].map { Transaction(amount: 70, date: forecastDate(9, $0), merchant: "Food", category: nil, currency: "USD") }
+    let weekly = Budgeting.forecast(week, subscriptions: [], scope: .personal, currency: "USD", now: now, calendar: calendar)
+    assert(weekly.historyDays == 9 && weekly.historyMonths == 0)
+    assert(weekly.expenses == Decimal(210) / 9 * 17, "9-day daily average projected over the 17 remaining days incl. today")
+    let sixDays = [8, 10, 12].map { Transaction(amount: 70, date: forecastDate(9, $0), merchant: "Food", category: nil, currency: "USD") }
+    assert(Budgeting.forecast(sixDays, subscriptions: [], scope: .personal, currency: "USD", now: now, calendar: calendar).expenses == nil, "under a week stays unforecast")
+    assert(forecast.historyDays == 0, "completed-month baseline wins when it qualifies")
     let shortfall = Budgeting.Forecast(currency: "USD", balance: 10, income: 0, subscriptions: 87, expenses: 100, historyMonths: 1)
     assert(shortfall.available == -177)
     let prior = calendar.date(from: DateComponents(year: 2026, month: 8, day: 10))!
@@ -145,7 +153,7 @@ func financialToolsSelfCheck() throws {
     assert(listed.count == 16 && listed.rows.count == 12 && listed.truncated)
     let listedJSON = try listed.json()
     assert(!listedJSON.contains("SECRET NOTE"))
-    assert(FinancialToolRegistry.tools(service: service()).count == 9)
+    assert(FinancialToolRegistry.tools(service: service()).count == 10)
     let duplicate = Budget(monthStart: budget.monthStart, total: 999)
     duplicate.currency = "USD"
     context.insert(duplicate)

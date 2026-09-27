@@ -14,12 +14,16 @@ enum Budgeting {
         var subscriptions: Decimal
         var expenses: Decimal?
         var historyMonths: Int
+        /// Days in the rolling fallback window, used only when no completed month qualifies.
+        var historyDays = 0
         var available: Decimal? { expenses.map { balance + income - subscriptions - $0 } }
 
         var signal: SpendingSignal {
             let detail = expenses == nil
-                ? "Record at least three ordinary expenses across a completed month to estimate remaining spending."
-                : "Remaining expenses use the daily average of \(historyMonths) completed month(s), excluding subscription charges, and include at least your future-dated expenses."
+                ? "Record at least three ordinary expenses over a week to estimate remaining spending."
+                : historyMonths > 0
+                    ? "Remaining expenses use the daily average of \(historyMonths) completed month(s), excluding subscription charges, and include at least your future-dated expenses."
+                    : "Remaining expenses use the daily average of your last \(historyDays) days, excluding subscription charges, and include at least your future-dated expenses. The estimate firms up once a full month is recorded."
             let result = available.map { "Estimated month-end balance: \($0.money(currency)). " } ?? ""
             return SpendingSignal(id: "forecast", kind: .projected, title: "End of month forecast", explanations: [
                 result + "Recorded balance plus future-dated income, minus unpaid subscriptions and estimated remaining expenses. " + detail,
@@ -69,6 +73,20 @@ enum Budgeting {
                 months += 1
             }
         }
+        // New ledger: fall back to the last up-to-30 full days (today excluded,
+        // it's handled as spentToday) once at least a week is on record.
+        var windowDays = 0
+        if baseline.count < 3, let first = recorded.map(\.date).min() {
+            let start = max(calendar.startOfDay(for: first), calendar.date(byAdding: .day, value: -30, to: today)!)
+            let span = calendar.dateComponents([.day], from: start, to: today).day!
+            let recent = recorded.filter { ordinary($0) && $0.date >= start && $0.date < today }
+            if span >= 7 && recent.count >= 3 {
+                baseline = recent
+                days = span
+                months = 0
+                windowDays = span
+            }
+        }
         var expenses: Decimal?
         // ponytail: daily historical average; add seasonal/category forecasting only with enough history to validate it.
         if days > 0 && baseline.count >= 3 {
@@ -78,7 +96,7 @@ enum Budgeting {
             let known = future.filter(ordinary).reduce(Decimal.zero) { $0 + $1.amount }
             expenses = max(known, daily * Decimal(max(0, remainingDays - 1)) + max(0, daily - spentToday))
         }
-        return Forecast(currency: currency, balance: balance, income: income, subscriptions: scheduled, expenses: expenses, historyMonths: months)
+        return Forecast(currency: currency, balance: balance, income: income, subscriptions: scheduled, expenses: expenses, historyMonths: months, historyDays: windowDays)
     }
 
     enum LimitState {

@@ -385,7 +385,7 @@ final class FinancialToolService {
                 output.metrics["projectedMonthEnd"] = amount(available)
                 output.message = available < 0 ? "Projected shortfall by month end." : "Projected to last until month end."
             } else {
-                output.message = "Not enough history to forecast: record at least three ordinary expenses across a completed month."
+                output.message = "Not enough history to forecast: record at least three ordinary expenses over a week."
             }
             return output
         }
