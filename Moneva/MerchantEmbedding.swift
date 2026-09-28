@@ -59,7 +59,12 @@ protocol TextEmbedder {
 /// Wraps `NLContextualEmbedding`. Models are loaded lazily, one per language, on
 /// first use; `prewarm` kicks off an asset download ahead of that without
 /// blocking `embed`.
-final class NLContextualTextEmbedder: TextEmbedder {
+///
+/// `nonisolated` opts this out of the module's default MainActor isolation —
+/// every call site runs it off the main actor (`CategoryIndex`'s background
+/// rebuild, the async `CategoryClassifier.classify`), and a default-argument
+/// `NLContextualTextEmbedder()` needs a nonisolated init to be usable there.
+nonisolated final class NLContextualTextEmbedder: TextEmbedder {
     private var models: [NLLanguage: NLContextualEmbedding] = [:]
 
     func prewarm(language: NLLanguage) async {

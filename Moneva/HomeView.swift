@@ -61,7 +61,6 @@ struct HomeView: View {
                     } label: {
                         SmartInsightsPreview(input: insightInput)
                     }
-                    .padding(.top, 38)
                 }
                 .buttonStyle(.plain)
 

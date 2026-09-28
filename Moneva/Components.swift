@@ -32,6 +32,8 @@ struct TypewriterText: View {
     var interval: Double = 0.04
     var animate: Bool = true
     @State private var shownWords: Int
+    // The text the reveal already ran for — reappearing (tab switch) must not replay it.
+    @State private var revealedText: String?
 
     init(text: String, interval: Double = 0.04, animate: Bool = true) {
         self.text = text
@@ -44,10 +46,14 @@ struct TypewriterText: View {
 
     var body: some View {
         Text(words.prefix(shownWords).joined(separator: " "))
-            .task {
+            .task(id: text) {
                 guard animate else { return }
-                for count in 1...max(words.count, 1) {
-                    shownWords = count
+                if revealedText != text {
+                    revealedText = text
+                    shownWords = 0
+                }
+                while shownWords < words.count {
+                    shownWords += 1
                     try? await Task.sleep(for: .seconds(interval))
                 }
             }
