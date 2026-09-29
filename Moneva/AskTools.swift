@@ -138,6 +138,17 @@ final class FinancialToolService {
 
     func revoke() { active = false }
 
+    /// Used when the model answers without calling any tool: a bare category name ("Food") is a
+    /// spending-by-category question, anything else falls back to this month's overview.
+    func defaultRequest(for question: String) -> Request {
+        let asked = CategoryLibrary.fold(question)
+        let categories = ((try? context.fetch(FetchDescriptor<SpendingCategory>())) ?? []).filter { $0.scope == scope && $0.kind == .expense }
+        if let match = categories.filter({ !$0.name.isEmpty && asked.contains(CategoryLibrary.fold($0.name)) }).max(by: { $0.name.count < $1.name.count }) {
+            return .spending(CategoryToolArguments(dates: FinancialPeriod(period: .all), category: match.name))
+        }
+        return .summary(FinancialPeriod(period: .thisMonth))
+    }
+
     func execute(_ request: Request) -> FinancialToolResult {
         guard active, !Task.isCancelled else {
             let denied = result(.accessDenied)
@@ -573,7 +584,25 @@ enum FinancialToolRegistry {
                 options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 400))
         }
         try Task.checkCancellation()
+        if service.results.isEmpty {
+            // Still no tool: Swift picks the query and words the answer, so the user never hits a dead end.
+            let fallback = service.execute(service.defaultRequest(for: question))
+            return validatedAnswer(render(fallback), results: [fallback])
+        }
         return validatedAnswer(response.content, results: service.results)
+    }
+
+    private static let metricLabels = [("income", "Recorded income"), ("expense", "Recorded expenses"), ("net", "Net"),
+        ("limit", "Budget"), ("spent", "Budget used"), ("remaining", "Budget remaining"),
+        ("monthlyScheduled", "Monthly scheduled cost"), ("projectedCost", "Projected cost"), ("scheduledTotal", "Upcoming scheduled total")]
+
+    /// Plain-text rendering of a result using only returned values.
+    private static func render(_ result: FinancialToolResult) -> String {
+        if result.metrics["differenceFirstMinusSecond"] != nil { return result.message ?? "" }
+        if result.status == .empty { return "No matching records for another requested query." }
+        let totals = metricLabels.compactMap { key, label in result.metrics[key].map { "\(label): \(result.currency) \($0)." } }
+        let rows = result.rows.map { "\($0.label): \(result.currency) \($0.amount)\($0.date.map { " on " + $0 } ?? "")." }
+        return (totals + rows + (result.truncated ? ["List truncated."] : [])).joined(separator: " ")
     }
 
     static func validatedAnswer(_ answer: String, results: [FinancialToolResult]) -> String {
@@ -587,16 +616,7 @@ enum FinancialToolRegistry {
         // Comparisons are arithmetic claims: preserve the domain's signed difference and dates.
         let comparisons = results.filter { $0.metrics["differenceFirstMinusSecond"] != nil }
         if !comparisons.isEmpty {
-            let labels = [("income", "Recorded income"), ("expense", "Recorded expenses"), ("net", "Net"),
-                ("limit", "Budget"), ("spent", "Budget used"), ("remaining", "Budget remaining"),
-                ("monthlyScheduled", "Monthly scheduled cost"), ("projectedCost", "Projected cost"), ("scheduledTotal", "Upcoming scheduled total")]
-            return results.map { result in
-                if result.metrics["differenceFirstMinusSecond"] != nil { return result.message ?? "" }
-                if result.status == .empty { return "No matching records for another requested query." }
-                let totals = labels.compactMap { key, label in result.metrics[key].map { "\(label): \(result.currency) \($0)." } }
-                let rows = result.rows.map { "\($0.label): \(result.currency) \($0.amount)\($0.date.map { " on " + $0 } ?? "")." }
-                return (totals + rows + (result.truncated ? ["List truncated."] : [])).joined(separator: " ")
-            }.joined(separator: "\n")
+            return results.map(render).joined(separator: "\n")
         }
         return answer
     }

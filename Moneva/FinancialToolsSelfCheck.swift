@@ -164,6 +164,9 @@ func financialToolsSelfCheck() throws {
     let emptyMerchant = FinancialToolRegistry.validatedAnswer("Invented amount 123", results: [empty])
     assert(emptyMerchant.hasPrefix("No ") && emptyMerchant.contains("Missing") && !emptyMerchant.contains("123"))
     assert(FinancialToolRegistry.validatedAnswer("Invented amount 123", results: []).hasPrefix("No financial tool"))
+    // Model-free fallback: a bare category name is a category query, anything else the month overview.
+    if case .spending(let bare) = service().defaultRequest(for: "restaurants") { assert(bare.category == "Restaurants" && bare.dates.period == .all) } else { assertionFailure("bare category word must route to spending") }
+    if case .summary = service().defaultRequest(for: "how am I doing") {} else { assertionFailure("unnamed question must route to summary") }
     print("Moneva financial tool self-checks passed (9 tools, isolation, validation, revocation, payload limits)")
 }
 /// Opt in using the MONEVA_TOOL_MODEL_CHECK=1 launch environment on an AI-capable device.
