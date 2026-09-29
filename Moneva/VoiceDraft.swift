@@ -288,8 +288,8 @@ enum OnDeviceAI {
         return result.content
     }
 
-    static func context(categories: [SpendingCategory], now: Date = .now) -> String {
-        "Today: \(now.formatted(Date.FormatStyle(date: .complete, time: .omitted).locale(Locale(identifier: "en_US_POSIX")))). Time zone: \(TimeZone.current.identifier). Categories: \(categories.map(\.name).joined(separator: ", ")). Icons: \(CategoryLibrary.symbols.joined(separator: ", "))."
+    static func context(categories: [SpendingCategory], icons: Bool = true, now: Date = .now) -> String {
+        "Today: \(now.formatted(Date.FormatStyle(date: .complete, time: .omitted).locale(Locale(identifier: "en_US_POSIX")))). Time zone: \(TimeZone.current.identifier). Categories: \(categories.map(\.name).joined(separator: ", "))." + (icons ? " Icons: \(CategoryLibrary.symbols.joined(separator: ", "))." : "")
     }
 }
 

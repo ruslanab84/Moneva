@@ -23,6 +23,7 @@ struct DraftedSearch {
     var scope: String
     @Guide(description: "expense, income or all")
     var kind: String
+    @Guide(description: "Empty unless the question is truly unanswerable. Never copy context text such as categories or icons here")
     var clarification: String
 }
 
