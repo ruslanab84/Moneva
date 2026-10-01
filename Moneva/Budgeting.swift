@@ -280,6 +280,44 @@ enum Budgeting {
         return plan
     }
 
+    // MARK: Daily limit
+
+    enum DailyLimitMode: String { case automatic, custom }
+
+    /// Days left in the month counting today, so the last day returns 1.
+    static func daysLeftInMonth(now: Date, calendar: Calendar = .current) -> Int {
+        let upper = monthRange(for: now, calendar: calendar).upperBound
+        return max(1, calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: upper).day ?? 1)
+    }
+
+    /// What is left to spend this month as of the start of today, divided by
+    /// the days left. Uses the budget when there is one, else balance plus
+    /// expected income minus unpaid subscriptions (no budget needs no history).
+    /// Today's spending is excluded from the pool, so the figure holds steady
+    /// all day. Nil when there is nothing to base it on.
+    static func automaticDailyLimit(budgetTotal: Decimal?, transactions: [Transaction], forecast: Forecast, scope: Scope, currency: String, now: Date, calendar: Calendar = .current) -> Decimal? {
+        let today = calendar.startOfDay(for: now)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? now
+        let pool: Decimal
+        if let budgetTotal {
+            let month = monthRange(for: now, calendar: calendar)
+            pool = budgetTotal - spent(transactions, in: month.lowerBound..<today, scope: scope, currency: currency)
+        } else {
+            let pooled = forecast.balance + forecast.income - forecast.subscriptions + spent(transactions, in: today..<tomorrow, scope: scope, currency: currency)
+            guard pooled > 0 else { return nil }
+            pool = pooled
+        }
+        return rounded(max(pool, 0) / Decimal(daysLeftInMonth(now: now, calendar: calendar)), currency: currency)
+    }
+
+    /// Custom wins when chosen; zero custom means no limit.
+    static func dailyLimit(mode: DailyLimitMode, custom: Decimal, automatic: Decimal?) -> Decimal? {
+        switch mode {
+        case .automatic: automatic
+        case .custom: custom > 0 ? custom : nil
+        }
+    }
+
     static func rounded(_ amount: Decimal, currency: String = Money.code) -> Decimal {
         var original = amount
         var result = Decimal.zero
@@ -821,5 +859,21 @@ func monevaSelfCheck() {
     assert(!StatementImport.isDuplicate(statementRows[1], of: statementTwin, calendar: calendar))
     statementTwin.amount = statementValue("4.51")
     assert(!StatementImport.isDuplicate(statementRows[0], of: statementTwin, calendar: calendar), "a different amount is a different charge")
+
+    // Daily limit
+    let dlNow = calendar.date(from: DateComponents(year: 2026, month: 9, day: 21, hour: 15))!
+    let dlSpend = Transaction(amount: 100, date: calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!, merchant: "dl", kind: .expense, scope: .personal, category: nil, currency: "USD")
+    let dlToday = Transaction(amount: 40, date: dlNow, merchant: "dl", kind: .expense, scope: .personal, category: nil, currency: "USD")
+    let dlRows = [dlSpend, dlToday]
+    let dlForecast = Budgeting.forecast(dlRows, subscriptions: [], scope: .personal, currency: "USD", now: dlNow, calendar: calendar)
+    assert(Budgeting.daysLeftInMonth(now: dlNow, calendar: calendar) == 10, "Sept 21 counts today through Sept 30")
+    assert(Budgeting.daysLeftInMonth(now: calendar.date(from: DateComponents(year: 2026, month: 9, day: 30, hour: 20))!, calendar: calendar) == 1, "last day has one day left")
+    assert(Budgeting.automaticDailyLimit(budgetTotal: 600, transactions: dlRows, forecast: dlForecast, scope: .personal, currency: "USD", now: dlNow, calendar: calendar) == 50,
+           "(600 - 100 spent before today) / 10 days; today's 40 does not move it")
+    assert(Budgeting.automaticDailyLimit(budgetTotal: 50, transactions: dlRows, forecast: dlForecast, scope: .personal, currency: "USD", now: dlNow, calendar: calendar) == 0, "overspent budget clamps to 0")
+    assert(Budgeting.automaticDailyLimit(budgetTotal: nil, transactions: [], forecast: Budgeting.forecast([], subscriptions: [], scope: .personal, currency: "USD", now: dlNow, calendar: calendar), scope: .personal, currency: "USD", now: dlNow, calendar: calendar) == nil,
+           "no budget and no money is no limit")
+    assert(Budgeting.dailyLimit(mode: .custom, custom: 0, automatic: 50) == nil, "custom 0 means off")
+    assert(Budgeting.dailyLimit(mode: .custom, custom: 30, automatic: 50) == 30 && Budgeting.dailyLimit(mode: .automatic, custom: 30, automatic: 50) == 50, "mode picks the source")
 }
 #endif

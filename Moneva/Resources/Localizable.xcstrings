@@ -4,6 +4,51 @@
     "" : {
 
     },
+    "Daily limit" : {
+
+    },
+    "Daily limit used" : {
+
+    },
+    "Spent %@ of %@ today" : {
+
+    },
+    "No daily limit" : {
+
+    },
+    "Tap to let Moneva calculate one or set your own." : {
+
+    },
+    "Opens daily limit settings" : {
+
+    },
+    "Calculation" : {
+
+    },
+    "Automatic" : {
+
+    },
+    "Custom" : {
+
+    },
+    "Calculation options" : {
+
+    },
+    "Moneva calculates your daily limit from what is left of this month's budget, divided by the days left. It is set once each day and is not affected by today's transactions. Without a budget it uses your balance and expected income." : {
+
+    },
+    "While you can set the limit to whatever you want, please stay within reason so you don't overspend." : {
+
+    },
+    "Your daily budget" : {
+
+    },
+    "0.00" : {
+
+    },
+    "The amount you enter here will be the same every day and will not change based on your remaining balance for the period." : {
+
+    },
     "%@ – %@" : {
       "localizations" : {
         "en" : {

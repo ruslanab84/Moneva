@@ -35,6 +35,9 @@ struct HomeView: View {
                 )
             }
 
+            DailyLimitCard(scope: scope, transactions: transactions, subscriptions: subscriptions, budgetTotal: budget?.total, currencyCode: currencyCode)
+                .id(scope) // AppStorage keys are fixed at init, so rebuild on scope change
+
             AccountsCard()
 
             HomeAskCard(scope: scope)
