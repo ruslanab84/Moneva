@@ -20,6 +20,8 @@ Set `MONEVA_TOOL_MODEL_CHECK=1` in the Xcode scheme's Run environment (Apple Int
 
 Environment: Xcode 26.6, iOS deployment target 26.5, Swift 5.0.
 
+Foundation Models does not run in the simulator, so the build + DEBUG launch only proves the self-check asserts pass (live process, no new `Moneva-*.ips` in `~/Library/Logs/DiagnosticReports`); model routing/phrasing (Ask, Search, Explain, drafting) must be retested on a physical Apple Intelligence device.
+
 Commits: short imperative style, e.g. `Give subscriptions an optional end date` — not Conventional Commits.
 
 ## Working rules
@@ -72,6 +74,10 @@ A second, distinct AI pattern for read-only questions: `Question → typed Found
 ## Merchant/category classification
 
 [MerchantSeeds.swift](Moneva/MerchantSeeds.swift) loads a bundled 241-entry merchant dataset ([Resources/merchant-seeds.json](Moneva/Resources)); [MerchantEmbedding.swift](Moneva/MerchantEmbedding.swift) and [CategoryClassifier.swift](Moneva/CategoryClassifier.swift) match free-text merchant names to the user's *live, editable* category list, not the seed data's own categories. `MerchantSeeds.resolved(strict:)` defaults `strict: true` (traps on an unresolvable seed) for the self-check fixture, but the live classifier call site must pass `strict: false` — a user can delete/rename categories the seed data references, and that must degrade to skipping the seed, not crashing mid-draft.
+
+## Localization
+
+User-facing strings live in [Resources/Localizable.xcstrings](Moneva/Resources/Localizable.xcstrings); shared components take `LocalizedStringKey`/`Text`, not raw `String`. Known English-only gaps: dynamic report sentence glue in AskTools/SpendingSearch and `Transaction.source.rawValue` labels. Other docs: [docs/AI_FEATURES.md](docs/AI_FEATURES.md), [docs/RECEIPT_WORKFLOW.md](docs/RECEIPT_WORKFLOW.md).
 
 ## Data model ([Models.swift](Moneva/Models.swift))
 
