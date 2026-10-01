@@ -203,16 +203,14 @@ enum DraftResolver {
         let resolution = resolveCategory(merchant: merchant, scope: scope, kind: kind, categories: categories, rules: rules, classification: classification)
         let category = resolution.category ?? category(named: value.category, in: visible)
         let parsedDate = date(value.date, now: now)
-        let currency = value.currency.uppercased()
         var questions = [value.clarification]
         if Money.parse(value.amount) == nil { questions.append("What is the amount?") }
-        if !Money.pickerCodes.contains(currency) { questions.append("Which currency? Select it below.") }
         if parsedDate == nil { questions.append("Which date? Select it below.") }
         if category == nil { questions.append("Choose or create a category.") }
         return TransactionDraft(kind: kind,
             amount: Money.parse(value.amount) ?? 0, merchant: merchant,
             note: grounded(value.note, in: input), date: parsedDate ?? now, category: category,
-            scope: scope, currency: Money.pickerCodes.contains(currency) ? currency : Money.code, source: source,
+            scope: scope, currency: Money.code, source: source,
             suggestedName: category == nil ? String(value.category.prefix(60)) : "",
             suggestedSymbol: CategoryLibrary.symbols.contains(value.symbol) ? value.symbol : "cart",
             clarification: questions.filter { !$0.isEmpty }.joined(separator: "\n"),

@@ -252,12 +252,9 @@ struct AmountHero: View {
                     AmountField(title: "0", value: $draft.amount, currencyCode: draft.currency, showsSymbol: false)
                         .font(.money(.largeTitle))
                         .foregroundStyle(draft.kind == .income ? Palette.accent : Palette.ink)
-                    Picker("Currency", selection: $draft.currency) {
-                        ForEach(Money.pickerCodes, id: \.self) { Text($0).tag($0) }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .font(.footnote.weight(.semibold))
+                    Text(draft.currency)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Palette.inkMuted)
                 }
             }
         }

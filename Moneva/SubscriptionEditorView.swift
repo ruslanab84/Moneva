@@ -91,9 +91,6 @@ struct SubscriptionEditorView: View {
                     }
                     TextField("Service name", text: $name)
                     AmountField(title: "Amount", value: $amount, currencyCode: currency)
-                    Picker("Currency", selection: $currency) {
-                        ForEach(Money.pickerCodes, id: \.self) { Text(Money.label(for: $0)).tag($0) }
-                    }
                     if let existing, let change = Subscriptions.priceChange(existing), change.currency == currency {
                         SubscriptionPriceChangeBadge(change: change)
                     }

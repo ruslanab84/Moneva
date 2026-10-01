@@ -197,12 +197,11 @@ enum StatementImport {
             case .allExpense: kind = .expense
             case .allIncome: kind = .income
             }
-            let currency = cell(mapping.currency).uppercased()
             rows.append(Row(date: date,
                             merchant: cell(mapping.merchant),
                             amount: abs(signed),
                             kind: kind,
-                            currency: Money.pickerCodes.contains(currency) ? currency : defaultCurrency))
+                            currency: defaultCurrency))
         }
         return rows
     }

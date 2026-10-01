@@ -79,9 +79,6 @@ struct DraftFields: View {
             }
             if showsAmount {
                 AmountField(title: "Amount", value: $draft.amount, currencyCode: draft.currency)
-                Picker("Currency", selection: $draft.currency) {
-                    ForEach(Money.pickerCodes, id: \.self) { Text($0).tag($0) }
-                }
             }
             TextField("Merchant or source", text: $draft.merchant)
             DatePicker("Date", selection: $draft.date, displayedComponents: .date)
@@ -107,9 +104,6 @@ struct DraftFields: View {
             Picker("Account", selection: $draft.account) {
                 Text("None").tag(Account?.none)
                 ForEach(usable, id: \.persistentModelID) { Text($0.name).tag(Account?.some($0)) }
-            }
-            .onChange(of: draft.currency) { _, currency in
-                if draft.account?.currency != currency { draft.account = nil }
             }
         }
     }

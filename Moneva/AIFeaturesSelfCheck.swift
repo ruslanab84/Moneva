@@ -74,6 +74,7 @@ func aiFeaturesSelfCheck() {
             "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
             "merchant": "", "note": "", "category": "Other income", "symbol": "cart", "clarification": "",
         ]))
+        assert(DraftResolver.resolve([phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "5 USD").allSatisfy { $0.currency == Money.code }, "a spoken foreign currency never overrides the active one")
         let batchWithPhantom = DraftResolver.resolve([decodedDraft, phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN")
         assert(batchWithPhantom.count == 1, "a fully blank item the model hallucinated alongside a real one (no amount, no grounded merchant or note) is dropped, not surfaced as a second draft to review")
         let date = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!
