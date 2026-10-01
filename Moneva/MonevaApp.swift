@@ -24,13 +24,14 @@ struct MonevaApp: App {
                 for: Transaction.self, SpendingCategory.self, Budget.self, BudgetLimit.self, Goal.self,
                 Subscription.self, SubscriptionPayment.self, TransactionAllocation.self, MerchantCategoryRule.self,
                 FamilyMember.self, Settlement.self, Account.self, Transfer.self,
-                MerchantEmbedding.self, CategoryExemplar.self,
+                MerchantEmbedding.self, CategoryExemplar.self, Subcategory.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: false, cloudKitDatabase: .none)
             )
             // Legacy budgets had no currency. Capture the current setting once; never relabel them later.
             for budget in try container.mainContext.fetch(FetchDescriptor<Budget>()) where budget.currency == nil { budget.currency = Money.code }
             try container.mainContext.save()
             SeedData.installIfNeeded(in: container.mainContext)
+            SeedData.installSubcategoriesIfNeeded(in: container.mainContext)
             // A launch after a quiet week is when overdue charges get caught up.
             do { try SubscriptionEngine.catchUp(in: container.mainContext) }
             catch { _startupError = State(initialValue: "Scheduled payments could not be saved. Open Subscriptions to retry. " + error.localizedDescription) }

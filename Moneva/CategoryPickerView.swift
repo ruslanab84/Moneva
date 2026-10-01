@@ -124,3 +124,23 @@ struct CategoryPickerView: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
+
+/// Optional second choice under a category. Shows nothing when the category
+/// has no subcategories, and drops a stale pick when the category changes.
+struct SubcategoryPicker: View {
+    let category: SpendingCategory?
+    @Binding var selection: Subcategory?
+
+    var body: some View {
+        let options = CategoryLibrary.subcategories(of: category)
+        if !options.isEmpty {
+            Picker("Subcategory", selection: $selection) {
+                Text("None").tag(Subcategory?.none)
+                ForEach(options, id: \.persistentModelID) { Text($0.name).tag(Subcategory?.some($0)) }
+            }
+            .onChange(of: category?.persistentModelID) { _, _ in
+                if !CategoryLibrary.isSelectable(selection, under: category) { selection = nil }
+            }
+        }
+    }
+}

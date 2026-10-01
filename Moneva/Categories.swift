@@ -75,6 +75,26 @@ enum CategoryLibrary {
         return categories.filter { fold($0.name).contains(wanted) || wanted.contains(fold($0.name)) }
     }
 
+    /// Live subcategories of one category, in the order the user arranged them.
+    static func subcategories(of category: SpendingCategory?) -> [Subcategory] {
+        (category?.subcategories ?? []).filter { !$0.isArchived }.sorted { lhs, rhs in
+            if lhs.sortIndex != rhs.sortIndex { return lhs.sortIndex < rhs.sortIndex }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    /// No subcategory is always fine; a chosen one must be live and belong to
+    /// exactly this category.
+    static func isSelectable(_ sub: Subcategory?, under category: SpendingCategory?) -> Bool {
+        guard let sub else { return true }
+        return category != nil && sub.category === category && !sub.isArchived
+    }
+
+    static func isSubNameAvailable(_ name: String, in names: [String]) -> Bool {
+        let wanted = fold(name)
+        return !wanted.isEmpty && !names.contains { fold($0) == wanted }
+    }
+
     static func nextSortIndex(in all: [SpendingCategory], scope: Scope, kind: TransactionKind = .expense) -> Int {
         (all.filter { $0.scope == scope && $0.kind == kind }.map(\.sortIndex).max() ?? 0) + 1
     }

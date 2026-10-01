@@ -583,6 +583,18 @@ func monevaSelfCheck() {
     assert(CategoryLibrary.visible(ledger, scope: .personal, kind: nil).contains { $0 === salaryCategory }, "both sides list together when no kind is asked for")
     assert(!CategoryLibrary.isSelectable(salaryCategory, scope: .personal), "an income category is never selectable on an expense")
     assert(CategoryLibrary.isSelectable(salaryCategory, scope: .personal, kind: .income), "an income category is selectable on income")
+    let subFood = SpendingCategory(name: "SubFood", symbol: "fork.knife", tintHex: "000000", softHex: "ffffff")
+    let subOther = SpendingCategory(name: "SubOther", symbol: "car", tintHex: "000000", softHex: "ffffff")
+    let subLunch = Subcategory(name: "Lunch", category: subFood)
+    let subArchived = Subcategory(name: "Old", category: subFood)
+    subArchived.isArchived = true
+    assert(CategoryLibrary.isSelectable(nil, under: subFood), "no subcategory is always allowed")
+    assert(CategoryLibrary.isSelectable(subLunch, under: subFood), "a subcategory fits its own parent")
+    assert(!CategoryLibrary.isSelectable(subLunch, under: subOther), "a subcategory never fits another parent")
+    assert(!CategoryLibrary.isSelectable(subArchived, under: subFood), "an archived subcategory is not selectable")
+    assert(!CategoryLibrary.isSubNameAvailable(" lunch ", in: ["Lunch"]), "subcategory names are unique per parent, ignoring case")
+    assert(CategoryLibrary.isSubNameAvailable("Dinner", in: ["Lunch"]), "a new subcategory name is free")
+    assert(SeedData.defaultSubcategories["Food"]?.contains("Lunch") == true, "Food ships with a Lunch subcategory")
     assert(CategoryLibrary.isNameAvailable("Food", scope: .personal, kind: .income, in: ledger), "the same name is free on the other side of the ledger")
     assert(!CategoryLibrary.isNameAvailable("salary", scope: .personal, kind: .income, in: ledger), "an income name is taken whatever its case")
 

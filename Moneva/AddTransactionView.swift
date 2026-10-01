@@ -154,6 +154,7 @@ struct DraftFields: View {
             .sheet(isPresented: $picking) {
                 CategoryPickerView(selection: $draft.category, scope: draft.scope, kind: draft.kind, suggestedName: draft.suggestedName, suggestedSymbol: draft.suggestedSymbol)
             }
+            SubcategoryPicker(category: draft.category, selection: $draft.subcategory)
             if let category = draft.category, !draft.categoryConfident {
                 Text("Low-confidence match — check \(category.name) is right.").font(.caption).foregroundStyle(Palette.warning)
             }

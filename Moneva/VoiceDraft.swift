@@ -91,6 +91,8 @@ struct TransactionDraft: Identifiable {
     var note = ""
     var date: Date = .now
     var category: SpendingCategory?
+    /// Only ever set by hand; no model or importer picks one.
+    var subcategory: Subcategory?
     var scope: Scope = .personal
     /// Optional on purpose: the model never picks an account, and a transaction
     /// without one is still a complete transaction.
@@ -413,6 +415,7 @@ enum DraftStore {
                     category: allocations.isEmpty ? draft.category : nil, currency: draft.currency)
                 tx.draftID = draft.id.uuidString
                 tx.account = draft.account
+                if allocations.isEmpty, CategoryLibrary.isSelectable(draft.subcategory, under: draft.category) { tx.subcategory = draft.subcategory }
                 tx.receiptImage = receiptImage
                 tx.receiptItems = receiptItems
                 context.insert(tx)

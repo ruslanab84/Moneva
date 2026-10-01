@@ -37,6 +37,32 @@ enum SeedData {
         ("Other income", "square.grid.2x2", "78746A", "E4E2DB"),
     ]
 
+    /// Starter subcategories for built-in categories, keyed by category name.
+    static let defaultSubcategories: [String: [String]] = [
+        "Food": ["Breakfast", "Dining Out", "Dinner", "Groceries", "Lunch"],
+        "Transport": ["Fuel", "Parking", "Public transport", "Taxi"],
+        "Home": ["Furniture", "Maintenance", "Rent", "Supplies"],
+        "Shopping": ["Electronics", "Household", "Online"],
+        "Health": ["Doctor", "Medicine", "Pharmacy"],
+        "Entertainment": ["Games", "Movies", "Music", "Events"],
+        "Travel": ["Accommodation", "Flights", "Activities"],
+        "Bills": ["Electricity", "Internet", "Phone", "Water"],
+        "Drinks": ["Coffee", "Tea", "Alcohol"],
+    ]
+
+    /// Runs on existing stores too. A built-in category that already has any
+    /// subcategory is left alone, so ones the user deleted never come back.
+    static func installSubcategoriesIfNeeded(in context: ModelContext) {
+        let all = (try? context.fetch(FetchDescriptor<SpendingCategory>())) ?? []
+        for category in all where category.isBuiltIn && category.kind == .expense && category.subcategories.isEmpty {
+            guard let names = defaultSubcategories[category.name] else { continue }
+            for (index, name) in names.enumerated() {
+                context.insert(Subcategory(name: name, category: category, sortIndex: index))
+            }
+        }
+        try? context.save()
+    }
+
     static func installIfNeeded(in context: ModelContext) {
         let all = (try? context.fetch(FetchDescriptor<SpendingCategory>())) ?? []
         install(defaultCategories, kind: .expense, into: all, in: context)

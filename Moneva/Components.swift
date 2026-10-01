@@ -86,7 +86,7 @@ struct TransactionRow: View {
 
     private var subtitle: String {
         let uncategorised = String(localized: "Uncategorised")
-        var parts = [transaction.allocations.isEmpty ? (transaction.category?.name ?? uncategorised) : transaction.allocations.map { "\($0.category?.name ?? uncategorised): \($0.amount.money(transaction.currency))" }.joined(separator: ", ")]
+        var parts = [transaction.allocations.isEmpty ? ([transaction.category?.name ?? uncategorised, transaction.subcategory?.name].compactMap { $0 }.joined(separator: " · ")) : transaction.allocations.map { "\($0.category?.name ?? uncategorised): \($0.amount.money(transaction.currency))" }.joined(separator: ", ")]
         parts.append(transaction.date.formatted(date: .omitted, time: .shortened))
         if transaction.scope == .shared {
             // Who entered it beats the bare word "Shared": in a family budget

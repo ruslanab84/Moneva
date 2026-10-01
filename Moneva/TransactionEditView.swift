@@ -16,6 +16,7 @@ struct TransactionEditView: View {
     @State private var note: String
     @State private var date: Date
     @State private var category: SpendingCategory?
+    @State private var subcategory: Subcategory?
     @State private var account: Account?
     @State private var picking = false
     @State private var confirmingDelete = false
@@ -33,6 +34,7 @@ struct TransactionEditView: View {
         _note = State(initialValue: transaction.note)
         _date = State(initialValue: transaction.date)
         _category = State(initialValue: transaction.category)
+        _subcategory = State(initialValue: transaction.subcategory)
         _account = State(initialValue: transaction.account)
     }
 
@@ -62,6 +64,7 @@ struct TransactionEditView: View {
                     Label(category?.name ?? String(localized: "Choose category"), systemImage: category?.symbol ?? "square.grid.2x2")
                 }
                 .disabled(isSplit)
+                if !isSplit { SubcategoryPicker(category: category, selection: $subcategory) }
                 TextField("Merchant or source", text: $merchant)
                 // Only accounts in this transaction's currency: a balance never converts money.
                 if !usableAccounts.isEmpty {
@@ -144,6 +147,7 @@ struct TransactionEditView: View {
             transaction.note = note
             transaction.date = date
             transaction.category = category
+            transaction.subcategory = isSplit ? nil : (CategoryLibrary.isSelectable(subcategory, under: category) ? subcategory : nil)
             transaction.account = account
         }
         dismiss()

@@ -55,6 +55,11 @@ final class SpendingCategory {
     @Relationship(deleteRule: .nullify, inverse: \Transaction.category)
     var transactions: [Transaction] = []
 
+    /// Finer labels under this category. Totals, budgets and charts still key
+    /// off the category; a subcategory only describes a transaction further.
+    @Relationship(deleteRule: .cascade, inverse: \Subcategory.category)
+    var subcategories: [Subcategory] = []
+
     init(name: String, symbol: String, tintHex: String, softHex: String, monthlyLimit: Decimal? = nil, isBuiltIn: Bool = false, scope: Scope = .personal, kind: TransactionKind = .expense, sortIndex: Int = 0) {
         self.name = name
         self.symbol = symbol
@@ -71,6 +76,24 @@ final class SpendingCategory {
     var soft: Color { Color(hex: softHex) }
 }
 
+/// A label under one category (Food → Lunch). Scope and kind come from the
+/// parent, so a subcategory can never sit on the wrong side of the ledger.
+@Model
+final class Subcategory {
+    var name: String = ""
+    var sortIndex: Int = 0
+    var isArchived: Bool = false
+    var category: SpendingCategory?
+    @Relationship(deleteRule: .nullify, inverse: \Transaction.subcategory)
+    var transactions: [Transaction] = []
+
+    init(name: String, category: SpendingCategory?, sortIndex: Int = 0) {
+        self.name = name
+        self.category = category
+        self.sortIndex = sortIndex
+    }
+}
+
 @Model
 final class Transaction {
     var amount: Decimal = Decimal.zero
@@ -82,6 +105,8 @@ final class Transaction {
     var scope: Scope = Scope.personal
     var source: EntrySource = EntrySource.manual
     var category: SpendingCategory?
+    /// Optional and additive: older rows have none, and no total reads it.
+    var subcategory: Subcategory?
 
     init(amount: Decimal, date: Date = .now, merchant: String, note: String = "", kind: TransactionKind = .expense, scope: Scope = .personal, source: EntrySource = .manual, category: SpendingCategory?, currency: String = Money.code) {
         self.amount = amount

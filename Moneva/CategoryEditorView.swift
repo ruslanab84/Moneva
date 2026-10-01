@@ -18,6 +18,10 @@ struct CategoryEditorView: View {
     @State private var hasLimit: Bool
     @State private var limit: Decimal
     @State private var scope: Scope
+    /// Staged until Save so Cancel discards. Existing rows are kept by identity.
+    @State private var keptSubs: [Subcategory]
+    @State private var newSubs: [String] = []
+    @State private var newSubName = ""
     /// Fixed once created: moving a category across the ledger would rewrite
     /// what every transaction on it meant.
     private let kind: TransactionKind
@@ -32,6 +36,7 @@ struct CategoryEditorView: View {
         _hasLimit = State(initialValue: false)
         _limit = State(initialValue: 0)
         _scope = State(initialValue: scope)
+        _keptSubs = State(initialValue: [])
     }
 
     init(editing category: SpendingCategory) {
@@ -44,6 +49,16 @@ struct CategoryEditorView: View {
         _hasLimit = State(initialValue: category.monthlyLimit != nil)
         _limit = State(initialValue: category.monthlyLimit ?? 0)
         _scope = State(initialValue: category.scope)
+        _keptSubs = State(initialValue: CategoryLibrary.subcategories(of: category))
+    }
+
+    private var subNames: [String] { keptSubs.map(\.name) + newSubs }
+    private var trimmedSub: String { newSubName.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private func addSub() {
+        guard CategoryLibrary.isSubNameAvailable(trimmedSub, in: subNames) else { return }
+        newSubs.append(trimmedSub)
+        newSubName = ""
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -89,6 +104,18 @@ struct CategoryEditorView: View {
                                     .foregroundStyle(Palette.over)
                             }
                         }
+                    }
+                }
+
+                Section("Subcategories") {
+                    ForEach(keptSubs, id: \.persistentModelID) { Text($0.name) }
+                        .onDelete { keptSubs.remove(atOffsets: $0) }
+                    ForEach(newSubs, id: \.self) { Text($0) }
+                        .onDelete { newSubs.remove(atOffsets: $0) }
+                    HStack {
+                        TextField("Add subcategory", text: $newSubName).onSubmit(addSub)
+                        Button("Add", action: addSub)
+                            .disabled(!CategoryLibrary.isSubNameAvailable(trimmedSub, in: subNames))
                     }
                 }
 
@@ -173,6 +200,13 @@ struct CategoryEditorView: View {
         .padding(.vertical, 6)
     }
 
+    private func addNewSubs(to category: SpendingCategory) {
+        let start = (category.subcategories.map(\.sortIndex).max() ?? -1) + 1
+        for (offset, name) in newSubs.enumerated() {
+            context.insert(Subcategory(name: name, category: category, sortIndex: start + offset))
+        }
+    }
+
     private func save() {
         guard canSave else { return }
         let monthlyLimit: Decimal? = hasLimit && limit > 0 ? limit : nil
@@ -183,6 +217,8 @@ struct CategoryEditorView: View {
             existing.softHex = colors.soft
             existing.monthlyLimit = monthlyLimit
             existing.scope = scope
+            for sub in existing.subcategories where !keptSubs.contains(where: { $0 === sub }) { context.delete(sub) }
+            addNewSubs(to: existing)
         } else {
             let created = SpendingCategory(
                 name: trimmedName,
@@ -195,6 +231,7 @@ struct CategoryEditorView: View {
                 sortIndex: CategoryLibrary.nextSortIndex(in: all, scope: scope, kind: kind)
             )
             context.insert(created)
+            addNewSubs(to: created)
             do { try context.save() } catch { context.rollback(); saveError = error.localizedDescription; return }
             onSave?(created)
         }
