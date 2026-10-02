@@ -175,6 +175,9 @@ enum Budgeting {
         return (spent / limit).doubleValue
     }
 
+    /// `@AppStorage` key for the per-scope "carry unspent budget over" switch.
+    static func rolloverKey(_ scope: Scope) -> String { "budgetRollover.\(scope.rawValue)" }
+
     /// Unused budget from last month's same-category limit, added on top of
     /// this month's limit as a bonus. Only a positive leftover carries
     /// forward — an overspent category starts fresh, never negative.
@@ -392,6 +395,7 @@ func monevaSelfCheck() {
     let augFoodBudget = Budget(monthStart: augStart, total: 500, scope: .personal)
     augFoodBudget.limits = [BudgetLimit(amount: 150, category: food)]
     assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [augFoodBudget], monthStart: sept, scope: .personal, calendar: calendar) == 50, "50 unspent of August's 150 food limit carries into September")
+    assert(Budgeting.rolloverKey(.personal) != Budgeting.rolloverKey(.shared), "each scope keeps its own rollover switch")
     let augOverBudget = Budget(monthStart: augStart, total: 500, scope: .personal)
     augOverBudget.limits = [BudgetLimit(amount: 80, category: food)]
     assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [augOverBudget], monthStart: sept, scope: .personal, calendar: calendar) == 0, "an overspent category never rolls a negative bonus")

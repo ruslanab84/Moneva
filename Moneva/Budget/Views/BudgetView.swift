@@ -10,8 +10,11 @@ struct BudgetView: View {
     @Query private var members: [FamilyMember]
     @Query private var settlements: [Settlement]
     @State private var isEditing = false
+    @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
+    @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
+    private var rolloverOn: Bool { scope == .personal ? rolloverPersonal : rolloverShared }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
     private var budget: Budget? { budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound } }
     private var monthTransactions: [Transaction] {
@@ -98,7 +101,7 @@ struct BudgetView: View {
 
     @ViewBuilder
     private func limitRow(_ limit: BudgetLimit) -> some View {
-        let rollover = Budgeting.rolloverAmount(for: limit.category, transactions: transactions, budgets: budgets, monthStart: range.lowerBound, scope: scope, currency: currencyCode)
+        let rollover = !rolloverOn ? 0 : Budgeting.rolloverAmount(for: limit.category, transactions: transactions, budgets: budgets, monthStart: range.lowerBound, scope: scope, currency: currencyCode)
         let effectiveLimit = limit.amount + rollover
         let used = monthTransactions.filter { $0.kind == .expense }.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }
         let progress = Budgeting.progress(spent: used, limit: effectiveLimit)
@@ -229,6 +232,12 @@ struct BudgetEditor: View {
     @State private var limits: [PersistentIdentifier: Decimal] = [:]
     @State private var splitPercent: [String: Int] = [:]
     @State private var allowance: [String: Decimal] = [:]
+    @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
+    @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
+
+    private var rolloverOn: Binding<Bool> {
+        scope == .personal ? $rolloverPersonal : $rolloverShared
+    }
 
     private var meID: String { FamilySyncEngine.shared.meID }
     private var familyIDs: [String] { FamilyMembers.ids(members: members, transactions: transactions, meID: meID) }
@@ -253,6 +262,11 @@ struct BudgetEditor: View {
                                 .frame(width: 90)
                         }
                     }
+                }
+                Section {
+                    Toggle("Carry over unspent budget", isOn: rolloverOn)
+                } footer: {
+                    Text("Unspent category limit from last month is added to this month's limit. Overspending never reduces it.")
                 }
                 if isFamily {
                     Section {
