@@ -51,7 +51,9 @@ struct SubscriptionsView: View {
             ScreenScroll(title: "Subscriptions", eyebrow: Text("Every month")) {
                 ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
                 totals
-                Button("Add from text or voice", systemImage: "sparkles") { isSmartCreating = true }
+                if OnDeviceAI.isSupported {
+                    Button("Add from text or voice", systemImage: "sparkles") { isSmartCreating = true }
+                }
                 if let engineError { Text(engineError).foregroundStyle(Palette.over) }
 
                 Picker("Filter", selection: $filter) {
@@ -193,7 +195,7 @@ struct SubscriptionsView: View {
 
     @ViewBuilder
     private var assistant: some View {
-        if subscriptions.contains(where: { $0.scope == scope }) {
+        if OnDeviceAI.isSupported, subscriptions.contains(where: { $0.scope == scope }) {
             VStack(alignment: .leading, spacing: 10) {
                 Eyebrow("Ask about these")
                 HStack(spacing: 10) {

@@ -247,6 +247,17 @@ enum OnDeviceAI {
         }
     }
 
+    /// `isSupported` hides AI UI on devices that can never run the model; `isNotEnabled` drives the Home banner.
+    static var isSupported: Bool {
+        if case .unavailable(.deviceNotEligible) = SystemLanguageModel.default.availability { return false }
+        return true
+    }
+
+    static var isNotEnabled: Bool {
+        if case .unavailable(.appleIntelligenceNotEnabled) = SystemLanguageModel.default.availability { return true }
+        return false
+    }
+
     fileprivate static func makeSession(instructions: String, data: String) throws -> LanguageModelSession {
         try makeSession(tools: [], instructions: instructions, data: data)
     }

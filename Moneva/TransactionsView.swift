@@ -55,7 +55,9 @@ struct TransactionsView: View {
         ScreenScroll(title: "Transactions", eyebrow: Text("Last 62 days")) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
 
-            Button("Search & explain spending", systemImage: "sparkles") { assistantOpen = true }
+            if OnDeviceAI.isSupported {
+                Button("Search & explain spending", systemImage: "sparkles") { assistantOpen = true }
+            }
             Text("Totals in \(currencyCode); other currencies stay separate.").font(.caption).foregroundStyle(Palette.inkMuted)
 
             HStack(spacing: 18) {

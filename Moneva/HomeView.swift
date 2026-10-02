@@ -25,6 +25,14 @@ struct HomeView: View {
         ScreenScroll(title: greeting, eyebrow: Text(range.lowerBound.formatted(.dateTime.month(.wide).year()))) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
 
+            if OnDeviceAI.isNotEnabled {
+                Label("Turn on Apple Intelligence in Settings for full functionality", systemImage: "sparkles")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Palette.inkMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .monevaCard()
+            }
+
             if let budget {
                 budgetCard(budget)
             } else {
@@ -40,7 +48,9 @@ struct HomeView: View {
 
             AccountsCard()
 
-            HomeAskCard(scope: scope)
+            if OnDeviceAI.isSupported {
+                HomeAskCard(scope: scope)
+            }
 
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, scope: scope, currency: currencyCode, now: context.date)
