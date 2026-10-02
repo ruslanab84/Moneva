@@ -72,6 +72,27 @@ struct Receipt {
             ReceiptMath.reconciled(items, total: draft.amount, currency: draft.currency, scope: draft.scope)
     }
 
+    /// Why split Save is disabled, so the UI can say it instead of a generic hint.
+    var blockers: [String] {
+        guard mode == .split else { return [] }
+        let live = items.filter { !$0.alreadyIncluded }
+        var result: [String] = []
+        if !draft.reviewed { result.append(String(localized: "Tick “I checked and corrected these details”.")) }
+        let unreviewed = items.filter { !$0.reviewed }.count
+        if unreviewed > 0 { result.append(String(localized: "\(unreviewed) lines still need “I verified this line”.")) }
+        let uncategorised = live.filter { !CategoryLibrary.isSelectable($0.category, scope: draft.scope) }.count
+        if uncategorised > 0 { result.append(String(localized: "\(uncategorised) lines have no category.")) }
+        if remaining != 0 { result.append(String(localized: "Lines differ from the printed total by \(remaining.money(draft.currency)).")) }
+        return result
+    }
+
+    /// One tap closes an unitemized gap (tax, rounding) as an ordinary line the user still categorises and reviews.
+    mutating func addDifferenceLine() {
+        guard remaining != 0 else { return }
+        items.append(ReceiptItem(name: String(localized: "Tax / rounding"), kind: remaining < 0 ? .discount : .item, amount: abs(remaining)))
+        draft.reviewed = false
+    }
+
     func save(in context: ModelContext, image: Data?) throws {
         guard canSave else { throw DraftStore.Failure.invalid }
         var savedDraft = draft

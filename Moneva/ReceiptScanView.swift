@@ -77,10 +77,17 @@ struct ReceiptScanView: View {
                     .frame(maxWidth: .infinity)
                     .disabled(!canSave)
                     if !receipt.canSave {
-                        Text(receipt.mode == .split
-                            ? "Review all lines and receipt details, select valid categories, and match the printed total to save."
-                            : "Enter a valid amount, choose a category, and confirm you checked the details to save.")
-                            .font(.caption).foregroundStyle(Palette.warning)
+                        if receipt.mode == .split, !receipt.blockers.isEmpty {
+                            ForEach(receipt.blockers, id: \.self) { Text($0).font(.caption).foregroundStyle(Palette.warning) }
+                        } else {
+                            Text(receipt.mode == .split
+                                ? "Review all lines and receipt details, select valid categories, and match the printed total to save."
+                                : "Enter a valid amount, choose a category, and confirm you checked the details to save.")
+                                .font(.caption).foregroundStyle(Palette.warning)
+                        }
+                    }
+                    if receipt.mode == .split, receipt.remaining != 0, receipt.draft.amount > 0 {
+                        Button("Add difference as line", systemImage: "plus.forwardslash.minus") { receipt.addDifferenceLine() }
                     }
                 }
                 .listRowBackground(Palette.card)

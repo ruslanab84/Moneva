@@ -1327,6 +1327,24 @@
     "Resume subscription" : {
 
     },
+    "Add difference as line" : {
+
+    },
+    "Tax / rounding" : {
+
+    },
+    "Tick “I checked and corrected these details”." : {
+
+    },
+    "%lld lines still need “I verified this line”." : {
+
+    },
+    "%lld lines have no category." : {
+
+    },
+    "Lines differ from the printed total by %@." : {
+
+    },
     "Review all lines and receipt details, select valid categories, and match the printed total to save." : {
 
     },

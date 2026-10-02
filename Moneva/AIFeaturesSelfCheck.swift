@@ -230,6 +230,15 @@ func aiFeaturesSelfCheck() {
         try split.save(in: context, image: nil)
         split.items[0].amount = Decimal(string: "80.001")!
         assert(!split.canSave, "currency precision is enforced")
+        var gap = Receipt(draft: TransactionDraft(amount: 1072, category: nil, currency: "USD", source: .receipt, reviewed: true), mode: .split,
+            items: [ReceiptItem(name: "Food", amount: 1068, category: food, reviewed: true)])
+        assert(!gap.canSave && gap.blockers.count == 1, "an inexact split names its one blocker")
+        gap.addDifferenceLine()
+        assert(gap.remaining == 0 && !gap.draft.reviewed && !gap.canSave && gap.blockers.count == 3, "the difference line still needs category and review")
+        gap.items[1].category = food
+        gap.items[1].reviewed = true
+        gap.draft.reviewed = true
+        assert(gap.canSave && gap.blockers.isEmpty, "closing the gap with a reviewed line makes the split savable")
 
         let rows = ReceiptText.rows([
             .init(text: "MILK", rect: CGRect(x: 10, y: 100, width: 80, height: 20), confidence: 0.95),
