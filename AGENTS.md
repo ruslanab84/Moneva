@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`Moneva/` contains the SwiftUI application. Views use feature-oriented names such as `SubscriptionsView.swift`; shared UI and design tokens live in `Components.swift` and `Theme.swift`. SwiftData models are in `Models.swift`, while deterministic business rules belong in files such as `Budgeting.swift`, `Subscriptions.swift`, and `Categories.swift`. On-device AI and OCR flows live in `VoiceDraft.swift`, `SubscriptionInsight.swift`, `ReceiptDraft.swift`, and `ReceiptScan.swift`. Assets are under `Moneva/Assets.xcassets`. Design sources are in `design/`, and supporting product notes are in `docs/`.
+`Moneva/` contains the SwiftUI application, grouped by feature: `Home/`, `Transactions/`, `Budget/`, `Subscriptions/`, `Accounts/`, `Goals/`, `Settings/`, `Categories/`, each with `Views/` and (where there is separable logic) `Core/` holding deterministic business rules (e.g. `Budget/Core/Budgeting.swift`, `Subscriptions/Core/Subscriptions.swift`, `Categories/Core/Categories.swift`). `AI/` holds on-device AI and OCR flows (`Core/VoiceDraft.swift`, `Core/AskTools.swift`, `Core/ReceiptDraft.swift`, `Core/ReceiptScan.swift`), their views, and the AI self-checks; `Sync/` holds CloudKit family sharing; `Shared/` holds `Models.swift`, `Theme.swift`, `Components.swift` and `SeedData.swift`; `App/` holds the app entry point and `RootView`. Views use feature-oriented names such as `SubscriptionsView.swift`. Assets are under `Moneva/Assets.xcassets`. Design sources are in `design/`, and supporting product notes are in `docs/`.
 
 ## Build, Test, and Development Commands
 

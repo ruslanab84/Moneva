@@ -16,7 +16,7 @@ The model receives neither `ModelContext`, managed models, persistent IDs, notes
 
 ## Schemas and mapping
 
-Definitions and registry: `Moneva/AskTools.swift`. `FinancialToolSelection` restricts routing to an enum of the ten registered names and at most three tools per question. This keeps unrelated function schemas out of the execution session. `Tool.parameters` exposes the generated `GenerationSchema` for each typed `Arguments` contract.
+Definitions and registry: `Moneva/AI/Core/AskTools.swift`. `FinancialToolSelection` restricts routing to an enum of the ten registered names and at most three tools per question. This keeps unrelated function schemas out of the execution session. `Tool.parameters` exposes the generated `GenerationSchema` for each typed `Arguments` contract.
 
 `FinancialPeriod` requires `period` (`all`, `today`, `yesterday`, `thisMonth`, `lastMonth`, `lastWeekend`, `custom`). `start` and `end` are optional ISO `YYYY-MM-DD` strings. For presets they are ignored: the named period is authoritative and redundant model dates cannot widen it. For custom ranges both dates must resolve successfully. Custom endpoints are inclusive; the domain converts them to a half-open date range using `Calendar`.
 

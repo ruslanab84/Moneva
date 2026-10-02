@@ -23,10 +23,10 @@ No database schema or global provider changed. All state is local to the insight
 
 ## Files
 
-- `Moneva/SmartInsights.swift`: snapshot, threshold constants, engine, Foundation Models adapter, and DEBUG regression checks.
-- `Moneva/SmartInsightsView.swift`: themed card, task lifecycle, no-signal state, and narrow/light and accessibility/dark Xcode previews.
-- `Moneva/HomeView.swift`: placement between the budget summary and today's transactions.
-- `Moneva/Budgeting.swift`: registers the new check in the existing DEBUG self-check suite.
+- `Moneva/Home/Core/SmartInsights.swift`: snapshot, threshold constants, engine, Foundation Models adapter, and DEBUG regression checks.
+- `Moneva/Home/Views/SmartInsightsView.swift`: themed card, task lifecycle, no-signal state, and narrow/light and accessibility/dark Xcode previews.
+- `Moneva/Home/Views/HomeView.swift`: placement between the budget summary and today's transactions.
+- `Moneva/Budget/Core/Budgeting.swift`: registers the new check in the existing DEBUG self-check suite.
 
 ## Verification
 

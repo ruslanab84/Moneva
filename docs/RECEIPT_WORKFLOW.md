@@ -40,15 +40,15 @@ No new persistence model or schema migration is needed. Existing allocation-awar
 
 | Type / file | Responsibility |
 |---|---|
-| `Receipt` — `Moneva/ReceiptDraft.swift` | Editable receipt metadata, selected mode, items, computed groups, exact save gate and save adapter. |
+| `Receipt` — `Moneva/AI/Core/ReceiptDraft.swift` | Editable receipt metadata, selected mode, items, computed groups, exact save gate and save adapter. |
 | `ReceiptItem` — same file | UUID identity; description; positive Decimal line amount; item/tax/discount type; category reference; optional quantity/unit-price text; exclusion; source OCR; OCR confidence; category certainty; verification state. |
 | `CategoryBreakdown` — same file | Existing `ReceiptAllocation`, contributing items, and optional Decimal fraction of the printed total. |
 | `ReceiptAllocation` / `ReceiptMath` — same file | Existing category grouping and reconciliation. Amounts are authoritative; percentages are presentation. |
 | `DraftedReceipt`, `ReceiptLineSuggestion`, `ReceiptLineSuggestions` — same file | Guided model outputs. Split suggestions carry allowlisted category indices and source row indices; they cannot supply or rewrite prices. |
-| `ReceiptTextRow`, `ReceiptText` — `Moneva/ReceiptScan.swift` | OCR row reconstruction, source confidence, conservative printed-price normalization and fallback candidates. |
-| `ReceiptScanView`, `ReceiptItemRow`, `ReceiptBreakdownSection` — `Moneva/ReceiptScanView.swift` | Input, mode dialog, review state, line-edit sheets and live grouped summary. |
+| `ReceiptTextRow`, `ReceiptText` — `Moneva/AI/Core/ReceiptScan.swift` | OCR row reconstruction, source confidence, conservative printed-price normalization and fallback candidates. |
+| `ReceiptScanView`, `ReceiptItemRow`, `ReceiptBreakdownSection` — `Moneva/AI/Views/ReceiptScanView.swift` | Input, mode dialog, review state, line-edit sheets and live grouped summary. |
 | `SavedReceiptItem` / `TransactionAllocation` | Local JSON audit snapshot and existing SwiftData category relationships. Saved item category names are historical labels, not relationship identifiers. |
-| `DraftStore` — `Moneva/VoiceDraft.swift` | Existing validation, transactional save, rollback and stable draft-ID deduplication. |
+| `DraftStore` — `Moneva/AI/Core/VoiceDraft.swift` | Existing validation, transactional save, rollback and stable draft-ID deduplication. |
 
 For the requested example, Swift derives the following from reviewed lines, with total `Decimal(200)` and currency `USD`:
 
