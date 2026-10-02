@@ -25,6 +25,10 @@ struct TransactionsView: View {
     private var monthTransactions: [Transaction] {
         transactions.filter { $0.scope == scope && range.contains($0.date) }
     }
+    private var currentMonthRange: Range<Date> { Budgeting.monthRange(for: .now) }
+    private var currentMonthTransactions: [Transaction] {
+        transactions.filter { $0.scope == scope && currentMonthRange.contains($0.date) }
+    }
     private var days: [(day: Date, items: [Transaction])] {
         groupByDay(monthTransactions)
     }
@@ -60,12 +64,14 @@ struct TransactionsView: View {
             }
             Text("Totals in \(currencyCode); other currencies stay separate.").font(.caption).foregroundStyle(Palette.inkMuted)
 
-            HStack(spacing: 18) {
-                totals("Money in", Budgeting.earned(monthTransactions, in: range, scope: scope), Palette.accent)
-                Divider().frame(height: 40).overlay(Palette.line)
-                totals("Money out", Budgeting.spent(monthTransactions, in: range, scope: scope), Palette.ink)
+            if mode != .monthly {
+                HStack(spacing: 18) {
+                    totals("Money in", Budgeting.earned(currentMonthTransactions, in: currentMonthRange, scope: scope), Palette.accent)
+                    Divider().frame(height: 40).overlay(Palette.line)
+                    totals("Money out", Budgeting.spent(currentMonthTransactions, in: currentMonthRange, scope: scope), Palette.ink)
+                }
+                .monevaCard(padding: 16)
             }
-            .monevaCard(padding: 16)
 
             Picker("View", selection: $mode) {
                 ForEach(TransactionsMode.allCases) { Text($0.rawValue).tag($0) }
