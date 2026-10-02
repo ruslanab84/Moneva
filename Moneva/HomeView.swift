@@ -17,9 +17,6 @@ struct HomeView: View {
     private var budget: Budget? {
         budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound }
     }
-    private var today: [Transaction] {
-        transactions.filter { $0.scope == scope && Calendar.current.isDateInToday($0.date) }
-    }
 
     var body: some View {
         ScreenScroll(title: greeting, eyebrow: Text(range.lowerBound.formatted(.dateTime.month(.wide).year()))) {
@@ -79,31 +76,6 @@ struct HomeView: View {
 
                 MoneyTipCard(date: context.date)
             }
-
-            HStack {
-                Eyebrow("Today · \(currencyCode)")
-                Spacer()
-                Text(todayTotal.money(currencyCode))
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Palette.inkMuted)
-            }
-            .padding(.top, 4)
-
-            if today.isEmpty {
-                EmptyHint(
-                    title: "Nothing today",
-                    message: "Tap the plus button to add an expense or income.",
-                    symbol: "tray"
-                )
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(today.enumerated()), id: \.element.persistentModelID) { index, transaction in
-                        if index > 0 { Divider().overlay(Palette.line) }
-                        TransactionRow(transaction: transaction)
-                    }
-                }
-                .monevaCard(padding: 16)
-            }
         }
         .overlay(alignment: .topTrailing) {
             Button { isSettingsOpen = true } label: {
@@ -127,10 +99,6 @@ struct HomeView: View {
         case ..<18: "Good afternoon"
         default: "Good evening"
         }
-    }
-
-    private var todayTotal: Decimal {
-        today.filter { $0.kind == .expense && $0.currency == currencyCode }.reduce(Decimal.zero) { $0 + $1.amount }
     }
 
     @ViewBuilder
