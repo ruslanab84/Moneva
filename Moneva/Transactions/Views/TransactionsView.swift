@@ -19,13 +19,14 @@ struct TransactionsView: View {
     @State private var mode: TransactionsMode = .daily
     @State private var selectedDate: Date = .now
     @State private var selectedMonth: Date = .now
+    @State private var today: Date = .now
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
     private var range: Range<Date> { Budgeting.recentRange(days: 62) }
     private var monthTransactions: [Transaction] {
         transactions.filter { $0.scope == scope && range.contains($0.date) }
     }
-    private var currentMonthRange: Range<Date> { Budgeting.monthRange(for: .now) }
+    private var currentMonthRange: Range<Date> { Budgeting.monthRange(for: today) }
     private var currentMonthTransactions: [Transaction] {
         transactions.filter { $0.scope == scope && currentMonthRange.contains($0.date) }
     }
@@ -50,8 +51,8 @@ struct TransactionsView: View {
             .sorted { $0.date > $1.date }
     }
     private var categorySpending: [(category: SpendingCategory, total: Decimal)] {
-        let items = mode == .monthly ? selectedMonthTransactions : monthTransactions
-        let chartRange = mode == .monthly ? selectedMonthRange : range
+        let items = mode == .monthly ? selectedMonthTransactions : currentMonthTransactions
+        let chartRange = mode == .monthly ? selectedMonthRange : currentMonthRange
         return Budgeting.spendingByCategory(items, categories: CategoryLibrary.visible(allCategories, scope: scope), in: chartRange, scope: scope, currency: currencyCode)
     }
 
@@ -88,6 +89,8 @@ struct TransactionsView: View {
             case .monthly: monthlySection
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in today = .now }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in today = .now }
         .sheet(isPresented: $assistantOpen) { SpendingAssistantView(scope: scope) }
         .sheet(item: $selectedTransaction) { tx in
             NavigationStack {
