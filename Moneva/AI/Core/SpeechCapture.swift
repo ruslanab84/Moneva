@@ -38,7 +38,7 @@ final class SpeechCapture {
         volatile = ""
 
         guard await Self.requestPermissions() else {
-            error = "Moneva needs the microphone and speech recognition to listen."
+            error = "Ledgea needs the microphone and speech recognition to listen."
             return
         }
         guard generation == token, !Task.isCancelled else { return }

@@ -48,7 +48,7 @@ enum Reminders {
             requests.append(request(
                 id: identifier(subscription, suffix: "confirm"),
                 title: "\(subscription.name) is due today",
-                body: "Open Moneva to add \(subscription.amount.money(subscription.currency)) or skip this month.",
+                body: "Open Ledgea to add \(subscription.amount.money(subscription.currency)) or skip this month.",
                 at: subscription.nextPaymentDate,
                 calendar: calendar
             ))

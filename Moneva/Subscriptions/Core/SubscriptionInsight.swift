@@ -88,7 +88,7 @@ enum SubscriptionDigest {
 
     static func lines(for subscriptions: [Subscription], now: Date = .now, calendar: Calendar = .current) -> [String] {
         let active = subscriptions.filter { $0.status == .active && $0.kind == .expense && !Subscriptions.hasEnded($0, on: now, calendar: calendar) }
-        var lines = ["\(active.count) active subscriptions. These are schedules, not charges made by Moneva."]
+        var lines = ["\(active.count) active subscriptions. These are schedules, not charges made by Ledgea."]
         for currency in Set(active.map(\.currency)).sorted() {
             lines.append("Scheduled monthly cost: \(Subscriptions.monthlyTotal(active, currency: currency, now: now, calendar: calendar).money(currency)).")
         }

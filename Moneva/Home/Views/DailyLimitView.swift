@@ -66,7 +66,7 @@ struct DailyLimitCard: View {
         } else {
             EmptyHint(
                 title: "No daily limit",
-                message: "Tap to let Moneva calculate one or set your own.",
+                message: "Tap to let Ledgea calculate one or set your own.",
                 symbol: "gauge.with.dots.needle.33percent"
             )
         }
@@ -121,7 +121,7 @@ struct DailyLimitSheet: View {
                     Text("Calculation options")
                 } footer: {
                     if mode == .automatic {
-                        Text("Moneva calculates your daily limit from what is left of this month's budget, divided by the days left. It is set once each day and is not affected by today's transactions. Without a budget it uses your balance and expected income.")
+                        Text("Ledgea calculates your daily limit from what is left of this month's budget, divided by the days left. It is set once each day and is not affected by today's transactions. Without a budget it uses your balance and expected income.")
                     } else {
                         Text("While you can set the limit to whatever you want, please stay within reason so you don't overspend.")
                     }

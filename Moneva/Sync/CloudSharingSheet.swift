@@ -20,7 +20,7 @@ struct CloudSharingSheet: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     final class Coordinator: NSObject, UICloudSharingControllerDelegate {
-        func itemTitle(for csc: UICloudSharingController) -> String? { "Moneva family budget" }
+        func itemTitle(for csc: UICloudSharingController) -> String? { "Ledgea family budget" }
 
         func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {
             Task { @MainActor in

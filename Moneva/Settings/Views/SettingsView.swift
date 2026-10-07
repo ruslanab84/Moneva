@@ -34,7 +34,7 @@ struct SettingsView: View {
                         LabeledContent("Currency") { CurrencyLabel(code: currencyCode) }
                     }
                 } footer: {
-                    Text("Moneva shows every amount in this currency. Past transactions keep the code they were saved with.")
+                    Text("Ledgea shows every amount in this currency. Past transactions keep the code they were saved with.")
                 }
 
                 Section {
@@ -96,7 +96,7 @@ struct SettingsView: View {
         if let error = status.lastError { return error }
         switch status.role {
         case nil:
-            return String(localized: "Share the Shared side of Moneva with one other person. Personal transactions never leave this device.")
+            return String(localized: "Share the Shared side of Ledgea with one other person. Personal transactions never leave this device.")
         case .owner:
             return syncedLine ?? String(localized: "You started this family budget.")
         case .participant:

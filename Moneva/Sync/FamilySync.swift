@@ -436,7 +436,7 @@ final class FamilySyncEngine: NSObject {
             return existing
         }
         let share = CKShare(recordZoneID: zoneID)
-        share[CKShare.SystemFieldKey.title] = "Moneva family budget" as CKRecordValue
+        share[CKShare.SystemFieldKey.title] = "Ledgea family budget" as CKRecordValue
         _ = try await db.save(share)
         acceptedShare(role: .owner, ownerName: CKCurrentUserDefaultName)
         return share

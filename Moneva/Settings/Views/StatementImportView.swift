@@ -238,7 +238,7 @@ struct StatementImportView: View {
         case unreadable, empty, noRows, nothingValid
         var errorDescription: String? {
             switch self {
-            case .unreadable: return String(localized: "This file is not text Moneva can read. Export it as CSV.")
+            case .unreadable: return String(localized: "This file is not text Ledgea can read. Export it as CSV.")
             case .empty: return String(localized: "That file has no rows.")
             case .noRows: return String(localized: "No rows could be read with these columns. Check the date and amount columns.")
             case .nothingValid: return String(localized: "None of the selected rows could be saved. Check the currency and the category.")

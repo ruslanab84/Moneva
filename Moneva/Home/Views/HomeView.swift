@@ -35,7 +35,7 @@ struct HomeView: View {
             } else {
                 EmptyHint(
                     title: "No budget for this month",
-                    message: "Set a monthly limit and Moneva will track what is left of it.",
+                    message: "Set a monthly limit and Ledgea will track what is left of it.",
                     symbol: "chart.pie"
                 )
             }
