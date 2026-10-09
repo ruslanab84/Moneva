@@ -30,4 +30,4 @@ Follow the existing imperative commit style, for example `Give subscriptions an 
 
 ## Security & Configuration
 
-Moneva is local-only: do not add backend storage or upload receipt, voice, or financial data. Preserve the personal/shared scope boundary and keep currencies separate in calculations.
+Moneva is local-only: do not add backend storage or upload receipt, voice, or financial data. Network code is allowed only for the AdMob banner and StoreKit; neither may receive app data. Preserve the personal/shared scope boundary and keep currencies separate in calculations.
