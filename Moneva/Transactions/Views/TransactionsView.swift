@@ -57,6 +57,11 @@ struct TransactionsView: View {
     }
 
     var body: some View {
+        transactionsContent.adSupported()
+    }
+
+    @ViewBuilder
+    private var transactionsContent: some View {
         ScreenScroll(title: "Transactions", eyebrow: Text("Last 62 days")) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
 

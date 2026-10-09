@@ -6,15 +6,17 @@ struct RootView: View {
     @State private var isSpeaking = false
     @State private var isScanning = false
     @State private var isPaywall = false
+    @State private var tab: AppTab = .home
+    @State private var ads = AdsConsent()
     @Environment(ProStore.self) private var pro
 
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "house") { NavigationStack { HomeView() } }
-            Tab("Transactions", systemImage: "list.bullet") { TransactionsView() }
-            Tab("Budget", systemImage: "chart.pie") { BudgetView() }
-            Tab("Goals", systemImage: "flag") { GoalsView() }
-            Tab("Subs", systemImage: "arrow.triangle.2.circlepath") { SubscriptionsView() }
+        TabView(selection: $tab) {
+            Tab("Home", systemImage: "house", value: AppTab.home) { NavigationStack { HomeView() } }
+            Tab("Transactions", systemImage: "list.bullet", value: AppTab.transactions) { TransactionsView() }
+            Tab("Budget", systemImage: "chart.pie", value: AppTab.budget) { BudgetView() }
+            Tab("Goals", systemImage: "flag", value: AppTab.goals) { GoalsView() }
+            Tab("Subs", systemImage: "arrow.triangle.2.circlepath", value: AppTab.subs) { SubscriptionsView() }
         }
         .tint(Palette.accent)
         .overlay(alignment: .bottomTrailing) {
@@ -52,8 +54,11 @@ struct RootView: View {
                 .accessibilityLabel("Add transaction")
             }
             .padding(.trailing, 22)
-            .padding(.bottom, 96)
+            // The banner sits above the tab bar on Home/Transactions; keep the buttons clear of it.
+            .padding(.bottom, 96 + (ProLimits.showsBanner(tab: tab, isPro: pro.isPro) ? ads.bannerHeight : 0))
         }
+        .environment(ads)
+        .task { await ads.start() }
         .sheet(isPresented: $isPaywall) { PaywallView() }
         .sheet(isPresented: $isAdding) { AddTransactionView() }
         .sheet(isPresented: $isSpeaking) { VoiceCaptureView() }

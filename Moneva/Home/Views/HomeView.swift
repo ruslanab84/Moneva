@@ -19,6 +19,11 @@ struct HomeView: View {
     }
 
     var body: some View {
+        homeContent.adSupported()
+    }
+
+    @ViewBuilder
+    private var homeContent: some View {
         ScreenScroll(title: greeting, eyebrow: Text(range.lowerBound.formatted(.dateTime.month(.wide).year()))) {
             ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
 

@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AD0000000000000000000005 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000003 /* GoogleMobileAds */; };
+		AD0000000000000000000006 /* UserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000004 /* UserMessagingPlatform */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B7707DD43049DDE600BAC428 /* Moneva.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Moneva.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD0000000000000000000005 /* GoogleMobileAds in Frameworks */,
+				AD0000000000000000000006 /* UserMessagingPlatform in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +72,8 @@
 			);
 			name = Moneva;
 			packageProductDependencies = (
+				AD0000000000000000000003 /* GoogleMobileAds */,
+				AD0000000000000000000004 /* UserMessagingPlatform */,
 			);
 			productName = Moneva;
 			productReference = B7707DD43049DDE600BAC428 /* Moneva.app */;
@@ -94,6 +103,10 @@
 			);
 			mainGroup = B7707DCB3049DDE600BAC428;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AD0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				AD0000000000000000000002 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B7707DD53049DDE600BAC428 /* Products */;
 			projectDirPath = "";
@@ -257,6 +270,7 @@
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Ads-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Ledgea;
 				INFOPLIST_KEY_CKSharingSupported = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Ledgea uses the camera only while you scan a receipt. The photo is read on this iPhone, saved only if you choose to keep it, and never sent to a server.";
@@ -300,6 +314,7 @@
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Ads-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Ledgea;
 				INFOPLIST_KEY_CKSharingSupported = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Ledgea uses the camera only while you scan a receipt. The photo is read on this iPhone, saved only if you choose to keep it, and never sent to a server.";
@@ -354,6 +369,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AD0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.0.0;
+			};
+		};
+		AD0000000000000000000002 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AD0000000000000000000003 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AD0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+		AD0000000000000000000004 /* UserMessagingPlatform */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AD0000000000000000000002 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */;
+			productName = GoogleUserMessagingPlatform;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B7707DCC3049DDE600BAC428 /* Project object */;
 }
