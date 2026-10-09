@@ -22,6 +22,8 @@ struct SubscriptionEditorView: View {
     @State private var amount: Decimal
     @State private var currency: String
     @State private var kind: TransactionKind
+    @State private var isPaywall = false
+    @Environment(ProStore.self) private var pro
     @State private var category: SpendingCategory?
     @State private var nextPaymentDate: Date
     /// A loan or any fixed-term plan stops on a date. Held as a flag plus a
@@ -87,8 +89,10 @@ struct SubscriptionEditorView: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: kind) { _, newKind in
+                        if newKind == .income && !pro.isPro { kind = .expense; isPaywall = true; return }
                         if !CategoryLibrary.isSelectable(category, scope: scope, kind: newKind) { category = nil }
                     }
+                    .sheet(isPresented: $isPaywall) { PaywallView() }
                     TextField("Service name", text: $name)
                     AmountField(title: "Amount", value: $amount, currencyCode: currency)
                     if let existing, let change = Subscriptions.priceChange(existing), change.currency == currency {

@@ -117,6 +117,7 @@ struct CategoryEditorView: View {
                         Button("Add", action: addSub)
                             .disabled(!CategoryLibrary.isSubNameAvailable(trimmedSub, in: subNames))
                     }
+                    .proGated()
                 }
 
                 Section("Scope") { ScopePicker(scope: $scope) }

@@ -39,6 +39,7 @@ struct AccountsView: View {
                     Button("Transfer", systemImage: "arrow.left.arrow.right") { isMoving = true }
                         .buttonStyle(.bordered)
                         .tint(Palette.accent)
+                        .proGated()
                 }
             }
 

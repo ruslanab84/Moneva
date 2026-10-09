@@ -42,11 +42,12 @@ struct HomeView: View {
 
             DailyLimitCard(scope: scope, transactions: transactions, subscriptions: subscriptions, budgetTotal: budget?.total, currencyCode: currencyCode)
                 .id(scope) // AppStorage keys are fixed at init, so rebuild on scope change
+                .proGated()
 
             AccountsCard()
 
             if OnDeviceAI.isSupported {
-                HomeAskCard(scope: scope)
+                HomeAskCard(scope: scope).proGated()
             }
 
             TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -73,6 +74,7 @@ struct HomeView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .proGated()
 
                 MoneyTipCard(date: context.date)
             }

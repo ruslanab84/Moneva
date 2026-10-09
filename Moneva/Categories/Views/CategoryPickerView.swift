@@ -141,6 +141,7 @@ struct SubcategoryPicker: View {
             .onChange(of: category?.persistentModelID) { _, _ in
                 if !CategoryLibrary.isSelectable(selection, under: category) { selection = nil }
             }
+            .proGated()
         }
     }
 }

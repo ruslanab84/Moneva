@@ -51,6 +51,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Import statement", systemImage: "tablecells")
                     }
+                    .proGated()
                     NavigationLink {
                         StatementExportView()
                     } label: {
@@ -63,6 +64,7 @@ struct SettingsView: View {
                 Section {
                     if status.role == nil {
                         Button("Invite someone", systemImage: "person.badge.plus") { presentShare() }
+                            .proGated()
                     } else {
                         ForEach(members.sorted { $0.name < $1.name }, id: \.persistentModelID) { member in
                             LabeledContent(member.name) {

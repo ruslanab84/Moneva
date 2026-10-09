@@ -62,6 +62,7 @@ struct TransactionsView: View {
 
             if OnDeviceAI.isSupported {
                 Button("Search & explain spending", systemImage: "sparkles") { assistantOpen = true }
+                    .proGated()
             }
             Text("Totals in \(currencyCode); other currencies stay separate.").font(.caption).foregroundStyle(Palette.inkMuted)
 

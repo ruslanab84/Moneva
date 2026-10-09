@@ -14,7 +14,9 @@ struct BudgetView: View {
     @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
-    private var rolloverOn: Bool { scope == .personal ? rolloverPersonal : rolloverShared }
+    @Environment(ProStore.self) private var pro
+    /// Carry-over is a Pro feature; the stored preference is kept so it resumes on upgrade.
+    private var rolloverOn: Bool { pro.isPro && (scope == .personal ? rolloverPersonal : rolloverShared) }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
     private var budget: Budget? { budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound } }
     private var monthTransactions: [Transaction] {
@@ -235,6 +237,8 @@ struct BudgetEditor: View {
     @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
     @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
 
+    @Environment(ProStore.self) private var pro
+
     private var rolloverOn: Binding<Bool> {
         scope == .personal ? $rolloverPersonal : $rolloverShared
     }
@@ -264,7 +268,8 @@ struct BudgetEditor: View {
                     }
                 }
                 Section {
-                    Toggle("Carry over unspent budget", isOn: rolloverOn)
+                    Toggle("Carry over unspent budget", isOn: pro.isPro ? rolloverOn : .constant(false))
+                        .proGated()
                 } footer: {
                     Text("Unspent category limit from last month is added to this month's limit. Overspending never reduces it.")
                 }
