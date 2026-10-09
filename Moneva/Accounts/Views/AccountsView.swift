@@ -9,6 +9,8 @@ struct AccountsView: View {
     @State private var editing: Account?
     @State private var isAdding = false
     @State private var isMoving = false
+    @State private var isPaywall = false
+    @Environment(ProStore.self) private var pro
 
     private var visible: [Account] { Accounts.visible(accounts) }
     private var archived: [Account] { accounts.filter(\.isArchived) }
@@ -28,7 +30,9 @@ struct AccountsView: View {
             }
 
             HStack(spacing: 10) {
-                Button("New account", systemImage: "plus") { isAdding = true }
+                Button("New account", systemImage: "plus") {
+                    if ProLimits.canCreate(.account, count: visible.count, isPro: pro.isPro) { isAdding = true } else { isPaywall = true }
+                }
                     .buttonStyle(.borderedProminent)
                     .tint(Palette.accent)
                 if canMove {
@@ -64,6 +68,7 @@ struct AccountsView: View {
             }
         }
         .sheet(isPresented: $isAdding) { AccountEditor(account: nil) }
+        .sheet(isPresented: $isPaywall) { PaywallView() }
         .sheet(item: $editing) { AccountEditor(account: $0) }
         .sheet(isPresented: $isMoving) { TransferEditor() }
     }

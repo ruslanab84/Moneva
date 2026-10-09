@@ -23,11 +23,17 @@ struct SubscriptionsView: View {
     @State private var creating: DetectedSubscription?
     @State private var isCreating = false
     @State private var isSmartCreating = false
+    @State private var isPaywall = false
+    @Environment(ProStore.self) private var pro
     @State private var engineError: String?
     @State private var question = ""
     @FocusState private var questionFocused: Bool
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
+
+    private var canAddSubscription: Bool {
+        ProLimits.canCreate(.subscription, count: subscriptions.count, isPro: pro.isPro)
+    }
 
     private var shown: [Subscription] {
         switch filter {
@@ -52,7 +58,10 @@ struct SubscriptionsView: View {
                 ScopePicker(scope: Binding(get: { scope }, set: { scopeRaw = $0.rawValue }))
                 totals
                 if OnDeviceAI.isSupported {
-                    Button("Add from text or voice", systemImage: "sparkles") { isSmartCreating = true }
+                    Button("Add from text or voice", systemImage: "sparkles") {
+                        if canAddSubscription && ProLimits.canUseAI(usedThisMonth: AIUsage.count(), isPro: pro.isPro) { isSmartCreating = true }
+                        else { isPaywall = true }
+                    }
                 }
                 if let engineError { Text(engineError).foregroundStyle(Palette.over) }
 
@@ -79,7 +88,7 @@ struct SubscriptionsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Add", systemImage: "plus") { isCreating = true }
+                    Button("Add", systemImage: "plus") { if canAddSubscription { isCreating = true } else { isPaywall = true } }
                 }
             }
             .task(id: scope) { await refresh() }
@@ -87,6 +96,7 @@ struct SubscriptionsView: View {
                 // Coming back after a few days is exactly when a charge is due.
                 if phase == .active { Task { await refresh() } }
             }
+            .sheet(isPresented: $isPaywall) { PaywallView() }
             .sheet(isPresented: $isSmartCreating) { VoiceCaptureView(subscriptions: true) }
             .sheet(isPresented: $isCreating) { SubscriptionEditorView(scope: scope) }
             .sheet(item: $editing) { SubscriptionEditorView(editing: $0) }
@@ -182,7 +192,7 @@ struct SubscriptionsView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(Palette.ground, in: .rect(cornerRadius: 14))
 
-                    Button("Add it") { creating = item }
+                    Button("Add it") { if canAddSubscription { creating = item } else { isPaywall = true } }
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Palette.card)
                         .frame(maxWidth: .infinity, minHeight: 44)

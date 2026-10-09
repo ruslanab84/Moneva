@@ -273,6 +273,7 @@ struct ReceiptScanView: View {
         do {
             try receipt.save(in: context, image: retainImage ? image?.jpegData(compressionQuality: 0.8) : nil)
             saved = true
+            AIUsage.record()
             let currentScope = Scope(rawValue: scopeRaw) ?? .personal
             if receipt.draft.scope != currentScope || !Budgeting.monthRange(for: .now).contains(receipt.draft.date) {
                 savedElsewhere = String(localized: "Saved to \(receipt.draft.scope.title) · \(receipt.draft.date.formatted(.dateTime.month(.wide).year())). It won't show in this month's \(currentScope.title) list.")

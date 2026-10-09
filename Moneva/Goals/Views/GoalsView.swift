@@ -7,6 +7,8 @@ struct GoalsView: View {
     @AppStorage(Money.storageKey) private var currencyCode = Money.code
     @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
     @State private var isAdding = false
+    @State private var isPaywall = false
+    @Environment(ProStore.self) private var pro
     @State private var topUpTarget: Goal?
     @State private var topUpText = ""
 
@@ -29,11 +31,14 @@ struct GoalsView: View {
                 goalCard(goal)
             }
 
-            Button("New goal", systemImage: "plus") { isAdding = true }
+            Button("New goal", systemImage: "plus") {
+                if ProLimits.canCreate(.goal, count: goals.count, isPro: pro.isPro) { isAdding = true } else { isPaywall = true }
+            }
                 .buttonStyle(.borderedProminent)
                 .tint(Palette.accent)
         }
         .sheet(isPresented: $isAdding) { GoalEditor(scope: scope) }
+        .sheet(isPresented: $isPaywall) { PaywallView() }
         .alert("Add money", isPresented: Binding(get: { topUpTarget != nil }, set: { if !$0 { topUpTarget = nil } })) {
             TextField("Amount", text: $topUpText).keyboardType(.decimalPad)
             Button("Cancel", role: .cancel) { topUpTarget = nil }

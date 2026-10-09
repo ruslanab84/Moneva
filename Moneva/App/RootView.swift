@@ -5,6 +5,8 @@ struct RootView: View {
     @State private var isAdding = false
     @State private var isSpeaking = false
     @State private var isScanning = false
+    @State private var isPaywall = false
+    @Environment(ProStore.self) private var pro
 
     var body: some View {
         TabView {
@@ -18,7 +20,7 @@ struct RootView: View {
         .overlay(alignment: .bottomTrailing) {
             VStack(spacing: 12) {
                 if OnDeviceAI.isSupported {
-                    Button { isScanning = true } label: {
+                    Button { openAI { isScanning = true } } label: {
                         Image(systemName: "doc.viewfinder")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(Palette.accent)
@@ -28,7 +30,7 @@ struct RootView: View {
                     }
                     .accessibilityLabel("Scan a receipt")
 
-                    Button { isSpeaking = true } label: {
+                    Button { openAI { isSpeaking = true } } label: {
                         Image(systemName: "mic.fill")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(Palette.accent)
@@ -52,9 +54,14 @@ struct RootView: View {
             .padding(.trailing, 22)
             .padding(.bottom, 96)
         }
+        .sheet(isPresented: $isPaywall) { PaywallView() }
         .sheet(isPresented: $isAdding) { AddTransactionView() }
         .sheet(isPresented: $isSpeaking) { VoiceCaptureView() }
         .sheet(isPresented: $isScanning) { ReceiptScanView() }
         .preferredColorScheme(AppTheme(rawValue: themeRaw)?.colorScheme)
+    }
+
+    private func openAI(_ open: () -> Void) {
+        if ProLimits.canUseAI(usedThisMonth: AIUsage.count(), isPro: pro.isPro) { open() } else { isPaywall = true }
     }
 }

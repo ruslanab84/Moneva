@@ -19,6 +19,7 @@ struct VoiceCaptureView: View {
     @State private var microphoneBusy = false
     @State private var error: String?
     @State private var manual = false
+    @State private var counted = false
     @State private var task: Task<Void, Never>?
     @State private var source: EntrySource = .text
 
@@ -176,7 +177,7 @@ struct VoiceCaptureView: View {
                 if subscriptions { SubscriptionEditorView(scope: scope) } else { AddTransactionView() }
             }
             .sheet(item: $subscriptionDraft) { draft in
-                SubscriptionEditorView(scope: scope, draft: draft, onSaved: { dismiss() })
+                SubscriptionEditorView(scope: scope, draft: draft, onSaved: { recordUsage(); dismiss() })
             }
             .onDisappear {
                 task?.cancel()
@@ -239,7 +240,7 @@ struct VoiceCaptureView: View {
                         // (missing amount/category, a clarification question) still falls through to
                         // the editable review section below, since there's nothing valid to save yet.
                         for index in drafts.indices { drafts[index].reviewed = true }
-                        do { try DraftStore.save(drafts, in: context); dismiss() }
+                        do { try DraftStore.save(drafts, in: context); recordUsage(); dismiss() }
                         catch { self.error = error.localizedDescription }
                     }
                 }
@@ -299,8 +300,15 @@ struct VoiceCaptureView: View {
         guard !busy else { return }
         busy = true
         defer { busy = false }
-        do { try DraftStore.save(drafts, in: context); dismiss() }
+        do { try DraftStore.save(drafts, in: context); recordUsage(); dismiss() }
         catch { self.error = error.localizedDescription }
+    }
+
+    /// One capture session counts once against the free AI allowance, however many drafts it saves.
+    private func recordUsage() {
+        guard !counted else { return }
+        counted = true
+        AIUsage.record()
     }
 
     /// Batch confirm-UI: each draft saves on its own, so one bad draft never blocks the rest.
@@ -308,7 +316,7 @@ struct VoiceCaptureView: View {
         guard !busy else { return }
         busy = true
         defer { busy = false }
-        do { try DraftStore.save([draft], in: context); drafts.removeAll { $0.id == draft.id } }
+        do { try DraftStore.save([draft], in: context); recordUsage(); drafts.removeAll { $0.id == draft.id } }
         catch { self.error = error.localizedDescription }
     }
 }
