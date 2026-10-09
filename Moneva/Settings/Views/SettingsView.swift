@@ -10,11 +10,19 @@ struct SettingsView: View {
     @State private var activeShare: ShareBox?
     @State private var shareError: String?
     @State private var isLeaving = false
+    @State private var isPaywall = false
+    @Environment(ProStore.self) private var pro
     private var status = FamilySyncStatus.shared
 
     var body: some View {
         NavigationStack {
             Form {
+                if !pro.isPro {
+                    Section {
+                        Button("Upgrade to Pro", systemImage: "sparkles") { isPaywall = true }
+                    }
+                }
+
                 Section {
                     Picker("Theme", selection: $themeRaw) {
                         ForEach(AppTheme.allCases) { theme in
@@ -77,6 +85,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
+            .sheet(isPresented: $isPaywall) { PaywallView() }
             .sheet(item: $activeShare) { box in
                 CloudSharingSheet(share: box.share, container: .default())
             }

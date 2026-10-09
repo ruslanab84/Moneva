@@ -5,6 +5,7 @@ import SwiftData
 struct MonevaApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var startupError: String?
+    @State private var pro = ProStore()
     private let container: ModelContainer
 
     init() {
@@ -45,6 +46,7 @@ struct MonevaApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(pro)
                 #if DEBUG
                 .task { await financialToolModelSelfCheck() }
                 #endif

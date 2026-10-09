@@ -39,4 +39,10 @@ func proSelfCheck() {
     assert(AIUsage.count(now: jan1, calendar: calendar, defaults: defaults) == 0, "a new year starts at zero")
     assert(AIUsage.count(now: dec31, calendar: calendar, defaults: defaults) == 1, "December keeps its own count")
     defaults.removePersistentDomain(forName: suite)
+
+    // Entitlements: only our products unlock, and a revoked/refunded one never does.
+    assert(ProStore.unlocks(productID: "RuslanAbd.Moneva.pro.monthly", isRevoked: false))
+    assert(ProStore.unlocks(productID: "RuslanAbd.Moneva.pro.lifetime", isRevoked: false))
+    assert(!ProStore.unlocks(productID: "RuslanAbd.Moneva.pro.yearly", isRevoked: true), "a refund takes Pro away")
+    assert(!ProStore.unlocks(productID: "com.other.product", isRevoked: false), "an unknown product never unlocks Pro")
 }
