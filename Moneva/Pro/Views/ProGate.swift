@@ -11,6 +11,7 @@ struct ProGate: ViewModifier {
             content
         } else {
             content
+                .disabled(true)   // Form rows are activated by the row, not the label: disable it too
                 .allowsHitTesting(false)
                 .opacity(0.55)
                 .overlay(alignment: .topTrailing) {

@@ -72,7 +72,7 @@ struct SubscriptionsView: View {
 
                 ForEach(pending.filter { $0.subscription.scope == scope }) { item in confirmation(item) }
                 detection
-                assistant
+                assistant.proGated()
 
                 if shown.isEmpty {
                     EmptyHint(

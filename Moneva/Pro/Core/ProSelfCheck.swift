@@ -40,6 +40,20 @@ func proSelfCheck() {
     assert(AIUsage.count(now: dec31, calendar: calendar, defaults: defaults) == 1, "December keeps its own count")
     defaults.removePersistentDomain(forName: suite)
 
+    // Banner heights: Home and Transactions both keep a banner alive in the TabView. Leaving one
+    // screen must not zero the offset the other, still visible banner needs.
+    var banners = BannerHeights()
+    let homeBanner = UUID(), transactionsBanner = UUID()
+    banners.report(homeBanner, height: 50)
+    banners.report(transactionsBanner, height: 50)
+    banners.remove(transactionsBanner)
+    assert(banners.height == 50, "the Home banner is still showing after Transactions' banner goes away")
+    banners.report(homeBanner, height: 0)
+    assert(banners.height == 0, "a banner that failed to load stops taking space")
+    banners.report(homeBanner, height: 50)
+    banners.remove(homeBanner)
+    assert(banners.height == 0, "no banner on screen, no offset")
+
     // Entitlements: only our products unlock, and a revoked/refunded one never does.
     assert(ProStore.unlocks(productID: "RuslanAbd.Moneva.pro.monthly", isRevoked: false))
     assert(ProStore.unlocks(productID: "RuslanAbd.Moneva.pro.lifetime", isRevoked: false))

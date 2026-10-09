@@ -8,6 +8,7 @@ struct AdBanner: View {
     @Environment(AdsConsent.self) private var ads
     @State private var width: CGFloat = 0
     @State private var height: CGFloat = 0
+    @State private var id = UUID()
 
     var body: some View {
         Color.clear
@@ -22,8 +23,9 @@ struct AdBanner: View {
             }
             .clipped()
             .accessibilityLabel("Advertisement")
-            .onChange(of: height) { _, new in ads.bannerHeight = new }
-            .onDisappear { ads.bannerHeight = 0 }
+            .onChange(of: height) { _, new in ads.reportBanner(id, height: new) }
+            .onAppear { ads.reportBanner(id, height: height) }
+            .onDisappear { ads.removeBanner(id) }
     }
 }
 

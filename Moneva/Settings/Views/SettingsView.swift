@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var isLeaving = false
     @State private var isPaywall = false
     @Environment(ProStore.self) private var pro
+    @Environment(AdsConsent.self) private var ads
     private var status = FamilySyncStatus.shared
 
     var body: some View {
@@ -20,6 +21,9 @@ struct SettingsView: View {
                 if !pro.isPro {
                     Section {
                         Button("Upgrade to Pro", systemImage: "sparkles") { isPaywall = true }
+                        if ads.privacyOptionsRequired {
+                            Button("Ad privacy options", systemImage: "hand.raised") { Task { await ads.presentPrivacyOptions() } }
+                        }
                     }
                 }
 
