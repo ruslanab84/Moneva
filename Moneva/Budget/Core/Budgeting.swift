@@ -749,6 +749,7 @@ func monevaSelfCheck() {
     assert(square.isEmpty, "zero balances need no transfers")
 
     familySyncSelfCheck()
+    proSelfCheck()
 
     let eta = Budgeting.projectedCompletion(remaining: 760, monthlyRate: 200, from: sept, calendar: calendar)
     assert(eta == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1))!, "760 at 200 a month takes 4 months")
