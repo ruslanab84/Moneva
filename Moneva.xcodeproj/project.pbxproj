@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AD0000000000000000000005 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000003 /* GoogleMobileAds */; };
-		AD0000000000000000000006 /* UserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000004 /* UserMessagingPlatform */; };
+		AD0000000000000000000006 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000004 /* GoogleUserMessagingPlatform */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,7 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD0000000000000000000005 /* GoogleMobileAds in Frameworks */,
-				AD0000000000000000000006 /* UserMessagingPlatform in Frameworks */,
+				AD0000000000000000000006 /* GoogleUserMessagingPlatform in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -73,7 +73,7 @@
 			name = Moneva;
 			packageProductDependencies = (
 				AD0000000000000000000003 /* GoogleMobileAds */,
-				AD0000000000000000000004 /* UserMessagingPlatform */,
+				AD0000000000000000000004 /* GoogleUserMessagingPlatform */,
 			);
 			productName = Moneva;
 			productReference = B7707DD43049DDE600BAC428 /* Moneva.app */;
@@ -395,7 +395,7 @@
 			package = AD0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
 		};
-		AD0000000000000000000004 /* UserMessagingPlatform */ = {
+		AD0000000000000000000004 /* GoogleUserMessagingPlatform */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = AD0000000000000000000002 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */;
 			productName = GoogleUserMessagingPlatform;
