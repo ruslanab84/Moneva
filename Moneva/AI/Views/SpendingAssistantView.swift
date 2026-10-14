@@ -148,7 +148,7 @@ struct SpendingAssistantView: View {
                     askAnswer = try await FinancialToolRegistry.answer(question: question.isEmpty ? "Summarize my income and expenses this month" : question, service: service)
                 } else {
                     let result = try await OnDeviceAI.generate(DraftedSearch.self,
-                        instructions: "Convert the question into narrow transaction filters. Prefer named period presets for relative dates. Custom dates are inclusive. Use only existing categories. Default kind is expense. Do not silently ignore unsupported or ambiguous conditions: ask for clarification. A bare word that matches a category name is a category filter. Never write a database query.",
+                        instructions: "Convert the question into narrow transaction filters. Prefer named period presets for relative dates. If the question names no time, use period all. Leave merchant, minimum, maximum, currency and scope empty unless the question states them. Custom dates are inclusive. Use only existing categories. Default kind is expense. Do not silently ignore unsupported or ambiguous conditions: ask for clarification. A bare word that matches a category name is a category filter. Never write a database query.",
                         data: OnDeviceAI.context(categories: CategoryLibrary.visible(categories, scope: scope), icons: false) + "\nActive scope: \(scope.rawValue)\nQuestion: \(question)")
                     filter = try SpendingSearch.resolve(result, categories: categories, scope: scope)
                 }

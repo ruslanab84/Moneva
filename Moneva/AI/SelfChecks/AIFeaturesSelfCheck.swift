@@ -286,6 +286,9 @@ func aiFeaturesSelfCheck() {
         assert(extracted[0].amount == 80 && extracted[3].alreadyIncluded && !extracted[0].reviewed, "model output cannot change money, include known summaries, or mark lines reviewed")
         let malicious = DraftedSearch(period: .all, start: nil, end: nil, category: "", merchant: "", minimum: "", maximum: "", currency: "", scope: "shared", kind: "expense", clarification: "")
         do { _ = try SpendingSearch.resolve(malicious, categories: [food], scope: .personal); assertionFailure("scope escalation accepted") } catch {}
+        let zeroBounds = DraftedSearch(period: .all, start: nil, end: nil, category: "", merchant: "", minimum: "0", maximum: "0.00", currency: "", scope: "personal", kind: "expense", clarification: "")
+        let unbounded = try SpendingSearch.resolve(zeroBounds, categories: [food], scope: .personal)
+        assert(unbounded.minimum == nil && unbounded.maximum == nil, "model-written zero bounds mean no bound, not an empty result")
         let monday = calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!
         let weekend = try SpendingSearch.range(.lastWeekend, now: monday, calendar: calendar)!
         assert(weekend.contains(date) && !weekend.contains(monday), "local weekend range is half-open")

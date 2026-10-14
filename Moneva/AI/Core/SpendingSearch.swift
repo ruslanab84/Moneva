@@ -89,10 +89,13 @@ enum SpendingSearch {
         guard draft.category.isEmpty || category != nil else { throw Failure.invalid("Choose an existing category in the filters.") }
         let currency = draft.currency.uppercased()
         guard currency.isEmpty || Money.pickerCodes.contains(currency) else { throw Failure.invalid("Choose a valid currency.") }
-        let minimum = draft.minimum.isEmpty ? nil : Money.parse(draft.minimum)
-        let maximum = draft.maximum.isEmpty ? nil : Money.parse(draft.maximum)
-        guard draft.minimum.isEmpty || minimum != nil, draft.maximum.isEmpty || maximum != nil,
-              minimum == nil || maximum == nil || minimum! <= maximum! else { throw Failure.invalid("Check the amount range.") }
+        let parsedMinimum = draft.minimum.isEmpty ? nil : Money.parse(draft.minimum)
+        let parsedMaximum = draft.maximum.isEmpty ? nil : Money.parse(draft.maximum)
+        guard draft.minimum.isEmpty || parsedMinimum != nil, draft.maximum.isEmpty || parsedMaximum != nil else { throw Failure.invalid("Check the amount range.") }
+        // The model often writes "0" for "no bound": a zero cap would hide every record, a zero floor is a no-op.
+        let minimum = parsedMinimum.flatMap { $0 > 0 ? $0 : nil }
+        let maximum = parsedMaximum.flatMap { $0 > 0 ? $0 : nil }
+        guard minimum == nil || maximum == nil || minimum! <= maximum! else { throw Failure.invalid("Check the amount range.") }
         guard ["expense", "income", "all"].contains(draft.kind) else { throw Failure.invalid("Choose expense or income in the filters.") }
         return SpendingFilter(range: try range(draft.period, start: draft.start, end: draft.end, now: now, calendar: calendar), category: category,
             merchant: draft.merchant, minimum: minimum, maximum: maximum, currency: currency.isEmpty ? nil : currency,
