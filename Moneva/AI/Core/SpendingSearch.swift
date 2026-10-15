@@ -81,11 +81,24 @@ enum SpendingSearch {
         }
     }
 
+    /// A query that is just a category name ("food") needs no model: every period, that category's side of the ledger.
+    static func direct(_ question: String, categories: [SpendingCategory], scope: Scope) -> SpendingFilter? {
+        guard let category = DraftResolver.category(named: question, in: CategoryLibrary.visible(categories, scope: scope, kind: nil)) else { return nil }
+        return SpendingFilter(range: nil, category: category, scope: scope, kind: category.kind)
+    }
+
     /// The caller supplies the authorized partition. Model output cannot widen access.
     static func resolve(_ draft: DraftedSearch, categories: [SpendingCategory], scope: Scope, now: Date = .now, calendar: Calendar = .current) throws -> SpendingFilter {
+        var draft = draft
         guard draft.clarification.isEmpty else { throw Failure.invalid(draft.clarification) }
         guard draft.scope.isEmpty || draft.scope == scope.rawValue else { throw Failure.invalid("Switch to the requested scope in Transactions, then search again.") }
-        let category = DraftResolver.category(named: draft.category, in: CategoryLibrary.visible(categories, scope: scope))
+        let visible = CategoryLibrary.visible(categories, scope: scope)
+        // The model often files a category word as a merchant ("food"), which then matches no merchant text.
+        if let misfiled = DraftResolver.category(named: draft.merchant, in: visible), draft.category.isEmpty || CategoryLibrary.fold(draft.category) == CategoryLibrary.fold(misfiled.name) {
+            draft.category = misfiled.name
+            draft.merchant = ""
+        }
+        let category = DraftResolver.category(named: draft.category, in: visible)
         guard draft.category.isEmpty || category != nil else { throw Failure.invalid("Choose an existing category in the filters.") }
         let currency = draft.currency.uppercased()
         guard currency.isEmpty || Money.pickerCodes.contains(currency) else { throw Failure.invalid("Choose a valid currency.") }

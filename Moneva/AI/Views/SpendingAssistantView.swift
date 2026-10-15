@@ -146,6 +146,8 @@ struct SpendingAssistantView: View {
                 if explain {
                     let service = FinancialToolService(context: modelContext, scope: scope, currency: currency.isEmpty ? Money.code : currency)
                     askAnswer = try await FinancialToolRegistry.answer(question: question.isEmpty ? "Summarize my income and expenses this month" : question, service: service)
+                } else if let direct = SpendingSearch.direct(question, categories: categories, scope: scope) {
+                    filter = direct
                 } else {
                     let result = try await OnDeviceAI.generate(DraftedSearch.self,
                         instructions: "Convert the question into narrow transaction filters. Prefer named period presets for relative dates. If the question names no time, use period all. Leave merchant, minimum, maximum, currency and scope empty unless the question states them. Custom dates are inclusive. Use only existing categories. Default kind is expense. Do not silently ignore unsupported or ambiguous conditions: ask for clarification. A bare word that matches a category name is a category filter. Never write a database query.",

@@ -289,6 +289,12 @@ func aiFeaturesSelfCheck() {
         let zeroBounds = DraftedSearch(period: .all, start: nil, end: nil, category: "", merchant: "", minimum: "0", maximum: "0.00", currency: "", scope: "personal", kind: "expense", clarification: "")
         let unbounded = try SpendingSearch.resolve(zeroBounds, categories: [food], scope: .personal)
         assert(unbounded.minimum == nil && unbounded.maximum == nil, "model-written zero bounds mean no bound, not an empty result")
+        let misfiled = DraftedSearch(period: .all, start: nil, end: nil, category: "", merchant: "food", minimum: "", maximum: "", currency: "", scope: "", kind: "expense", clarification: "")
+        let refiled = try SpendingSearch.resolve(misfiled, categories: [food], scope: .personal)
+        assert(refiled.category === food && refiled.merchant.isEmpty, "a category word filed as merchant becomes the category filter")
+        let bare = SpendingSearch.direct(" FOOD ", categories: [food], scope: .personal)
+        assert(bare?.category === food && bare?.range == nil && bare?.kind == .expense, "a bare category name searches all time without the model")
+        assert(SpendingSearch.direct("food last week", categories: [food], scope: .personal) == nil, "anything beyond a category name still goes to the model")
         let monday = calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!
         let weekend = try SpendingSearch.range(.lastWeekend, now: monday, calendar: calendar)!
         assert(weekend.contains(date) && !weekend.contains(monday), "local weekend range is half-open")

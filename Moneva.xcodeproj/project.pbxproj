@@ -15,9 +15,25 @@
 		B7707DD43049DDE600BAC428 /* Moneva.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Moneva.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CD0000000000000000000001 /* Exceptions for "Moneva" folder in "Moneva" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Accounts/CLAUDE.md,
+				Categories/CLAUDE.md,
+				Home/CLAUDE.md,
+				Sync/CLAUDE.md,
+			);
+			target = B7707DD33049DDE600BAC428 /* Moneva */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B7707DD63049DDE600BAC428 /* Moneva */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CD0000000000000000000001 /* Exceptions for "Moneva" folder in "Moneva" target */,
+			);
 			path = Moneva;
 			sourceTree = "<group>";
 		};
