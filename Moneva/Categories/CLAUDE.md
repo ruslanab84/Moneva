@@ -1,0 +1,3 @@
+## Merchant/category classification
+
+[MerchantSeeds.swift](Core/MerchantSeeds.swift) loads a bundled 241-entry merchant dataset ([Resources/merchant-seeds.json](../Resources)); [MerchantEmbedding.swift](Core/MerchantEmbedding.swift) and [CategoryClassifier.swift](Core/CategoryClassifier.swift) match free-text merchant names to the user's *live, editable* category list, not the seed data's own categories. `MerchantSeeds.resolved(strict:)` defaults `strict: true` (traps on an unresolvable seed) for the self-check fixture, but the live classifier call site must pass `strict: false` — a user can delete/rename categories the seed data references, and that must degrade to skipping the seed, not crashing mid-draft.

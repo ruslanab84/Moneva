@@ -55,26 +55,9 @@ A second, distinct AI pattern for read-only questions: `Question → typed Found
 - All three entry points (Ask, Search, Explain in [SpendingAssistantView.swift](Moneva/AI/Views/SpendingAssistantView.swift), plus subscription Q&A in [SubscriptionInsight.swift](Moneva/Subscriptions/Core/SubscriptionInsight.swift), plus [SmartInsights.swift](Moneva/Home/Core/SmartInsights.swift)) must build their `LanguageModelSession` with the same category/date grounding via `OnDeviceAI.context(categories:)` — a session missing that context makes the model misfile category names into free-text filters instead of matching real categories, silently undercounting totals. If you add a new tool-calling entry point, copy an existing session-construction site rather than building context from scratch.
 - Comparison differences (`comparePeriods`) are computed by Swift and the explanation preserves the signed value verbatim — live testing found the model could restate a correct value incorrectly, so numeric claims never round-trip through model prose unchecked.
 
-## Smart Insights
+## Subsystem notes
 
-[SmartInsights.swift](Moneva/Home/Core/SmartInsights.swift) computes spending-trend/spike/budget-projection signals with pure `Decimal` statistics off the main actor; Foundation Models is only allowed to pick which of two app-authored explanation strings to show (a constrained choice index), never to write numbers. See [docs/smart-insights/README.md](docs/smart-insights/README.md) for the exact thresholds.
-
-## Accounts and transfers
-
-[Accounts.swift](Moneva/Accounts/Core/Accounts.swift) (pure helpers) + [AccountsView.swift](Moneva/Accounts/Views/AccountsView.swift). `Account` is deliberately **not** a partition the way `Scope` is — totals, charts, budgets, forecasts and the AI tools are never filtered by account, and an assert in `monevaSelfCheck()` guards that. Accounts also sit outside scope: one list serves both personal and shared.
-
-- Balance = `openingBalance` + same-currency transactions + same-currency transfers. Nothing is converted; a transaction in another currency simply does not count toward that account's balance.
-- A cross-account move is its own `Transfer` `@Model`, never two `Transaction`s — that's why no existing total needed new exclusion logic. `Accounts.canTransfer` requires two distinct live accounts with matching currency.
-- `Transaction.account` and `Subscription.account` are optional relationships (additive column, lightweight migration). A recurring charge lands in the subscription's account only when the currency matches, otherwise it is recorded with no account. Archived accounts leave the pickers but keep receiving charges from subscriptions already pointing at them.
-- A SwiftUI `Picker` over `Account?` needs `.tag(Account?.some($0))`.
-
-## Family sharing (CloudKit)
-
-[FamilySync.swift](Moneva/Sync/FamilySync.swift) syncs `Transaction` records via `CKSyncEngine`, with `AppDelegate.swift` handling share acceptance and [CloudSharingSheet.swift](Moneva/Sync/CloudSharingSheet.swift) wrapping `UICloudSharingController` for invites. This is layered on top of, not a replacement for, local SwiftData — `Scope: .shared` remains a local partition, not proof of an accepted share. Treat any CloudKit-touching change as sync-conflict-sensitive: `FamilySyncEngine.catchUp()` runs at launch and is covered by `familySyncSelfCheck()`.
-
-## Merchant/category classification
-
-[MerchantSeeds.swift](Moneva/Categories/Core/MerchantSeeds.swift) loads a bundled 241-entry merchant dataset ([Resources/merchant-seeds.json](Moneva/Resources)); [MerchantEmbedding.swift](Moneva/Categories/Core/MerchantEmbedding.swift) and [CategoryClassifier.swift](Moneva/Categories/Core/CategoryClassifier.swift) match free-text merchant names to the user's *live, editable* category list, not the seed data's own categories. `MerchantSeeds.resolved(strict:)` defaults `strict: true` (traps on an unresolvable seed) for the self-check fixture, but the live classifier call site must pass `strict: false` — a user can delete/rename categories the seed data references, and that must degrade to skipping the seed, not crashing mid-draft.
+Nested `CLAUDE.md` files hold subsystem rules and load only when working there: [Moneva/Home](Moneva/Home/CLAUDE.md) (Smart Insights), [Moneva/Accounts](Moneva/Accounts/CLAUDE.md) (accounts/transfers), [Moneva/Sync](Moneva/Sync/CLAUDE.md) (CloudKit family sharing), [Moneva/Categories](Moneva/Categories/CLAUDE.md) (merchant/category classification).
 
 ## Localization
 
