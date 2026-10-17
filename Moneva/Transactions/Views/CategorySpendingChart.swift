@@ -25,10 +25,11 @@ struct CategorySpendingChart: View {
         var id: String { rawValue }
     }
 
-    @State private var chartKind: ChartKind = .petal
-    @State private var labelMode: LabelMode = .percent
-    @State private var sort: CategorySort = .descending
-    @State private var paletteMode: PaletteMode = .categoryTint
+    // Persisted so the chosen view survives leaving the tab and relaunching.
+    @AppStorage("chart.kind") private var chartKind: ChartKind = .petal
+    @AppStorage("chart.labels") private var labelMode: LabelMode = .percent
+    @AppStorage("chart.sort") private var sort: CategorySort = .descending
+    @AppStorage("chart.palette") private var paletteMode: PaletteMode = .categoryTint
     @State private var settingsOpen = false
     @State private var detailOpen = false
     @State private var selectedID: String?
