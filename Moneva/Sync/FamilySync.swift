@@ -239,6 +239,20 @@ enum FamilySync {
         hadSystemFields && scope == .personal
     }
 
+    /// The mirror image: shared, and never yet on CloudKit.
+    static func needsInitialUpload(hadSystemFields: Bool, scope: Scope) -> Bool {
+        !hadSystemFields && scope == .shared
+    }
+
+    /// Only losing or swapping the account invalidates the share's tokens.
+    static func forgetsShare(after change: CKSyncEngine.Event.AccountChange.ChangeType) -> Bool {
+        switch change {
+        case .signIn: return false
+        case .signOut, .switchAccounts: return true
+        @unknown default: return true
+        }
+    }
+
     // MARK: Budget
 
     static func record(from budget: Budget, zoneID: CKRecordZone.ID, calendar: Calendar = .current) -> CKRecord {
@@ -395,9 +409,30 @@ final class FamilySyncEngine: NSObject {
         start(role: role, ownerName: storedOwnerName)
     }
 
-    /// Called by `AppDelegate` once this device has accepted the partner's
-    /// invite, and by `makeOrFetchShare()` once this device has created one.
+    /// Called by `SceneDelegate` when this device opens the partner's invite.
+    /// Opening your own invite link is not joining anything.
+    func accept(_ metadata: CKShare.Metadata) {
+        guard metadata.participantRole != .owner else { return }
+        let container = CKContainer(identifier: metadata.containerIdentifier)
+        // The zone stays owned by whoever sent the invite; this device reaches
+        // it through the shared database under that owner's name.
+        let ownerName = metadata.share.recordID.zoneID.ownerName
+        Task {
+            do {
+                try await container.accept(metadata)
+                acceptedShare(role: .participant, ownerName: ownerName)
+            } catch {
+                FamilySyncStatus.shared.lastError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Called by `accept(_:)` once this device has joined the partner's
+    /// share, and by `makeOrFetchShare()` once this device owns one.
     func acceptedShare(role: FamilyRole, ownerName: String?) {
+        // Switching sides (an owner joining someone else's share) must drop
+        // the old engine, or `start` keeps syncing the old zone until relaunch.
+        if syncEngine != nil, self.role != role { forgetShare() }
         UserDefaults.standard.set(role.rawValue, forKey: Self.roleKey)
         UserDefaults.standard.set(ownerName, forKey: Self.ownerNameKey)
         FamilySyncStatus.shared.role = role
@@ -432,12 +467,16 @@ final class FamilySyncEngine: NSObject {
             _ = try await db.save(CKRecordZone(zoneID: zoneID))
         }
         let shareID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zoneID)
+        let share: CKShare
         if let existing = try? await db.record(for: shareID) as? CKShare {
-            return existing
+            share = existing
+        } else {
+            share = CKShare(recordZoneID: zoneID)
+            share[CKShare.SystemFieldKey.title] = "Ledgea family budget" as CKRecordValue
+            _ = try await db.save(share)
         }
-        let share = CKShare(recordZoneID: zoneID)
-        share[CKShare.SystemFieldKey.title] = "Ledgea family budget" as CKRecordValue
-        _ = try await db.save(share)
+        // Also on the existing-share path: after a reinstall or a forgotten
+        // role the share is still on CloudKit, and this is what restarts sync.
         acceptedShare(role: .owner, ownerName: CKCurrentUserDefaultName)
         return share
     }
@@ -460,7 +499,34 @@ final class FamilySyncEngine: NSObject {
         )
         syncEngine = CKSyncEngine(config)
         observeSaves(in: context)
-        Task { await resolveIdentity(role: role, ownerName: ownerName) }
+        Task {
+            await resolveIdentity(role: role, ownerName: ownerName)
+            // After identity, so the backlog is stamped with a real author.
+            enqueueUnsynced()
+        }
+    }
+
+    /// Shared records saved before the share existed never passed through
+    /// `handleSave`, so without this the partner only ever sees what was
+    /// added after the invite. The engine deduplicates pending changes, so
+    /// running it on every start is harmless.
+    private func enqueueUnsynced() {
+        guard let syncEngine, let zoneID, let context else { return }
+        var changes: [CKSyncEngine.PendingRecordZoneChange] = []
+        for transaction in (try? context.fetch(FetchDescriptor<Transaction>())) ?? []
+        where FamilySync.needsInitialUpload(hadSystemFields: transaction.ckSystemFields != nil, scope: transaction.scope) {
+            if transaction.authorID.isEmpty { transaction.authorID = meID }
+            changes.append(.saveRecord(FamilySync.recordID(for: transaction.cloudID, zoneID: zoneID)))
+        }
+        for budget in (try? context.fetch(FetchDescriptor<Budget>())) ?? []
+        where FamilySync.needsInitialUpload(hadSystemFields: budget.ckSystemFields != nil, scope: budget.scope) {
+            let name = FamilySync.budgetRecordName(monthStart: budget.monthStart, currency: budget.currency ?? Money.code)
+            changes.append(.saveRecord(CKRecord.ID(recordName: name, zoneID: zoneID)))
+        }
+        for settlement in (try? context.fetch(FetchDescriptor<Settlement>())) ?? [] where settlement.ckSystemFields == nil {
+            changes.append(.saveRecord(CKRecord.ID(recordName: FamilySync.settlementRecordName(settlement.cloudID), zoneID: zoneID)))
+        }
+        if !changes.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: changes) }
     }
 
     /// Who I am on CloudKit, and who else is on this share. Both are cached
@@ -627,8 +693,11 @@ extension FamilySyncEngine: CKSyncEngineDelegate {
 
         // Signing out of iCloud invalidates every token this engine holds;
         // keeping them would fetch against an account that is no longer here.
-        case .accountChange:
-            forgetShare()
+        // A sign-in is not that: a fresh engine reports one on its very first
+        // run, and forgetting the share there killed every new share at birth.
+        case .accountChange(let change):
+            if FamilySync.forgetsShare(after: change.changeType) { forgetShare() }
+            else { enqueueUnsynced() }
 
         case .fetchedRecordZoneChanges(let changes):
             guard let context else { return }
@@ -738,6 +807,14 @@ func familySyncSelfCheck() {
     assert(!FamilySync.shouldDeleteRemote(hadSystemFields: false, scope: .shared), "never synced yet, will be pushed, not deleted")
     assert(!FamilySync.shouldDeleteRemote(hadSystemFields: true, scope: .shared), "still shared: keep syncing")
     assert(FamilySync.shouldDeleteRemote(hadSystemFields: true, scope: .personal), "was synced, flipped to personal: must pull it off CloudKit")
+    assert(FamilySync.needsInitialUpload(hadSystemFields: false, scope: .shared), "a shared record from before the invite must still reach the partner")
+    assert(!FamilySync.needsInitialUpload(hadSystemFields: true, scope: .shared), "already on CloudKit: handleSave owns it")
+    assert(!FamilySync.needsInitialUpload(hadSystemFields: false, scope: .personal), "personal never leaves the device")
+
+    let me = CKRecord.ID(recordName: "me")
+    assert(!FamilySync.forgetsShare(after: .signIn(currentUser: me)), "a fresh engine's first-run sign-in must not drop the share it was just started for")
+    assert(FamilySync.forgetsShare(after: .signOut(previousUser: me)), "signing out invalidates the share's tokens")
+    assert(FamilySync.forgetsShare(after: .switchAccounts(previousUser: me, currentUser: CKRecord.ID(recordName: "other"))), "another account must not reuse this one's share")
 
     // The bug that made Phase 1 unable to sync at all: a participant must
     // reach the owner's zone, not invent one of their own.
