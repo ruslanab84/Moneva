@@ -73,15 +73,25 @@ struct Receipt {
     }
 
     /// Why split Save is disabled, so the UI can say it instead of a generic hint.
+    /// Mirrors every condition in `canSave`/`ReceiptMath.reconciled` — a missing one leaves Save
+    /// disabled with nothing on screen saying why.
     var blockers: [String] {
         guard mode == .split else { return [] }
         let live = items.filter { !$0.alreadyIncluded }
         var result: [String] = []
         if !draft.reviewed { result.append(String(localized: "Tick “I checked and corrected these details”.")) }
+        if !Money.valid(draft.amount, currency: draft.currency) { result.append(String(localized: "Enter the printed total.")) }
         let unreviewed = items.filter { !$0.reviewed }.count
         if unreviewed > 0 { result.append(String(localized: "\(unreviewed) lines still need “I verified this line”.")) }
+        let unnamed = items.filter { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+        if unnamed > 0 { result.append(String(localized: "\(unnamed) lines have no description.")) }
+        let badAmount = items.filter { !Money.valid($0.amount, currency: draft.currency) && !($0.alreadyIncluded && $0.amount == 0) }.count
+        if badAmount > 0 { result.append(String(localized: "\(badAmount) lines have a zero or invalid amount.")) }
         let uncategorised = live.filter { !CategoryLibrary.isSelectable($0.category, scope: draft.scope) }.count
         if uncategorised > 0 { result.append(String(localized: "\(uncategorised) lines have no category.")) }
+        let allocations = ReceiptMath.allocations(items)
+        if allocations.isEmpty { result.append(String(localized: "Include at least one line.")) }
+        if allocations.contains(where: { $0.amount < 0 }) { result.append(String(localized: "A category's discounts exceed its items.")) }
         if remaining != 0 { result.append(String(localized: "Lines differ from the printed total by \(remaining.money(draft.currency)).")) }
         return result
     }

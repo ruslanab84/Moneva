@@ -239,6 +239,17 @@ func aiFeaturesSelfCheck() {
         gap.items[1].reviewed = true
         gap.draft.reviewed = true
         assert(gap.canSave && gap.blockers.isEmpty, "closing the gap with a reviewed line makes the split savable")
+        // Every way split Save stays disabled must name itself; an empty list fell back to a generic hint.
+        var silent = gap
+        silent.items[1].name = ""
+        assert(!silent.canSave && silent.blockers.count == 1, "an unnamed line (Add missing item shows \"New item\") is named as the blocker")
+        silent = gap
+        silent.items.append(ReceiptItem(name: "Unread", amount: 0, category: food, reviewed: true))
+        assert(!silent.canSave && silent.blockers.count == 1, "a zero-amount line is named as the blocker")
+        silent = gap
+        silent.items.append(ReceiptItem(name: "Coupon", kind: .discount, amount: 5, category: utility, reviewed: true))
+        silent.items.append(ReceiptItem(name: "Extra", amount: 5, category: food, reviewed: true))
+        assert(silent.remaining == 0 && !silent.canSave && silent.blockers.count == 1, "a category driven negative by a discount is named as the blocker")
 
         let rows = ReceiptText.rows([
             .init(text: "MILK", rect: CGRect(x: 10, y: 100, width: 80, height: 20), confidence: 0.95),
