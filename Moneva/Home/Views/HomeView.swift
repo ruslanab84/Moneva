@@ -11,8 +11,13 @@ struct HomeView: View {
     @Query private var subscriptions: [Subscription]
     @Query private var accounts: [Account]
     @State private var isSettingsOpen = false
+    @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
+    @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
+    @Environment(ProStore.self) private var pro
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
+    /// Same gate as BudgetView, so insights and Budget agree on each limit.
+    private var rolloverOn: Bool { pro.isPro && (scope == .personal ? rolloverPersonal : rolloverShared) }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
     private var spent: Decimal { Budgeting.spent(transactions, in: range, scope: scope) }
     private var budget: Budget? {
@@ -58,7 +63,7 @@ struct HomeView: View {
 
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, accounts: accounts, scope: scope, currency: currencyCode, now: context.date)
-                let insightInput = InsightInput.snapshot(transactions, budget: budget, scope: scope, currency: currencyCode, now: context.date)
+                let insightInput = InsightInput.snapshot(transactions, budget: budget, rollover: rolloverOn ? budgets : nil, scope: scope, currency: currencyCode, now: context.date)
 
                 HStack(alignment: .top, spacing: 12) {
                     NavigationLink {

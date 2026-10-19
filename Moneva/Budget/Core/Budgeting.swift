@@ -402,6 +402,14 @@ func monevaSelfCheck() {
     augFoodBudget.limits = [BudgetLimit(amount: 150, category: food)]
     assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [augFoodBudget], monthStart: sept, scope: .personal, calendar: calendar) == 50, "50 unspent of August's 150 food limit carries into September")
     assert(Budgeting.rolloverKey(.personal) != Budgeting.rolloverKey(.shared), "each scope keeps its own rollover switch")
+    // Smart Insights read the same effective limit Budget shows, only when carry-over is on.
+    let septFoodBudget = Budget(monthStart: sept, total: 500, scope: .personal)
+    septFoodBudget.limits = [BudgetLimit(amount: 100, category: food)]
+    let insightNow = calendar.date(byAdding: .day, value: 14, to: sept)!
+    assert(InsightInput.snapshot(all, budget: septFoodBudget, rollover: [augFoodBudget, septFoodBudget], scope: .personal, currency: Money.code, now: insightNow, calendar: calendar).limits.first?.amount == 150,
+           "carry-over on: insights see 100 + 50 rolled from August")
+    assert(InsightInput.snapshot(all, budget: septFoodBudget, scope: .personal, currency: Money.code, now: insightNow, calendar: calendar).limits.first?.amount == 100,
+           "carry-over off: insights see the raw limit")
     let augOverBudget = Budget(monthStart: augStart, total: 500, scope: .personal)
     augOverBudget.limits = [BudgetLimit(amount: 80, category: food)]
     assert(Budgeting.rolloverAmount(for: food, transactions: all, budgets: [augOverBudget], monthStart: sept, scope: .personal, calendar: calendar) == 0, "an overspent category never rolls a negative bonus")

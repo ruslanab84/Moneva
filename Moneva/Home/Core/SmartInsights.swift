@@ -22,9 +22,12 @@ nonisolated struct InsightInput: Hashable, Sendable {
     var currency: String
     var day: Date
 
+    /// `rollover` is every budget, passed only when the user's carry-over switch
+    /// is on: limits then match the effective limit Budget shows.
     @MainActor
-    static func snapshot(_ transactions: [Transaction], budget: Budget?, scope: Scope, currency: String, now: Date) -> Self {
-        let start = Calendar.current.date(byAdding: .month, value: -3, to: Budgeting.monthStart(for: now))!
+    static func snapshot(_ transactions: [Transaction], budget: Budget?, rollover budgets: [Budget]? = nil, scope: Scope, currency: String, now: Date, calendar: Calendar = .current) -> Self {
+        let monthStart = Budgeting.monthStart(for: now, calendar: calendar)
+        let start = calendar.date(byAdding: .month, value: -3, to: monthStart)!
         func identity(_ category: SpendingCategory?) -> String { category.map { String(describing: $0.persistentModelID) } ?? "uncategorized" }
         let entries = transactions.filter {
             $0.scope == scope && $0.currency == currency && $0.kind == .expense && $0.date >= start && $0.date <= now
@@ -36,10 +39,11 @@ nonisolated struct InsightInput: Hashable, Sendable {
                 InsightEntry(categoryID: identity($0.category), category: $0.category?.name ?? "Uncategorized", amount: $0.amount, date: transaction.date)
             }
         }
-        let limits = (budget?.limits ?? []).map {
-            InsightLimit(categoryID: identity($0.category), category: $0.category?.name ?? "Uncategorized", amount: $0.amount)
+        let limits = (budget?.limits ?? []).map { limit in
+            let carried = budgets.map { Budgeting.rolloverAmount(for: limit.category, transactions: transactions, budgets: $0, monthStart: monthStart, scope: scope, currency: currency, calendar: calendar) } ?? 0
+            return InsightLimit(categoryID: identity(limit.category), category: limit.category?.name ?? "Uncategorized", amount: limit.amount + carried)
         }
-        return Self(entries: entries, limits: limits, currency: currency, day: Calendar.current.startOfDay(for: now))
+        return Self(entries: entries, limits: limits, currency: currency, day: calendar.startOfDay(for: now))
     }
 }
 
@@ -91,7 +95,10 @@ nonisolated enum InsightEngine {
                         explanations: ["Spending through yesterday has passed half of this month's category limit.", "You've used more than half of your \(name) budget for this month, based on recorded expenses through yesterday."]))
                     continue
                 }
-                if elapsed >= minimumDays {
+                // Only claim "within budget" when the pace actually says so: a pace
+                // between the limit and the projection margin, or one too sparse to
+                // warn on, is not evidence of staying under it.
+                if elapsed >= minimumDays && projected <= limit.amount {
                     signals.append(SpendingSignal(id: id, kind: .onTrack,
                         title: "\(name) spending is on track to stay within budget.",
                         explanations: ["At the pace of completed days this month, spending is projected to stay within your category limit.", "Your recorded spending pace through yesterday keeps this category under its monthly budget."]))
@@ -187,6 +194,14 @@ func smartInsightsSelfCheck() {
         entries: (1...2).map { InsightEntry(categoryID: "transport", category: "Transportation", amount: 15, date: date(9, $0)) },
         limits: [.init(categoryID: "transport", category: "Transportation", amount: 100)], currency: "AZN", day: date(9, 18))
     assert(InsightEngine.detect(onTrack, calendar: calendar).first?.kind == .onTrack, "Under-budget categories with enough elapsed days get a positive forecast, not silence")
+    // 48 by Sep 15 (14 completed days) paces to ~103 of 100: under the warning margin, but not "within budget".
+    let marginal = InsightInput(entries: [2, 6, 10].map { InsightEntry(categoryID: "transport", category: "Transportation", amount: 16, date: date(9, $0)) },
+        limits: onTrack.limits, currency: "AZN", day: date(9, 15))
+    assert(InsightEngine.detect(marginal, calendar: calendar).isEmpty, "a pace over the limit never reads as on track")
+    // Two rows are too sparse to warn on (pace 135), and equally too sparse to promise on-track.
+    let sparsePace = InsightInput(entries: [2, 6].map { InsightEntry(categoryID: "transport", category: "Transportation", amount: 22.5, date: date(9, $0)) },
+        limits: onTrack.limits, currency: "AZN", day: date(9, 11))
+    assert(InsightEngine.detect(sparsePace, calendar: calendar).isEmpty)
     var sparse = input(134)
     sparse.entries.removeAll { $0.date < date(8, 1) }
     assert(InsightEngine.detect(sparse, calendar: calendar).isEmpty)
