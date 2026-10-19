@@ -11,6 +11,7 @@ struct DailyLimitCard: View {
     let scope: Scope
     let transactions: [Transaction]
     let subscriptions: [Subscription]
+    let accounts: [Account]
     let budgetTotal: Decimal?
     let currencyCode: String
 
@@ -18,10 +19,11 @@ struct DailyLimitCard: View {
     @AppStorage private var customRaw: String
     @State private var isOpen = false
 
-    init(scope: Scope, transactions: [Transaction], subscriptions: [Subscription], budgetTotal: Decimal?, currencyCode: String) {
+    init(scope: Scope, transactions: [Transaction], subscriptions: [Subscription], accounts: [Account], budgetTotal: Decimal?, currencyCode: String) {
         self.scope = scope
         self.transactions = transactions
         self.subscriptions = subscriptions
+        self.accounts = accounts
         self.budgetTotal = budgetTotal
         self.currencyCode = currencyCode
         _modeRaw = AppStorage(wrappedValue: Budgeting.DailyLimitMode.automatic.rawValue, DailyLimitStore.modeKey(scope))
@@ -30,7 +32,7 @@ struct DailyLimitCard: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, scope: scope, currency: currencyCode, now: context.date)
+            let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, accounts: accounts, scope: scope, currency: currencyCode, now: context.date)
             let automatic = Budgeting.automaticDailyLimit(budgetTotal: budgetTotal, transactions: transactions, forecast: forecast, scope: scope, currency: currencyCode, now: context.date)
             let limit = Budgeting.dailyLimit(mode: Budgeting.DailyLimitMode(rawValue: modeRaw) ?? .automatic, custom: Money.parse(customRaw) ?? 0, automatic: automatic)
             let spentToday = Budgeting.spent(transactions, in: Budgeting.recentRange(days: 1, from: context.date), scope: scope, currency: currencyCode)

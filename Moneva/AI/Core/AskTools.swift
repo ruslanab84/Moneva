@@ -387,7 +387,7 @@ final class FinancialToolService {
         case .forecast:
             // Same calculation as the Home forecast card, so Ask and the card can't disagree.
             let forecast = Budgeting.forecast(try context.fetch(FetchDescriptor<Transaction>()), subscriptions: try context.fetch(FetchDescriptor<Subscription>()),
-                scope: scope, currency: currency, now: now, calendar: calendar)
+                accounts: try context.fetch(FetchDescriptor<Account>()), scope: scope, currency: currency, now: now, calendar: calendar)
             var output = result(.ok)
             output.metrics = ["recordedBalance": amount(forecast.balance), "expectedIncome": amount(forecast.income),
                 "scheduledSubscriptions": amount(forecast.subscriptions), "monthEnd": day(Budgeting.monthRange(for: now, calendar: calendar).upperBound.addingTimeInterval(-1))]

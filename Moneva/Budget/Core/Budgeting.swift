@@ -32,7 +32,7 @@ enum Budgeting {
         }
     }
 
-    static func forecast(_ transactions: [Transaction], subscriptions: [Subscription], scope: Scope, currency: String, now: Date, calendar: Calendar = .current) -> Forecast {
+    static func forecast(_ transactions: [Transaction], subscriptions: [Subscription], accounts: [Account] = [], scope: Scope, currency: String, now: Date, calendar: Calendar = .current) -> Forecast {
         let month = monthRange(for: now, calendar: calendar)
         let today = calendar.startOfDay(for: now)
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
@@ -42,7 +42,13 @@ enum Budgeting {
         let future = rows.filter { $0.date >= tomorrow && $0.date < month.upperBound }
         let linked = Set(subscriptions.flatMap { $0.payments.compactMap { $0.transaction?.cloudID } })
         func ordinary(_ row: Transaction) -> Bool { row.kind == .expense && row.source != .subscription && !linked.contains(row.cloudID) }
-        let balance = recorded.reduce(Decimal.zero) { $0 + ($1.kind == .income ? $1.amount : -$1.amount) }
+        // Accounts carry no scope, so their starting money belongs to Personal
+        // only; archived ones count too, since their transactions still do.
+        // Not `Money.valid`: a card can open in debt, below zero.
+        let opening = scope == .personal
+            ? accounts.filter { $0.currency == currency && !$0.openingBalance.isNaN }.reduce(Decimal.zero) { $0 + $1.openingBalance }
+            : 0
+        let balance = recorded.reduce(opening) { $0 + ($1.kind == .income ? $1.amount : -$1.amount) }
         // Remaining due charges this month, projected the same way for both
         // sides of the ledger so an income subscription can never leak into
         // the expense-side "scheduled" total (or vice versa).

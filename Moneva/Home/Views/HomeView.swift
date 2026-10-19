@@ -9,6 +9,7 @@ struct HomeView: View {
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query private var budgets: [Budget]
     @Query private var subscriptions: [Subscription]
+    @Query private var accounts: [Account]
     @State private var isSettingsOpen = false
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
@@ -45,7 +46,7 @@ struct HomeView: View {
                 )
             }
 
-            DailyLimitCard(scope: scope, transactions: transactions, subscriptions: subscriptions, budgetTotal: budget?.total, currencyCode: currencyCode)
+            DailyLimitCard(scope: scope, transactions: transactions, subscriptions: subscriptions, accounts: accounts, budgetTotal: budget?.total, currencyCode: currencyCode)
                 .id(scope) // AppStorage keys are fixed at init, so rebuild on scope change
                 .proGated()
 
@@ -56,7 +57,7 @@ struct HomeView: View {
             }
 
             TimelineView(.periodic(from: .now, by: 60)) { context in
-                let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, scope: scope, currency: currencyCode, now: context.date)
+                let forecast = Budgeting.forecast(transactions, subscriptions: subscriptions, accounts: accounts, scope: scope, currency: currencyCode, now: context.date)
                 let insightInput = InsightInput.snapshot(transactions, budget: budget, scope: scope, currency: currencyCode, now: context.date)
 
                 HStack(alignment: .top, spacing: 12) {
