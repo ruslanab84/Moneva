@@ -42,12 +42,12 @@ enum Budgeting {
         let future = rows.filter { $0.date >= tomorrow && $0.date < month.upperBound }
         let linked = Set(subscriptions.flatMap { $0.payments.compactMap { $0.transaction?.cloudID } })
         func ordinary(_ row: Transaction) -> Bool { row.kind == .expense && row.source != .subscription && !linked.contains(row.cloudID) }
-        // Accounts carry no scope, so their starting money belongs to Personal
-        // only; archived ones count too, since their transactions still do.
+        // Each account's starting money belongs to its own scope; archived ones
+        // count too, since their transactions still do.
         // Not `Money.valid`: a card can open in debt, below zero.
-        let opening = scope == .personal
-            ? accounts.filter { $0.currency == currency && !$0.openingBalance.isNaN }.reduce(Decimal.zero) { $0 + $1.openingBalance }
-            : 0
+        let opening = accounts
+            .filter { $0.scope == scope && $0.currency == currency && !$0.openingBalance.isNaN }
+            .reduce(Decimal.zero) { $0 + $1.openingBalance }
         let balance = recorded.reduce(opening) { $0 + ($1.kind == .income ? $1.amount : -$1.amount) }
         // Remaining due charges this month, projected the same way for both
         // sides of the ledger so an income subscription can never leak into

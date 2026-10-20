@@ -30,4 +30,4 @@ Follow the existing imperative commit style, for example `Give subscriptions an 
 
 ## Security & Configuration
 
-Moneva is local-only: do not add backend storage or upload receipt, voice, or financial data. Network code is allowed only for the AdMob banner and StoreKit; neither may receive app data. Preserve the personal/shared scope boundary and keep currencies separate in calculations.
+Moneva is local-first: do not add backend storage or upload receipt, voice, or financial data to any third party. Network code is allowed only for the AdMob banner, StoreKit, and CloudKit family sync; AdMob and StoreKit may not receive app data. CloudKit carries only Shared-scope transactions, budgets, settlements, goals, subscriptions and accounts (and transfers touching a shared account), in the app's own iCloud container, after an explicit `CKShare` invite; Personal-scope data, receipts, transcripts and OCR text never sync. Preserve the personal/shared scope boundary and keep currencies separate in calculations.

@@ -58,11 +58,14 @@ func financialToolsSelfCheck() throws {
     assert(forecast.historyDays == 0, "completed-month baseline wins when it qualifies")
     let shortfall = Budgeting.Forecast(currency: "USD", balance: 10, income: 0, subscriptions: 87, expenses: 100, historyMonths: 1)
     assert(shortfall.available == -177)
-    // Opening balances: Personal only, own currency only, debt (negative) counts.
+    // Opening balances: the account's own scope only, own currency only, debt (negative) counts.
+    let jointAccount = Account(name: "Joint", currency: "USD", openingBalance: 40)
+    jointAccount.scope = .shared
     let openings = [Account(name: "Cash", currency: "USD", openingBalance: 500), Account(name: "Card", kind: .card, currency: "USD", openingBalance: -200),
-        Account(name: "Euro", currency: "EUR", openingBalance: 1000)]
-    assert(Budgeting.forecast(ledger, subscriptions: [], accounts: openings, scope: .personal, currency: "USD", now: now, calendar: calendar).balance == 2430 + 300)
-    assert(Budgeting.forecast(ledger, subscriptions: [], accounts: openings, scope: .shared, currency: "USD", now: now, calendar: calendar).balance == 0, "accounts have no scope, so Shared ignores them")
+        Account(name: "Euro", currency: "EUR", openingBalance: 1000), jointAccount]
+    assert(Account(name: "Legacy").scope == .personal, "an account written before scope existed reads as personal")
+    assert(Budgeting.forecast(ledger, subscriptions: [], accounts: openings, scope: .personal, currency: "USD", now: now, calendar: calendar).balance == 2430 + 300, "a shared account stays out of the Personal forecast")
+    assert(Budgeting.forecast(ledger, subscriptions: [], accounts: openings, scope: .shared, currency: "USD", now: now, calendar: calendar).balance == 40, "only shared accounts open the Shared balance")
     let prior = calendar.date(from: DateComponents(year: 2026, month: 8, day: 10))!
     let container = try ModelContainer(for: Transaction.self, SpendingCategory.self, Budget.self, Subscription.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))

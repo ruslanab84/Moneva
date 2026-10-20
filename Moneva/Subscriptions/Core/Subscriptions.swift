@@ -176,6 +176,14 @@ enum Subscriptions {
         return due
     }
 
+    /// A shared subscription lives on both partners' phones, but only its
+    /// author's phone turns due periods into transactions; the partner gets
+    /// them through family sync. Without this both phones would bill the same
+    /// month. Unstamped (empty author) means it predates sharing: still mine.
+    static func chargesOnThisDevice(scope: Scope, authorID: String, meID: String) -> Bool {
+        scope == .personal || authorID.isEmpty || authorID == meID
+    }
+
     static func firstFutureDate(_ subscription: Subscription, now: Date, calendar: Calendar = .current) -> Date {
         if let trial = subscription.trialEndsAt, trial >= now, subscription.nextPaymentDate <= trial { return trial }
         if subscription.nextPaymentDate >= calendar.startOfDay(for: now) { return subscription.nextPaymentDate }
@@ -225,7 +233,9 @@ enum SubscriptionEngine {
         var pending: [Pending] = []
 
         do {
-            for subscription in subscriptions where subscription.status == .active {
+            let meID = FamilySyncEngine.shared.meID
+            for subscription in subscriptions where subscription.status == .active
+                && Subscriptions.chargesOnThisDevice(scope: subscription.scope, authorID: subscription.authorID, meID: meID) {
                 if let trial = subscription.trialEndsAt, subscription.nextPaymentDate <= trial {
                     subscription.nextPaymentDate = trial
                     subscription.anchorDay = calendar.component(.day, from: trial)

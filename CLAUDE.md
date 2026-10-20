@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Moneva: SwiftUI + SwiftData personal/shared expense tracker for iOS. No backend — everything is local SwiftData (the only network use is the AdMob banner and StoreKit), plus on-device Apple Intelligence (Foundation Models) for turning voice/receipt text into transaction drafts. Design source lives in `design/*.dc.html` (Claude Design canvas artboards + `design/Foundations.dc.html` for tokens) — `Theme.swift` mirrors those tokens.
+Moneva: SwiftUI + SwiftData personal/shared expense tracker for iOS. No backend — everything is local SwiftData (the only network use is the AdMob banner, StoreKit, and CloudKit family sync of the Shared scope through the users' own iCloud), plus on-device Apple Intelligence (Foundation Models) for turning voice/receipt text into transaction drafts. Design source lives in `design/*.dc.html` (Claude Design canvas artboards + `design/Foundations.dc.html` for tokens) — `Theme.swift` mirrors those tokens.
 
 ## Build / run / test
 
@@ -27,7 +27,8 @@ Commits: short imperative style, e.g. `Give subscriptions an optional end date` 
 ## Working rules
 
 - Keep changes narrow and preserve unrelated worktree edits. Read the affected call flow and reuse the existing components or rule enums before adding code.
-- This is a local-only app: do not add a backend, remote AI or analytics. Network code is allowed only for two things: the AdMob banner (non-personalized, no ATT) and StoreKit purchases. Never send financial data, receipt images, voice transcripts or OCR text to any SDK; `AdBanner` must keep taking no app data.
+- This is a local-first app: do not add a backend, remote AI or analytics. Network code is allowed only for three things: the AdMob banner (non-personalized, no ATT), StoreKit purchases, and CloudKit family sync ([Moneva/Sync](Moneva/Sync/CLAUDE.md)). Never send financial data, receipt images, voice transcripts or OCR text to any SDK or third-party service; `AdBanner` must keep taking no app data.
+- CloudKit is the one exception for financial data, and it is narrow: only **Shared-scope** `Transaction`, `Budget`, `Settlement`, `Goal`, `Subscription` and `Account` records (plus `Transfer`s touching a shared account, carrying only the shared side), only into the app's own container (`iCloud.RuslanAbd.Moneva`) in the users' private/shared databases, and only after an explicit invite/accept through `CKShare`. Personal-scope records, receipt images, voice transcripts and OCR text never sync; SwiftData's automatic CloudKit mirroring stays off (`cloudKitDatabase: .none`). Any new synced field or record type goes through the `FamilySync` mapping and gets an assert in `familySyncSelfCheck()`.
 - Free-tier limits and Pro gates live in `ProLimits`/`AIUsage` (`Moneva/Pro/Core`); add an assert to `proSelfCheck()` for any new limit. `StoreKit.Transaction` must be written in full in files that import StoreKit, because `Transaction` is the SwiftData model.
 - Preserve the `personal`/`shared` and income/expense partitions in every query, calculation, picker, and saved record. Keep currencies separate; do not convert or relabel historical amounts.
 - Use `Decimal` for money and `Calendar` for date arithmetic. Put reusable money, date, and category logic in the existing pure enums, not SwiftUI view bodies.

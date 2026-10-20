@@ -5,8 +5,10 @@ import Observation
 
 /// Local ⇄ CloudKit mapping and merge rules for family-shared records.
 /// Pure functions only — the stateful `CKSyncEngine` plumbing lives in
-/// `FamilySyncEngine` below. Phase 1 covers `Transaction` only; Budget,
-/// BudgetLimit, Goal and SubscriptionPayment follow the same shape later.
+/// `FamilySyncEngine` below. Synced: shared Transaction, Budget (with its
+/// limits), Settlement, Goal, Subscription, Account and the Transfers that
+/// touch a shared account. Never: anything personal, receipts, payments
+/// ledgers, reminders.
 /// Which side of the share this device is on. The owner keeps the zone in
 /// their private database; everyone who accepted the invite reaches the very
 /// same zone through the shared database, under the owner's name.
@@ -138,14 +140,31 @@ enum FamilySync {
         record["kind"] = transaction.kind.rawValue as CKRecordValue
         record["source"] = transaction.source.rawValue as CKRecordValue
         record["authorID"] = transaction.authorID as CKRecordValue
-        // Categories travel denormalized: the partner's store has its own
-        // SpendingCategory rows, and syncing those would drag personal-scope
-        // ones along with them.
-        record["categoryName"] = (transaction.category?.name ?? "") as CKRecordValue
-        record["categorySymbol"] = (transaction.category?.symbol ?? "") as CKRecordValue
-        record["categoryTint"] = (transaction.category?.tintHex ?? "") as CKRecordValue
-        record["categorySoft"] = (transaction.category?.softHex ?? "") as CKRecordValue
+        record["accountID"] = sharedAccountID(transaction.account) as CKRecordValue
+        writeCategory(transaction.category, to: record)
         return record
+    }
+
+    /// Categories travel denormalized: the partner's store has its own
+    /// SpendingCategory rows, and syncing those would drag personal-scope
+    /// ones along with them.
+    static func writeCategory(_ category: SpendingCategory?, to record: CKRecord) {
+        record["categoryName"] = (category?.name ?? "") as CKRecordValue
+        record["categorySymbol"] = (category?.symbol ?? "") as CKRecordValue
+        record["categoryTint"] = (category?.tintHex ?? "") as CKRecordValue
+        record["categorySoft"] = (category?.softHex ?? "") as CKRecordValue
+    }
+
+    /// A link to an account travels only when that account is itself shared —
+    /// a personal account's id, name or balance never leaves the device.
+    static func sharedAccountID(_ account: Account?) -> String {
+        guard let account, account.scope == .shared else { return "" }
+        return account.cloudID.uuidString
+    }
+
+    /// The account id a record points at, or nil for none.
+    static func accountID(in record: CKRecord, key: String = "accountID") -> UUID? {
+        (record[key] as? String).flatMap(UUID.init(uuidString:))
     }
 
     /// What a record says its category is. `nil` name means the sender had
@@ -326,6 +345,238 @@ enum FamilySync {
         if let to = record["toMemberID"] as? String { settlement.toMemberID = to }
         settlement.ckSystemFields = systemFields(from: record)
     }
+
+    // MARK: Goal, Subscription, Account, Transfer
+    //
+    // Same shape as Settlement: a prefixed record name, `make…` checks the
+    // fields a row cannot exist without, `apply` copies the rest. Optional
+    // dates are written as nil when unset, so "no deadline" travels too.
+
+    static let goalRecordType = "Goal"
+    static let subscriptionRecordType = "Subscription"
+    static let accountRecordType = "Account"
+    static let transferRecordType = "Transfer"
+
+    static func recordName(prefix: String, _ id: UUID) -> String { prefix + "-" + id.uuidString }
+
+    /// The UUID inside a prefixed record name, or nil when the prefix differs.
+    static func uuid(in recordName: String, prefix: String) -> UUID? {
+        guard recordName.hasPrefix(prefix + "-") else { return nil }
+        return UUID(uuidString: String(recordName.dropFirst(prefix.count + 1)))
+    }
+
+    /// Accounts first, so a transaction, subscription or transfer in the same
+    /// fetch can find the account it points at.
+    static func applyOrder(_ recordType: String) -> Int { recordType == accountRecordType ? 0 : 1 }
+
+    /// Indices of every repeat of an id already seen earlier in `ids`. A
+    /// default-valued UUID column can be backfilled with one value on every
+    /// existing row by a lightweight migration; uploaded as-is, those rows
+    /// would collapse into a single CloudKit record.
+    static func duplicateIndices(_ ids: [UUID]) -> [Int] {
+        var seen = Set<UUID>()
+        return ids.indices.filter { !seen.insert(ids[$0]).inserted }
+    }
+
+    static func record(from goal: Goal, zoneID: CKRecordZone.ID) -> CKRecord {
+        let record = existingOrNewRecord(systemFields: goal.ckSystemFields, recordName: recordName(prefix: "goal", goal.cloudID), type: goalRecordType, zoneID: zoneID)
+        record["name"] = goal.name as CKRecordValue
+        record["symbol"] = goal.symbol as CKRecordValue
+        record["tint"] = goal.tintHex as CKRecordValue
+        record["target"] = encode(goal.target) as CKRecordValue
+        record["saved"] = encode(goal.saved) as CKRecordValue
+        record["deadline"] = goal.deadline.map { $0 as CKRecordValue }
+        record["createdAt"] = goal.createdAt as CKRecordValue
+        return record
+    }
+
+    static func makeGoal(from record: CKRecord) -> Goal? {
+        guard let cloudID = uuid(in: record.recordID.recordName, prefix: "goal"),
+              decodeAmount(record["target"] as? String) != nil else { return nil }
+        let goal = Goal(name: "", symbol: "flag", tintHex: "7A5B86", target: 0, scope: .shared)
+        goal.cloudID = cloudID
+        apply(record, to: goal)
+        return goal
+    }
+
+    static func apply(_ record: CKRecord, to goal: Goal) {
+        if let name = record["name"] as? String { goal.name = name }
+        if let symbol = record["symbol"] as? String { goal.symbol = symbol }
+        if let tint = record["tint"] as? String { goal.tintHex = tint }
+        if let target = decodeAmount(record["target"] as? String) { goal.target = target }
+        if let saved = decodeAmount(record["saved"] as? String) { goal.saved = saved }
+        goal.deadline = record["deadline"] as? Date
+        if let createdAt = record["createdAt"] as? Date { goal.createdAt = createdAt }
+        goal.scope = .shared
+        goal.ckSystemFields = systemFields(from: record)
+    }
+
+    /// Reminder days and the payments ledger stay on each phone: a reminder is
+    /// a personal preference, and only the author's phone records charges.
+    static func record(from subscription: Subscription, zoneID: CKRecordZone.ID) -> CKRecord {
+        let record = existingOrNewRecord(systemFields: subscription.ckSystemFields, recordName: recordName(prefix: "subscription", subscription.id), type: subscriptionRecordType, zoneID: zoneID)
+        record["name"] = subscription.name as CKRecordValue
+        record["amount"] = encode(subscription.amount) as CKRecordValue
+        record["currency"] = subscription.currency as CKRecordValue
+        record["frequency"] = subscription.frequency.rawValue as CKRecordValue
+        record["nextPaymentDate"] = subscription.nextPaymentDate as CKRecordValue
+        record["anchorDay"] = subscription.anchorDay as CKRecordValue
+        record["endDate"] = subscription.endDate.map { $0 as CKRecordValue }
+        record["trialEndsAt"] = subscription.trialEndsAt.map { $0 as CKRecordValue }
+        record["paymentMode"] = subscription.paymentMode.rawValue as CKRecordValue
+        record["status"] = subscription.status.rawValue as CKRecordValue
+        record["note"] = subscription.note as CKRecordValue
+        record["kind"] = subscription.kind.rawValue as CKRecordValue
+        record["createdAt"] = subscription.createdAt as CKRecordValue
+        record["authorID"] = subscription.authorID as CKRecordValue
+        record["accountID"] = sharedAccountID(subscription.account) as CKRecordValue
+        writeCategory(subscription.category, to: record)
+        return record
+    }
+
+    static func makeSubscription(from record: CKRecord) -> Subscription? {
+        guard let id = uuid(in: record.recordID.recordName, prefix: "subscription"),
+              let amount = decodeAmount(record["amount"] as? String),
+              let next = record["nextPaymentDate"] as? Date else { return nil }
+        let subscription = Subscription(name: "", amount: amount, nextPaymentDate: next, scope: .shared, category: nil)
+        subscription.id = id
+        apply(record, to: subscription)
+        return subscription
+    }
+
+    static func apply(_ record: CKRecord, to subscription: Subscription) {
+        if let name = record["name"] as? String { subscription.name = name }
+        if let amount = decodeAmount(record["amount"] as? String) { subscription.amount = amount }
+        if let currency = record["currency"] as? String { subscription.currency = currency }
+        if let raw = record["frequency"] as? String, let frequency = BillingFrequency(rawValue: raw) { subscription.frequency = frequency }
+        if let next = record["nextPaymentDate"] as? Date { subscription.nextPaymentDate = next }
+        if let anchorDay = record["anchorDay"] as? Int { subscription.anchorDay = anchorDay }
+        subscription.endDate = record["endDate"] as? Date
+        subscription.trialEndsAt = record["trialEndsAt"] as? Date
+        if let raw = record["paymentMode"] as? String, let mode = PaymentMode(rawValue: raw) { subscription.paymentMode = mode }
+        if let raw = record["status"] as? String, let status = SubscriptionStatus(rawValue: raw) { subscription.status = status }
+        if let note = record["note"] as? String { subscription.note = note }
+        if let raw = record["kind"] as? String, let kind = TransactionKind(rawValue: raw) { subscription.kind = kind }
+        if let createdAt = record["createdAt"] as? Date { subscription.createdAt = createdAt }
+        if let authorID = record["authorID"] as? String { subscription.authorID = authorID }
+        subscription.scope = .shared
+        subscription.ckSystemFields = systemFields(from: record)
+    }
+
+    /// Sort order stays local: each phone arranges its own account list.
+    static func record(from account: Account, zoneID: CKRecordZone.ID) -> CKRecord {
+        let record = existingOrNewRecord(systemFields: account.ckSystemFields, recordName: recordName(prefix: "account", account.cloudID), type: accountRecordType, zoneID: zoneID)
+        record["name"] = account.name as CKRecordValue
+        record["kind"] = account.kind.rawValue as CKRecordValue
+        record["tint"] = account.tintHex as CKRecordValue
+        record["currency"] = account.currency as CKRecordValue
+        record["openingBalance"] = encode(account.openingBalance) as CKRecordValue
+        record["isArchived"] = account.isArchived as CKRecordValue
+        record["createdAt"] = account.createdAt as CKRecordValue
+        return record
+    }
+
+    static func makeAccount(from record: CKRecord) -> Account? {
+        guard let cloudID = uuid(in: record.recordID.recordName, prefix: "account"),
+              let currency = record["currency"] as? String else { return nil }
+        let account = Account(name: "", currency: currency)
+        account.cloudID = cloudID
+        apply(record, to: account)
+        return account
+    }
+
+    static func apply(_ record: CKRecord, to account: Account) {
+        if let name = record["name"] as? String { account.name = name }
+        if let raw = record["kind"] as? String, let kind = AccountKind(rawValue: raw) { account.kind = kind }
+        if let tint = record["tint"] as? String { account.tintHex = tint }
+        if let currency = record["currency"] as? String { account.currency = currency }
+        if let opening = decodeAmount(record["openingBalance"] as? String) { account.openingBalance = opening }
+        if let archived = record["isArchived"] as? Bool { account.isArchived = archived }
+        if let createdAt = record["createdAt"] as? Date { account.createdAt = createdAt }
+        account.scope = .shared
+        account.ckSystemFields = systemFields(from: record)
+    }
+
+    /// A move into or out of a shared account changes that account's balance,
+    /// so it travels — but only with the shared side's id. The partner sees
+    /// money arrive from (or leave to) "no account", never the personal one.
+    static func isShared(_ transfer: Transfer) -> Bool {
+        transfer.from?.scope == .shared || transfer.to?.scope == .shared
+    }
+
+    static func record(from transfer: Transfer, zoneID: CKRecordZone.ID) -> CKRecord {
+        let record = existingOrNewRecord(systemFields: transfer.ckSystemFields, recordName: recordName(prefix: "transfer", transfer.cloudID), type: transferRecordType, zoneID: zoneID)
+        record["amount"] = encode(transfer.amount) as CKRecordValue
+        record["currency"] = transfer.currency as CKRecordValue
+        record["date"] = transfer.date as CKRecordValue
+        record["note"] = transfer.note as CKRecordValue
+        record["fromID"] = sharedAccountID(transfer.from) as CKRecordValue
+        record["toID"] = sharedAccountID(transfer.to) as CKRecordValue
+        return record
+    }
+
+    /// Accounts are resolved by the engine, which can look them up.
+    static func makeTransfer(from record: CKRecord) -> Transfer? {
+        guard let cloudID = uuid(in: record.recordID.recordName, prefix: "transfer"),
+              let amount = decodeAmount(record["amount"] as? String),
+              let currency = record["currency"] as? String,
+              let date = record["date"] as? Date else { return nil }
+        let transfer = Transfer(amount: amount, currency: currency, date: date, from: nil, to: nil)
+        transfer.cloudID = cloudID
+        apply(record, to: transfer)
+        return transfer
+    }
+
+    static func apply(_ record: CKRecord, to transfer: Transfer) {
+        if let amount = decodeAmount(record["amount"] as? String) { transfer.amount = amount }
+        if let currency = record["currency"] as? String { transfer.currency = currency }
+        if let date = record["date"] as? Date { transfer.date = date }
+        if let note = record["note"] as? String { transfer.note = note }
+        transfer.ckSystemFields = systemFields(from: record)
+    }
+}
+
+/// What the engine needs from every synced model: where it lives on CloudKit,
+/// whether it belongs there right now, and its cached change tag.
+protocol FamilySynced: PersistentModel {
+    var familyRecordName: String { get }
+    var isFamilyShared: Bool { get }
+    var ckSystemFields: Data? { get set }
+}
+
+extension Transaction: FamilySynced {
+    var familyRecordName: String { cloudID.uuidString }
+    var isFamilyShared: Bool { scope == .shared }
+}
+
+extension Budget: FamilySynced {
+    var familyRecordName: String { FamilySync.budgetRecordName(monthStart: monthStart, currency: currency ?? Money.code) }
+    var isFamilyShared: Bool { scope == .shared }
+}
+
+extension Settlement: FamilySynced {
+    var familyRecordName: String { FamilySync.settlementRecordName(cloudID) }
+    var isFamilyShared: Bool { true }
+}
+
+extension Goal: FamilySynced {
+    var familyRecordName: String { FamilySync.recordName(prefix: "goal", cloudID) }
+    var isFamilyShared: Bool { scope == .shared }
+}
+
+extension Subscription: FamilySynced {
+    var familyRecordName: String { FamilySync.recordName(prefix: "subscription", id) }
+    var isFamilyShared: Bool { scope == .shared }
+}
+
+extension Account: FamilySynced {
+    var familyRecordName: String { FamilySync.recordName(prefix: "account", cloudID) }
+    var isFamilyShared: Bool { scope == .shared }
+}
+
+extension Transfer: FamilySynced {
+    var familyRecordName: String { FamilySync.recordName(prefix: "transfer", cloudID) }
+    var isFamilyShared: Bool { FamilySync.isShared(self) }
 }
 
 /// Turning a `Transaction.authorID` into something a person can read.
@@ -375,6 +626,14 @@ final class FamilySyncEngine: NSObject {
     private var zoneID: CKRecordZone.ID?
     private var role: FamilyRole?
     private var saveObserver: NSObjectProtocol?
+    private var deleteObserver: NSObjectProtocol?
+    /// Rows the engine itself just wrote (fetched changes, fresh change tags).
+    /// Their save notification is not a user edit: re-uploading them echoed
+    /// every synced record back and forth between the two phones forever.
+    private var engineWrites: Set<PersistentIdentifier> = []
+    /// Records the partner deleted, so applying that deletion locally isn't
+    /// sent straight back to CloudKit as a delete of our own.
+    private var remoteDeletions: Set<CKRecord.ID> = []
 
     private var storedRole: FamilyRole? {
         UserDefaults.standard.string(forKey: Self.roleKey).flatMap(FamilyRole.init(rawValue:))
@@ -401,6 +660,7 @@ final class FamilySyncEngine: NSObject {
     /// true for most launches, most users.
     func catchUp(in context: ModelContext) {
         self.context = context
+        repairDuplicateIDs(in: context)
         guard let role = storedRole else { return }
         for member in (try? context.fetch(FetchDescriptor<FamilyMember>())) ?? [] {
             memberNames[member.memberID] = member.name
@@ -513,20 +773,46 @@ final class FamilySyncEngine: NSObject {
     private func enqueueUnsynced() {
         guard let syncEngine, let zoneID, let context else { return }
         var changes: [CKSyncEngine.PendingRecordZoneChange] = []
-        for transaction in (try? context.fetch(FetchDescriptor<Transaction>())) ?? []
-        where FamilySync.needsInitialUpload(hadSystemFields: transaction.ckSystemFields != nil, scope: transaction.scope) {
-            if transaction.authorID.isEmpty { transaction.authorID = meID }
-            changes.append(.saveRecord(FamilySync.recordID(for: transaction.cloudID, zoneID: zoneID)))
+        func collect<T: FamilySynced>(_ type: T.Type) {
+            for model in (try? context.fetch(FetchDescriptor<T>())) ?? []
+            where FamilySync.needsInitialUpload(hadSystemFields: model.ckSystemFields != nil, scope: model.isFamilyShared ? .shared : .personal) {
+                stampAuthor(model)
+                changes.append(.saveRecord(CKRecord.ID(recordName: model.familyRecordName, zoneID: zoneID)))
+            }
         }
-        for budget in (try? context.fetch(FetchDescriptor<Budget>())) ?? []
-        where FamilySync.needsInitialUpload(hadSystemFields: budget.ckSystemFields != nil, scope: budget.scope) {
-            let name = FamilySync.budgetRecordName(monthStart: budget.monthStart, currency: budget.currency ?? Money.code)
-            changes.append(.saveRecord(CKRecord.ID(recordName: name, zoneID: zoneID)))
-        }
-        for settlement in (try? context.fetch(FetchDescriptor<Settlement>())) ?? [] where settlement.ckSystemFields == nil {
-            changes.append(.saveRecord(CKRecord.ID(recordName: FamilySync.settlementRecordName(settlement.cloudID), zoneID: zoneID)))
-        }
+        collect(Account.self)
+        collect(Transaction.self)
+        collect(Budget.self)
+        collect(Settlement.self)
+        collect(Goal.self)
+        collect(Subscription.self)
+        collect(Transfer.self)
         if !changes.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: changes) }
+    }
+
+    /// Stamped once, here and in `handleSave`, rather than at every save site
+    /// that can create a shared transaction or subscription.
+    private func stampAuthor(_ model: any FamilySynced) {
+        if let transaction = model as? Transaction, transaction.authorID.isEmpty { transaction.authorID = meID }
+        if let subscription = model as? Subscription, subscription.authorID.isEmpty { subscription.authorID = meID }
+    }
+
+    /// See `FamilySync.duplicateIndices`. Rows already on CloudKit sort first,
+    /// so the copy the partner already has keeps its id. Runs every launch,
+    /// before any sync starts — cheap, and harmless once the ids are unique.
+    private func repairDuplicateIDs(in context: ModelContext) {
+        func repair<T: FamilySynced>(_ type: T.Type, _ id: ReferenceWritableKeyPath<T, UUID>) {
+            let rows = ((try? context.fetch(FetchDescriptor<T>())) ?? [])
+                .sorted { $0.ckSystemFields != nil && $1.ckSystemFields == nil }
+            for index in FamilySync.duplicateIndices(rows.map { $0[keyPath: id] }) where rows[index].ckSystemFields == nil {
+                rows[index][keyPath: id] = UUID()
+            }
+        }
+        repair(Transaction.self, \.cloudID)
+        repair(Goal.self, \.cloudID)
+        repair(Account.self, \.cloudID)
+        repair(Transfer.self, \.cloudID)
+        if context.hasChanges { try? context.save() }
     }
 
     /// Who I am on CloudKit, and who else is on this share. Both are cached
@@ -580,35 +866,154 @@ final class FamilySyncEngine: NSObject {
             guard !changed.isEmpty, let self else { return }
             Task { @MainActor in self.handleSave(changed) }
         }
+        // Deletions need the rows' record names, which are gone once the save
+        // lands — so read them synchronously in `willSave` (queue: nil runs
+        // this on the saving thread, the main one for the main context).
+        deleteObserver = NotificationCenter.default.addObserver(forName: ModelContext.willSave, object: context, queue: nil) { [weak self] _ in
+            MainActor.assumeIsolated { self?.queueDeletions() }
+        }
     }
 
     private func handleSave(_ changed: Set<PersistentIdentifier>) {
         guard let syncEngine, let zoneID, let context else { return }
-        var toSave: [CKSyncEngine.PendingRecordZoneChange] = []
-        var toDelete: [CKSyncEngine.PendingRecordZoneChange] = []
-        for id in changed {
-            switch context.model(for: id) {
-            case let transaction as Transaction:
-                if FamilySync.shouldDeleteRemote(hadSystemFields: transaction.ckSystemFields != nil, scope: transaction.scope) {
-                    toDelete.append(.deleteRecord(FamilySync.recordID(for: transaction.cloudID, zoneID: zoneID)))
-                    transaction.ckSystemFields = nil
-                } else if transaction.scope == .shared {
-                    // Stamped here, once, rather than at every save site that
-                    // can create a shared transaction.
-                    if transaction.authorID.isEmpty { transaction.authorID = meID }
-                    toSave.append(.saveRecord(FamilySync.recordID(for: transaction.cloudID, zoneID: zoneID)))
-                }
-            case let budget as Budget where budget.scope == .shared:
-                let name = FamilySync.budgetRecordName(monthStart: budget.monthStart, currency: budget.currency ?? Money.code)
-                toSave.append(.saveRecord(CKRecord.ID(recordName: name, zoneID: zoneID)))
-            case let settlement as Settlement:
-                toSave.append(.saveRecord(CKRecord.ID(recordName: FamilySync.settlementRecordName(settlement.cloudID), zoneID: zoneID)))
-            default:
-                continue
+        var changes: [CKSyncEngine.PendingRecordZoneChange] = []
+        func queue(_ model: any FamilySynced) {
+            let recordID = CKRecord.ID(recordName: model.familyRecordName, zoneID: zoneID)
+            if FamilySync.shouldDeleteRemote(hadSystemFields: model.ckSystemFields != nil, scope: model.isFamilyShared ? .shared : .personal) {
+                changes.append(.deleteRecord(recordID))
+                model.ckSystemFields = nil
+            } else if model.isFamilyShared {
+                stampAuthor(model)
+                changes.append(.saveRecord(recordID))
             }
         }
-        if !toSave.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: toSave) }
-        if !toDelete.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: toDelete) }
+        for id in changed where engineWrites.remove(id) == nil {
+            guard let model = context.model(for: id) as? any FamilySynced else { continue }
+            queue(model)
+            // An account switching sides changes what its links may carry:
+            // transfers start or stop travelling, and shared transactions gain
+            // or lose its id.
+            if let account = model as? Account {
+                for transfer in transfers(touching: account) { queue(transfer) }
+                for transaction in account.transactions where transaction.scope == .shared { queue(transaction) }
+            }
+        }
+        if !changes.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: changes) }
+    }
+
+    private func queueDeletions() {
+        guard let syncEngine, let zoneID, let context else { return }
+        var changes: [CKSyncEngine.PendingRecordZoneChange] = []
+        for case let model as any FamilySynced in context.deletedModelsArray where model.ckSystemFields != nil {
+            let recordID = CKRecord.ID(recordName: model.familyRecordName, zoneID: zoneID)
+            if remoteDeletions.remove(recordID) != nil { continue }
+            changes.append(.deleteRecord(recordID))
+        }
+        if !changes.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: changes) }
+    }
+
+    /// Saves what the engine itself just wrote and remembers those rows, so
+    /// their save notification isn't mistaken for a user edit.
+    /// ponytail: a user edit to the same row landing in this very save is
+    /// skipped once; the row's next edit syncs it.
+    private func saveEngineWrites() {
+        guard let context else { return }
+        let touched = context.insertedModelsArray + context.changedModelsArray
+        try? context.save()
+        // Read after the save: inserted rows only get their permanent ids then.
+        engineWrites.formUnion(touched.map(\.persistentModelID))
+    }
+
+    private func transfers(touching account: Account) -> [Transfer] {
+        guard let context else { return [] }
+        let id = account.persistentModelID
+        return ((try? context.fetch(FetchDescriptor<Transfer>())) ?? [])
+            .filter { $0.from?.persistentModelID == id || $0.to?.persistentModelID == id }
+    }
+
+    /// The local row a record name points at, whatever its type.
+    private func model(named name: String) -> (any FamilySynced)? {
+        guard let context else { return nil }
+        if name.hasPrefix("budget-") { return budget(recordName: name) }
+        if name.hasPrefix("settlement-") { return settlement(recordName: name) }
+        if let id = FamilySync.uuid(in: name, prefix: "goal") {
+            return try? context.fetch(FetchDescriptor<Goal>(predicate: #Predicate { $0.cloudID == id })).first
+        }
+        if let id = FamilySync.uuid(in: name, prefix: "subscription") {
+            return try? context.fetch(FetchDescriptor<Subscription>(predicate: #Predicate { $0.id == id })).first
+        }
+        if let id = FamilySync.uuid(in: name, prefix: "account") { return account(cloudID: id) }
+        if let id = FamilySync.uuid(in: name, prefix: "transfer") {
+            return try? context.fetch(FetchDescriptor<Transfer>(predicate: #Predicate { $0.cloudID == id })).first
+        }
+        return transaction(cloudID: name)
+    }
+
+    private func account(cloudID id: UUID) -> Account? {
+        try? context?.fetch(FetchDescriptor<Account>(predicate: #Predicate { $0.cloudID == id })).first
+    }
+
+    /// A synced link to a shared account replaces the local one. No link
+    /// clears only a shared account (the partner unlinked it), never a
+    /// personal account this phone picked for itself. An account that hasn't
+    /// arrived yet leaves the link as it was.
+    private func resolvedAccount(_ id: UUID?, current: Account?) -> Account? {
+        guard let id else { return current?.scope == .shared ? nil : current }
+        return account(cloudID: id) ?? current
+    }
+
+    private func record(for model: any FamilySynced, zoneID: CKRecordZone.ID) -> CKRecord? {
+        switch model {
+        case let transaction as Transaction: return FamilySync.record(from: transaction, zoneID: zoneID)
+        case let budget as Budget: return FamilySync.record(from: budget, zoneID: zoneID)
+        case let settlement as Settlement: return FamilySync.record(from: settlement, zoneID: zoneID)
+        case let goal as Goal: return FamilySync.record(from: goal, zoneID: zoneID)
+        case let subscription as Subscription: return FamilySync.record(from: subscription, zoneID: zoneID)
+        case let account as Account: return FamilySync.record(from: account, zoneID: zoneID)
+        case let transfer as Transfer: return FamilySync.record(from: transfer, zoneID: zoneID)
+        default: return nil
+        }
+    }
+
+    /// One fetched record into the local store, matched by record name.
+    private func applyFetched(_ record: CKRecord) {
+        guard let context else { return }
+        let existing = model(named: record.recordID.recordName)
+        switch record.recordType {
+        case FamilySync.budgetRecordType:
+            applyBudget(record)
+        case FamilySync.settlementRecordType:
+            if let settlement = existing as? Settlement { FamilySync.apply(record, to: settlement) }
+            else if let created = FamilySync.makeSettlement(from: record) { context.insert(created) }
+        case FamilySync.goalRecordType:
+            if let goal = existing as? Goal { FamilySync.apply(record, to: goal) }
+            else if let created = FamilySync.makeGoal(from: record) { context.insert(created) }
+        case FamilySync.accountRecordType:
+            if let account = existing as? Account { FamilySync.apply(record, to: account) }
+            else if let created = FamilySync.makeAccount(from: record) {
+                created.sortIndex = Accounts.nextSortIndex((try? context.fetch(FetchDescriptor<Account>())) ?? [])
+                context.insert(created)
+            }
+        case FamilySync.subscriptionRecordType:
+            let target = existing as? Subscription ?? FamilySync.makeSubscription(from: record).map { context.insert($0); return $0 }
+            guard let target else { return }
+            if existing != nil { FamilySync.apply(record, to: target) }
+            if let descriptor = FamilySync.categoryDescriptor(from: record, kind: target.kind) { target.category = category(for: descriptor) }
+            target.account = resolvedAccount(FamilySync.accountID(in: record), current: target.account)
+        case FamilySync.transferRecordType:
+            let target = existing as? Transfer ?? FamilySync.makeTransfer(from: record).map { context.insert($0); return $0 }
+            guard let target else { return }
+            if existing != nil { FamilySync.apply(record, to: target) }
+            target.from = resolvedAccount(FamilySync.accountID(in: record, key: "fromID"), current: target.from)
+            target.to = resolvedAccount(FamilySync.accountID(in: record, key: "toID"), current: target.to)
+        default:
+            guard let cloudID = UUID(uuidString: record.recordID.recordName) else { return }
+            let target = existing as? Transaction ?? FamilySync.makeTransaction(from: record, cloudID: cloudID).map { context.insert($0); return $0 }
+            guard let target else { return }
+            if existing != nil { FamilySync.apply(record, to: target) }
+            if let descriptor = FamilySync.categoryDescriptor(from: record, kind: target.kind) { target.category = category(for: descriptor) }
+            target.account = resolvedAccount(FamilySync.accountID(in: record), current: target.account)
+        }
     }
 
     private func transaction(cloudID: String) -> Transaction? {
@@ -701,57 +1106,28 @@ extension FamilySyncEngine: CKSyncEngineDelegate {
 
         case .fetchedRecordZoneChanges(let changes):
             guard let context else { return }
-            for modification in changes.modifications {
-                let record = modification.record
-                switch record.recordType {
-                case FamilySync.budgetRecordType:
-                    applyBudget(record)
-                case FamilySync.settlementRecordType:
-                    if let existing = settlement(recordName: record.recordID.recordName) {
-                        FamilySync.apply(record, to: existing)
-                    } else if let created = FamilySync.makeSettlement(from: record) {
-                        context.insert(created)
-                    }
-                default:
-                    guard let cloudID = UUID(uuidString: record.recordID.recordName) else { continue }
-                    let target: Transaction?
-                    if let existing = transaction(cloudID: record.recordID.recordName) {
-                        FamilySync.apply(record, to: existing)
-                        target = existing
-                    } else if let created = FamilySync.makeTransaction(from: record, cloudID: cloudID) {
-                        context.insert(created)
-                        target = created
-                    } else {
-                        target = nil
-                    }
-                    if let target, let descriptor = FamilySync.categoryDescriptor(from: record, kind: target.kind) {
-                        target.category = category(for: descriptor)
-                    }
-                }
-            }
+            let records = changes.modifications.map(\.record)
+                .sorted { FamilySync.applyOrder($0.recordType) < FamilySync.applyOrder($1.recordType) }
+            for record in records { applyFetched(record) }
             for deletion in changes.deletions {
-                if let existing = transaction(cloudID: deletion.recordID.recordName) { context.delete(existing) }
-                else if let existing = settlement(recordName: deletion.recordID.recordName) { context.delete(existing) }
+                guard let existing = model(named: deletion.recordID.recordName) else { continue }
+                remoteDeletions.insert(deletion.recordID)
+                context.delete(existing)
             }
-            try? context.save()
+            saveEngineWrites()
             FamilySyncStatus.shared.lastSyncedAt = .now
 
         case .sentRecordZoneChanges(let sent):
             guard let zoneID else { return }
             for saved in sent.savedRecords {
-                let fields = FamilySync.systemFields(from: saved)
-                switch saved.recordType {
-                case FamilySync.budgetRecordType: budget(recordName: saved.recordID.recordName)?.ckSystemFields = fields
-                case FamilySync.settlementRecordType: settlement(recordName: saved.recordID.recordName)?.ckSystemFields = fields
-                default: transaction(cloudID: saved.recordID.recordName)?.ckSystemFields = fields
-                }
+                model(named: saved.recordID.recordName)?.ckSystemFields = FamilySync.systemFields(from: saved)
             }
             // Only the one failure CKSyncEngine leaves to the app; everything
             // else (throttling, network, expired tokens) is its own job.
             for failure in sent.failedRecordSaves where failure.error.code == .serverRecordChanged {
                 guard let server = failure.error.serverRecord,
-                      let existing = transaction(cloudID: server.recordID.recordName) else { continue }
-                let mine = FamilySync.record(from: existing, zoneID: zoneID)
+                      let existing = model(named: server.recordID.recordName),
+                      let mine = record(for: existing, zoneID: zoneID) else { continue }
                 if FamilySync.isNewer(mine, than: server) {
                     // Adopt the server's change tag *before* resending, or the
                     // retry carries the same stale tag and fails identically —
@@ -759,9 +1135,10 @@ extension FamilySyncEngine: CKSyncEngineDelegate {
                     existing.ckSystemFields = FamilySync.systemFields(from: server)
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(server.recordID)])
                 } else {
-                    FamilySync.apply(server, to: existing)
+                    applyFetched(server)
                 }
             }
+            saveEngineWrites()
 
         default:
             break
@@ -777,15 +1154,11 @@ extension FamilySyncEngine: CKSyncEngineDelegate {
         // Resolved here, on the actor, so the record-provider closure below
         // never has to reach back across the actor boundary to `self`.
         let recordsByID: [CKRecord.ID: CKRecord] = pending.reduce(into: [:]) { result, change in
-            guard case .saveRecord(let recordID) = change else { return }
-            let name = recordID.recordName
-            if name.hasPrefix("budget-") {
-                if let budget = budget(recordName: name) { result[recordID] = FamilySync.record(from: budget, zoneID: zoneID) }
-            } else if name.hasPrefix("settlement-") {
-                if let settlement = settlement(recordName: name) { result[recordID] = FamilySync.record(from: settlement, zoneID: zoneID) }
-            } else if let transaction = transaction(cloudID: name) {
-                result[recordID] = FamilySync.record(from: transaction, zoneID: zoneID)
-            }
+            // Re-checked at send time: a row queued while shared and flipped
+            // to personal before this batch must not leave the device.
+            guard case .saveRecord(let recordID) = change,
+                  let model = model(named: recordID.recordName), model.isFamilyShared else { return }
+            result[recordID] = record(for: model, zoneID: zoneID)
         }
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pending) { recordID in
             recordsByID[recordID]
@@ -853,5 +1226,51 @@ func familySyncSelfCheck() {
     let newer = CKRecord(recordType: FamilySync.transactionRecordType, recordID: CKRecord.ID(recordName: "bbbb", zoneID: zoneID))
     assert(!FamilySync.isNewer(older, than: newer) || older.modificationDate == newer.modificationDate, "an unsaved record has no modification date; the tie-break must still be deterministic")
     assert(FamilySync.isNewer(newer, than: older) == (newer.recordID.recordName > older.recordID.recordName), "equal (nil) modification dates break the tie on record name")
+
+    // Goals, subscriptions, accounts, transfers: exact money, every field back.
+    let goal = Goal(name: "Trip", symbol: "airplane", tintHex: "24544A", target: Decimal(string: "1500.10")!, saved: Decimal(string: "320.55")!, scope: .shared)
+    let goalBack = FamilySync.makeGoal(from: FamilySync.record(from: goal, zoneID: zoneID))
+    assert(goalBack?.cloudID == goal.cloudID && goalBack?.target == goal.target && goalBack?.saved == goal.saved && goalBack?.name == "Trip", "a goal round-trips with exact money")
+    assert(goalBack?.deadline == nil && goalBack?.scope == .shared, "no deadline travels as no deadline, and a synced goal lands shared")
+
+    let personalCard = Account(name: "My card", currency: "AZN", openingBalance: 900)
+    let joint = Account(name: "Joint", kind: .savings, currency: "AZN", openingBalance: Decimal(string: "250.40")!)
+    joint.scope = .shared
+    assert(Account(name: "Legacy").scope == .personal, "an account from before scope existed stays personal and never syncs")
+    let jointBack = FamilySync.makeAccount(from: FamilySync.record(from: joint, zoneID: zoneID))
+    assert(jointBack?.cloudID == joint.cloudID && jointBack?.openingBalance == joint.openingBalance && jointBack?.kind == .savings && jointBack?.scope == .shared, "an account round-trips with exact opening balance")
+
+    let rent = Subscription(name: "Rent", amount: Decimal(string: "700.99")!, nextPaymentDate: Date(timeIntervalSince1970: 1_790_000_000), reminderDays: 3, scope: .shared, category: nil)
+    rent.authorID = "partner"
+    rent.account = personalCard
+    let rentRecord = FamilySync.record(from: rent, zoneID: zoneID)
+    let rentBack = FamilySync.makeSubscription(from: rentRecord)
+    assert(rentBack?.id == rent.id && rentBack?.amount == rent.amount && rentBack?.anchorDay == rent.anchorDay && rentBack?.authorID == "partner", "a subscription round-trips with exact money, anchor and author")
+    assert(rentBack?.reminderDays == nil, "a reminder is this phone's preference, not the partner's")
+    assert(FamilySync.accountID(in: rentRecord) == nil, "a personal account's id never leaves the device")
+    rent.account = joint
+    assert(FamilySync.accountID(in: FamilySync.record(from: rent, zoneID: zoneID)) == joint.cloudID, "a shared account link travels")
+
+    assert(Subscriptions.chargesOnThisDevice(scope: .personal, authorID: "partner", meID: "me"), "personal is always billed here")
+    assert(Subscriptions.chargesOnThisDevice(scope: .shared, authorID: "", meID: "me"), "an unstamped shared subscription predates sharing: billed here")
+    assert(Subscriptions.chargesOnThisDevice(scope: .shared, authorID: "me", meID: "me"), "the author's phone bills it")
+    assert(!Subscriptions.chargesOnThisDevice(scope: .shared, authorID: "partner", meID: "me"), "the partner's phone must not bill the same month again")
+    assert(!Subscriptions.chargesOnThisDevice(scope: .shared, authorID: "partner", meID: ""), "unknown identity is not a licence to bill someone else's subscription")
+
+    let topUp = Transfer(amount: Decimal(string: "50.25")!, from: personalCard, to: joint)
+    assert(FamilySync.isShared(topUp) && !FamilySync.isShared(Transfer(amount: 5, from: personalCard, to: Account(name: "Wallet"))), "a transfer travels only when it touches a shared account")
+    let topUpRecord = FamilySync.record(from: topUp, zoneID: zoneID)
+    assert(FamilySync.accountID(in: topUpRecord, key: "fromID") == nil && FamilySync.accountID(in: topUpRecord, key: "toID") == joint.cloudID, "a transfer carries only the shared side")
+    assert(FamilySync.makeTransfer(from: topUpRecord)?.amount == topUp.amount, "a transfer round-trips with exact money")
+
+    let spend = Transaction(amount: 12, merchant: "Cafe", scope: .shared, category: nil)
+    spend.account = personalCard
+    assert(FamilySync.accountID(in: FamilySync.record(from: spend, zoneID: zoneID)) == nil, "a shared expense paid from a personal card does not reveal the card")
+
+    let a = UUID(), b = UUID()
+    assert(FamilySync.duplicateIndices([a, b, a, a]) == [2, 3], "every repeat after the first needs a fresh id")
+    assert(FamilySync.duplicateIndices([a, b]).isEmpty)
+    assert(FamilySync.uuid(in: "goal-" + a.uuidString, prefix: "goal") == a && FamilySync.uuid(in: a.uuidString, prefix: "goal") == nil, "record names dispatch by prefix; bare UUIDs stay transactions")
+    assert(FamilySync.applyOrder(FamilySync.accountRecordType) < FamilySync.applyOrder(FamilySync.transferRecordType), "accounts apply before what links to them")
 }
 #endif

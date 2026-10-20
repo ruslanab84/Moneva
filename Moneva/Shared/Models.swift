@@ -205,6 +205,9 @@ final class Goal {
     var deadline: Date?
     var scope: Scope = Scope.personal
     var createdAt: Date = Date.now
+    /// Family-sync identity and change tag, same shape as `Transaction`'s.
+    var cloudID: UUID = UUID()
+    var ckSystemFields: Data?
 
     init(name: String, symbol: String, tintHex: String, target: Decimal, saved: Decimal = 0, deadline: Date? = nil, scope: Scope = .personal) {
         self.name = name
@@ -314,6 +317,10 @@ final class Subscription {
     }
 
     var draftID: String?
+    /// Family sync: `id` doubles as the record name. A shared subscription is
+    /// charged only on its author's device, so the partner never double-bills.
+    var ckSystemFields: Data?
+    var authorID: String = ""
 
     var monthlyCost: Decimal { status == .active ? amount : 0 }
 }
@@ -453,10 +460,21 @@ final class Account {
     var isArchived: Bool = false
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
+    /// Personal or Shared. Optional raw string for the `SpendingCategory.scopeRaw`
+    /// reason: every account written before this reads as personal. Only
+    /// shared accounts travel through family sync.
+    var scopeRaw: String?
+    var cloudID: UUID = UUID()
+    var ckSystemFields: Data?
 
     var kind: AccountKind {
         get { kindRaw.flatMap(AccountKind.init(rawValue:)) ?? .cash }
         set { kindRaw = newValue.rawValue }
+    }
+
+    var scope: Scope {
+        get { scopeRaw.flatMap(Scope.init(rawValue:)) ?? .personal }
+        set { scopeRaw = newValue.rawValue }
     }
 
     @Relationship(deleteRule: .nullify, inverse: \Transaction.account)
@@ -487,6 +505,8 @@ final class Transfer {
     var note: String = ""
     @Relationship(deleteRule: .nullify) var from: Account?
     @Relationship(deleteRule: .nullify) var to: Account?
+    var cloudID: UUID = UUID()
+    var ckSystemFields: Data?
 
     init(amount: Decimal, currency: String = Money.code, date: Date = .now, note: String = "", from: Account?, to: Account?) {
         self.amount = amount

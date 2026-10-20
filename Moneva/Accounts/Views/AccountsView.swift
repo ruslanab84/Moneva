@@ -93,7 +93,15 @@ struct AccountsView: View {
                     .frame(width: 44, height: 44)
                     .background(account.tint.opacity(0.16), in: .rect(cornerRadius: 15))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(account.name).font(.headline).foregroundStyle(Palette.ink)
+                    HStack(spacing: 6) {
+                        Text(account.name).font(.headline).foregroundStyle(Palette.ink)
+                        if account.scope == .shared {
+                            Image(systemName: Scope.shared.symbol)
+                                .font(.caption)
+                                .foregroundStyle(Palette.inkMuted)
+                                .accessibilityLabel("Shared")
+                        }
+                    }
                     Text("\(account.kind.title) · \(account.currency)")
                         .font(.footnote)
                         .foregroundStyle(Palette.inkMuted)
@@ -209,6 +217,7 @@ struct AccountEditor: View {
     @State private var currency = Money.code
     @State private var opening: Decimal = 0
     @State private var tintHex = "78746A"
+    @State private var scope = Scope.personal
     @State private var loaded = false
 
     var body: some View {
@@ -224,6 +233,14 @@ struct AccountEditor: View {
                     }
                     .disabled(account != nil)
                     AmountField(title: "Starting balance", value: $opening, currencyCode: currency)
+                }
+                .listRowBackground(Palette.card)
+                Section {
+                    ScopePicker(scope: $scope)
+                } header: {
+                    Text("Scope")
+                } footer: {
+                    Text("Shared accounts sync with your family budget. Personal ones never leave this iPhone.")
                 }
                 .listRowBackground(Palette.card)
                 Section("Colour") {
@@ -273,6 +290,7 @@ struct AccountEditor: View {
         currency = account.currency
         opening = account.openingBalance
         tintHex = account.tintHex
+        scope = account.scope
         loaded = true
     }
 
@@ -283,9 +301,12 @@ struct AccountEditor: View {
             account.kind = kind
             account.openingBalance = opening
             account.tintHex = tintHex
+            account.scope = scope
         } else {
-            context.insert(Account(name: trimmed, kind: kind, tintHex: tintHex, currency: currency,
-                                   openingBalance: opening, sortIndex: Accounts.nextSortIndex(accounts)))
+            let created = Account(name: trimmed, kind: kind, tintHex: tintHex, currency: currency,
+                                  openingBalance: opening, sortIndex: Accounts.nextSortIndex(accounts))
+            created.scope = scope
+            context.insert(created)
         }
         dismiss()
     }
