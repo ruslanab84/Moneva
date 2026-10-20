@@ -31,6 +31,15 @@ struct SpendingAssistantView: View {
     @State private var picking = false
 
     private var matches: [Transaction] { filter?.results(transactions) ?? [] }
+    /// Mixed-currency matches added up in the display currency, only when every currency has a user rate.
+    private var combinedTotals: [TransactionKind: Decimal]? {
+        guard let filter, filter.currency == nil, Set(matches.map(\.currency)).count > 1 else { return nil }
+        var all = filter
+        all.currency = Money.code
+        all.rates = .stored
+        guard matches.allSatisfy({ all.rates.rate(from: $0.currency, to: Money.code) != nil }) else { return nil }
+        return Dictionary(grouping: matches, by: \.kind).mapValues { $0.reduce(Decimal.zero) { $0 + all.amount($1) } }
+    }
 
     var body: some View {
         NavigationStack {
@@ -92,6 +101,11 @@ struct SpendingAssistantView: View {
                                 LabeledContent("\(kind.title) · \(code)", value: total.money(code))
                             }
                         }
+                        if let combined = combinedTotals {
+                            ForEach(TransactionKind.allCases) { kind in
+                                LabeledContent("\(kind.title) · all in \(Money.code)", value: combined[kind, default: 0].money(Money.code))
+                            }
+                        }
                         ForEach(matches) { tx in
                             NavigationLink { TransactionEditView(transaction: tx) } label: { TransactionRow(transaction: tx) }
                         }
@@ -144,7 +158,7 @@ struct SpendingAssistantView: View {
             defer { busy = false }
             do {
                 if explain {
-                    let service = FinancialToolService(context: modelContext, scope: scope, currency: currency.isEmpty ? Money.code : currency)
+                    let service = FinancialToolService(context: modelContext, scope: scope, currency: currency.isEmpty ? Money.code : currency, rates: .stored)
                     askAnswer = try await FinancialToolRegistry.answer(question: question.isEmpty ? "Summarize my income and expenses this month" : question, service: service)
                 } else if let direct = SpendingSearch.direct(question, categories: categories, scope: scope) {
                     filter = direct

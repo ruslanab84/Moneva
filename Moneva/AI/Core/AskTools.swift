@@ -112,6 +112,8 @@ final class FinancialToolService {
     private let context: ModelContext
     private let scope: Scope
     private let currency: String
+    /// The user's display rates: transaction totals may convert, budgets and forecasts never do.
+    private let rates: ExchangeRates
     private let now: Date
     private let calendar: Calendar
     private var active = true
@@ -128,10 +130,11 @@ final class FinancialToolService {
             "Existing categories (use these exact names, never invent or translate one): \(names.joined(separator: ", "))."
     }
 
-    init(context: ModelContext, scope: Scope, currency: String, now: Date = .now, calendar: Calendar = .current) {
+    init(context: ModelContext, scope: Scope, currency: String, rates: ExchangeRates = .empty, now: Date = .now, calendar: Calendar = .current) {
         self.context = context
         self.scope = scope
         self.currency = currency
+        self.rates = rates
         self.now = now
         self.calendar = calendar
     }
@@ -234,7 +237,7 @@ final class FinancialToolService {
         guard low == nil || high == nil || low! <= high! else { throw Invalid.arguments }
         let filter = SpendingFilter(range: datesRange, category: category.isEmpty ? nil : matches.first,
             merchant: merchant, minimum: low, maximum: high, currency: currency, scope: scope,
-            kind: TransactionKind(rawValue: kind.rawValue))
+            kind: TransactionKind(rawValue: kind.rawValue), rates: rates)
         // SwiftData stays private to the domain service. All filtering precedes projection.
         let rows = filter.results(try context.fetch(FetchDescriptor<Transaction>()))
         return (filter, rows)
@@ -258,6 +261,11 @@ final class FinancialToolService {
         if detail {
             output.rows = transactions.prefix(12).map { .init(label: String($0.merchant.prefix(80)), amount: amount(filter.amount($0)), date: day($0.date), kind: $0.kind.rawValue) }
             output.truncated = transactions.count > output.rows.count
+        }
+        // Say which totals were converted, so the explanation never presents them as recorded in one currency.
+        let converted = Set(transactions.map(\.currency)).subtracting([currency]).sorted()
+        if !converted.isEmpty {
+            output.message = "Includes " + converted.map { "\($0) converted at the user's rate 1 \($0) = \(amount(rates.rate(from: $0, to: currency)!)) \(currency)" }.joined(separator: "; ") + "."
         }
         // "Nothing recorded" is a real answer, but a bare one reads like a misunderstood
         // question. Name the period and category so the user can tell the two apart.
@@ -288,7 +296,7 @@ final class FinancialToolService {
             if a.category.isEmpty {
                 let (_, rows) = try transactions(a.dates)
                 let categories = try context.fetch(FetchDescriptor<SpendingCategory>()).filter { $0.scope == scope && $0.kind == .expense }
-                let grouped = Budgeting.spendingByCategory(rows, categories: categories, in: try range(a.dates) ?? (Date.distantPast..<Date.distantFuture), scope: scope, currency: currency)
+                let grouped = Budgeting.spendingByCategory(rows, categories: categories, in: try range(a.dates) ?? (Date.distantPast..<Date.distantFuture), scope: scope, currency: currency, rates: rates)
                     .sorted { $0.total == $1.total ? $0.category.name < $1.category.name : $0.total > $1.total }
                 output.rows = grouped.prefix(12).map { .init(label: String($0.category.name.prefix(80)), amount: amount($0.total)) }
                 output.truncated = grouped.count > output.rows.count

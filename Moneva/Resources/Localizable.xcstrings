@@ -4,6 +4,9 @@
     "" : {
 
     },
+    "%@ · all in %@" : {
+
+    },
     "%@ – %@" : {
       "localizations" : {
         "en" : {
@@ -240,6 +243,27 @@
 
     },
     "%lld%% used" : {
+
+    },
+    "1 %@ =" : {
+
+    },
+    "Every transaction is in %@. Rates appear here once one is in another currency." : {
+
+    },
+    "Exchange rates" : {
+
+    },
+    "Rate" : {
+
+    },
+    "Rates convert totals in Transactions and Ask only. Saved amounts never change; budgets, forecast and accounts stay in their own currency." : {
+
+    },
+    "Totals in %@; %@ not counted. Add a rate in Settings › Exchange rates." : {
+
+    },
+    "Totals in %@; other currencies converted at your rates." : {
 
     },
     "≈ %@" : {

@@ -96,7 +96,7 @@ struct HomeAskCard: View {
         task = Task {
             defer { busy = false }
             do {
-                let service = FinancialToolService(context: modelContext, scope: scope, currency: currencyCode)
+                let service = FinancialToolService(context: modelContext, scope: scope, currency: currencyCode, rates: .stored)
                 answer = try await FinancialToolRegistry.answer(question: asked, service: service)
             } catch is CancellationError {} catch { self.error = error.localizedDescription }
         }

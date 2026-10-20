@@ -141,16 +141,17 @@ enum Budgeting {
         calendar.dateComponents([.day], from: now, to: range.upperBound).day ?? 0
     }
 
-    static func spent(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> Decimal {
+    /// `rates` defaults to none, so only `currency` counts; Transactions and Ask pass the user's rates.
+    static func spent(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code, rates: ExchangeRates = .empty) -> Decimal {
         transactions
-            .filter { $0.kind == .expense && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
-            .reduce(Decimal.zero) { $0 + $1.amount }
+            .filter { $0.kind == .expense && $0.scope == scope && range.contains($0.date) }
+            .reduce(Decimal.zero) { $0 + (rates.convert($1.amount, from: $1.currency, to: currency) ?? 0) }
     }
 
-    static func earned(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code) -> Decimal {
+    static func earned(_ transactions: [Transaction], in range: Range<Date>, scope: Scope, currency: String = Money.code, rates: ExchangeRates = .empty) -> Decimal {
         transactions
-            .filter { $0.kind == .income && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
-            .reduce(Decimal.zero) { $0 + $1.amount }
+            .filter { $0.kind == .income && $0.scope == scope && range.contains($0.date) }
+            .reduce(Decimal.zero) { $0 + (rates.convert($1.amount, from: $1.currency, to: currency) ?? 0) }
     }
 
     /// Running total of expenses by day-of-month, for a spending trend chart.
@@ -168,10 +169,10 @@ enum Budgeting {
     /// This month's expense total per category, categories with nothing spent
     /// omitted. `amount(in:)` (not the raw transaction amount) so a shared
     /// transaction only counts the caller's split.
-    static func spendingByCategory(_ transactions: [Transaction], categories: [SpendingCategory], in range: Range<Date>, scope: Scope, currency: String = Money.code, kind: TransactionKind = .expense) -> [(category: SpendingCategory, total: Decimal)] {
-        let month = transactions.filter { $0.kind == kind && $0.scope == scope && $0.currency == currency && range.contains($0.date) }
+    static func spendingByCategory(_ transactions: [Transaction], categories: [SpendingCategory], in range: Range<Date>, scope: Scope, currency: String = Money.code, kind: TransactionKind = .expense, rates: ExchangeRates = .empty) -> [(category: SpendingCategory, total: Decimal)] {
+        let month = transactions.filter { $0.kind == kind && $0.scope == scope && rates.rate(from: $0.currency, to: currency) != nil && range.contains($0.date) }
         return categories.compactMap { category in
-            let total = month.reduce(Decimal.zero) { $0 + $1.amount(in: category) }
+            let total = month.reduce(Decimal.zero) { $0 + (rates.convert($1.amount(in: category), from: $1.currency, to: currency) ?? 0) }
             return total > 0 ? (category, total) : nil
         }
     }
@@ -449,6 +450,30 @@ func monevaSelfCheck() {
     assert(!Decimal(26.5).money("AZN").contains("AZN"), "a listed amount shows the glyph, not the code")
     assert(Decimal(26.5).money("AZN").contains(Money.displaySymbol(for: "AZN")), "and the glyph is the one the picker shows")
     assert(Decimal(26.5).money("CHF").contains("CHF"), "currencies without a glyph keep their code")
+
+    // Display-time exchange rates: stored amounts never change, a missing rate leaves a currency out.
+    var fx = ExchangeRates(raw: "USD>AZN=1.7;EUR>AZN=0;GBP>AZN=abc;USD>JPY=150.5")
+    assert(fx.rate(from: "USD", to: "AZN") == Decimal(string: "1.7") && fx.rate(from: "EUR", to: "AZN") == nil && fx.rate(from: "GBP", to: "AZN") == nil, "a zero or unreadable rate is dropped")
+    assert(fx.rate(from: "AZN", to: "AZN") == 1 && fx.rate(from: "AZN", to: "USD") == nil, "same currency is 1; a pair only works in the direction the user typed")
+    assert(ExchangeRates(raw: fx.raw) == fx, "rates survive storage")
+    assert(fx.convert(10, from: "USD", to: "AZN") == 17 && fx.convert(Decimal(string: "0.33")!, from: "USD", to: "JPY") == 50, "conversion rounds to the target currency's precision")
+    assert(fx.convert(10, from: "EUR", to: "AZN") == nil, "no rate, no conversion")
+    fx.set(0, from: "USD", to: "JPY")
+    assert(fx.rate(from: "USD", to: "JPY") == nil, "clearing a rate removes it")
+    let fxDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!
+    let fxLocal = Transaction(amount: 20, date: fxDate, merchant: "Bravo", category: food, currency: "AZN")
+    let fxDollar = Transaction(amount: 10, date: fxDate, merchant: "Amazon", category: food, currency: "USD")
+    let fxEuro = Transaction(amount: 5, date: fxDate, merchant: "Zara", category: food, currency: "EUR")
+    let fxLedger = [fxLocal, fxDollar, fxEuro]
+    assert(Budgeting.spent(fxLedger, in: range, scope: .personal, currency: "AZN") == 20, "without rates only the display currency counts, as budgets and forecasts need")
+    assert(Budgeting.spent(fxLedger, in: range, scope: .personal, currency: "AZN", rates: fx) == 37, "a rated currency adds its converted amount; an unrated one stays out")
+    assert(Budgeting.spendingByCategory(fxLedger, categories: [food], in: range, scope: .personal, currency: "AZN", rates: fx).first?.total == 37, "the category chart converts the same way")
+    assert(fxDollar.amount == 10 && fxDollar.currency == "USD", "converting a total never rewrites the record")
+    assert(fx.missing(fxLedger.map(\.currency), to: "AZN") == ["EUR"], "the UI can name what a total leaves out")
+    let fxFilter = SpendingFilter(currency: "AZN", scope: .personal, rates: fx)
+    assert(fxFilter.results(fxLedger).count == 2 && fxFilter.amount(fxDollar) == 17, "search with a fixed currency includes rated records at the converted amount")
+    assert(!SpendingFilter(maximum: 15, currency: "AZN", scope: .personal, rates: fx).matches(fxDollar) && SpendingFilter(minimum: 17, currency: "AZN", scope: .personal, rates: fx).matches(fxDollar), "amount bounds compare converted values")
+    assert(SpendingFilter(currency: nil, scope: .personal, rates: fx).amount(fxDollar) == 10, "with no fixed currency each record keeps its own amount")
 
     assert(Money.flag(for: "USD") == "🇺🇸", "a currency code opens with its country")
     assert(Money.flag(for: "AZN") == "🇦🇿", "and so does every other one")

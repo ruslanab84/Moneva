@@ -115,6 +115,11 @@ func financialToolsSelfCheck() throws {
         let decoded = try JSONDecoder().decode(FinancialToolResult.self, from: Data(json.utf8))
         assert(decoded.currency == "USD")
     }
+    // A user rate pulls the AZN record in at its converted amount and says so; without one it stays out (340 above).
+    let converting = FinancialToolService(context: context, scope: .personal, currency: "USD", rates: ExchangeRates(raw: "AZN>USD=0.5"), now: now, calendar: calendar)
+    let convertedSpending = converting.execute(.spending(.init(dates: last, category: "Restaurants")))
+    assert(convertedSpending.metrics["expense"] == "4784" && convertedSpending.message?.contains("1 AZN = 0.5 USD") == true, "converted totals name the rate used")
+    assert(service().execute(.spending(.init(dates: last, category: "Restaurants"))).message == nil, "an unconverted total carries no rate note")
     let comparison = service().execute(.compare(.init(first: month, second: last, category: nil)))
     let faithfulComparison = FinancialToolRegistry.validatedAnswer("Last month was 340 more", results: [comparison])
     assert(faithfulComparison.contains("290 lower") && faithfulComparison.contains("2026-08-01"))

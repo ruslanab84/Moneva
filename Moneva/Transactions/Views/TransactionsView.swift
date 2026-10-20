@@ -11,6 +11,7 @@ struct TransactionsView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
     @AppStorage(Money.storageKey) private var currencyCode = Money.code
+    @AppStorage(ExchangeRates.storageKey) private var ratesRaw = ""
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query(sort: \SpendingCategory.name) private var allCategories: [SpendingCategory]
 
@@ -22,6 +23,7 @@ struct TransactionsView: View {
     @State private var today: Date = .now
 
     private var scope: Scope { Scope(rawValue: scopeRaw) ?? .personal }
+    private var rates: ExchangeRates { ExchangeRates(raw: ratesRaw) }
     private var range: Range<Date> { Budgeting.recentRange(days: 62) }
     private var monthTransactions: [Transaction] {
         transactions.filter { $0.scope == scope && range.contains($0.date) }
@@ -53,7 +55,7 @@ struct TransactionsView: View {
     private var categorySpending: [(category: SpendingCategory, total: Decimal)] {
         let items = mode == .monthly ? selectedMonthTransactions : currentMonthTransactions
         let chartRange = mode == .monthly ? selectedMonthRange : currentMonthRange
-        return Budgeting.spendingByCategory(items, categories: CategoryLibrary.visible(allCategories, scope: scope), in: chartRange, scope: scope, currency: currencyCode)
+        return Budgeting.spendingByCategory(items, categories: CategoryLibrary.visible(allCategories, scope: scope), in: chartRange, scope: scope, currency: currencyCode, rates: rates)
     }
 
     var body: some View {
@@ -69,13 +71,13 @@ struct TransactionsView: View {
                 Button("Search & explain spending", systemImage: "sparkles") { assistantOpen = true }
                     .proGated()
             }
-            Text("Totals in \(currencyCode); other currencies stay separate.").font(.caption).foregroundStyle(Palette.inkMuted)
+            currencyNote.font(.caption).foregroundStyle(Palette.inkMuted)
 
             if mode != .monthly {
                 HStack(spacing: 18) {
-                    totals("Money in", Budgeting.earned(currentMonthTransactions, in: currentMonthRange, scope: scope), Palette.accent)
+                    totals("Money in", Budgeting.earned(currentMonthTransactions, in: currentMonthRange, scope: scope, currency: currencyCode, rates: rates), Palette.accent)
                     Divider().frame(height: 40).overlay(Palette.line)
-                    totals("Money out", Budgeting.spent(currentMonthTransactions, in: currentMonthRange, scope: scope), Palette.ink)
+                    totals("Money out", Budgeting.spent(currentMonthTransactions, in: currentMonthRange, scope: scope, currency: currencyCode, rates: rates), Palette.ink)
                 }
                 .monevaCard(padding: 16)
             }
@@ -105,6 +107,19 @@ struct TransactionsView: View {
         }
     }
 
+    /// Names the currencies a total leaves out, so a missing rate never reads as zero spending.
+    @ViewBuilder private var currencyNote: some View {
+        let shown = mode == .monthly ? selectedMonthTransactions : monthTransactions
+        let missing = rates.missing(shown.map(\.currency), to: currencyCode)
+        if !missing.isEmpty {
+            Text("Totals in \(currencyCode); \(missing.joined(separator: ", ")) not counted. Add a rate in Settings › Exchange rates.")
+        } else if shown.contains(where: { $0.currency != currencyCode }) {
+            Text("Totals in \(currencyCode); other currencies converted at your rates.")
+        } else {
+            Text("Totals in \(currencyCode); other currencies stay separate.")
+        }
+    }
+
     private func totals(_ title: String, _ value: Decimal, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Eyebrow(title)
@@ -128,11 +143,11 @@ struct TransactionsView: View {
     }
 
     private func dayExpense(_ items: [Transaction]) -> Decimal {
-        items.reduce(Decimal.zero) { $0 + ($1.kind == .expense && $1.currency == currencyCode ? $1.amount : 0) }
+        items.reduce(Decimal.zero) { $0 + ($1.kind == .expense ? rates.convert($1.amount, from: $1.currency, to: currencyCode) ?? 0 : 0) }
     }
 
     private func dayIncome(_ items: [Transaction]) -> Decimal {
-        items.reduce(Decimal.zero) { $0 + ($1.kind == .income && $1.currency == currencyCode ? $1.amount : 0) }
+        items.reduce(Decimal.zero) { $0 + ($1.kind == .income ? rates.convert($1.amount, from: $1.currency, to: currencyCode) ?? 0 : 0) }
     }
 
     @ViewBuilder private var dailySection: some View {
@@ -192,9 +207,9 @@ struct TransactionsView: View {
         }
 
         HStack(spacing: 18) {
-            totals("Money in", Budgeting.earned(selectedMonthTransactions, in: selectedMonthRange, scope: scope), Palette.accent)
+            totals("Money in", Budgeting.earned(selectedMonthTransactions, in: selectedMonthRange, scope: scope, currency: currencyCode, rates: rates), Palette.accent)
             Divider().frame(height: 40).overlay(Palette.line)
-            totals("Money out", Budgeting.spent(selectedMonthTransactions, in: selectedMonthRange, scope: scope), Palette.ink)
+            totals("Money out", Budgeting.spent(selectedMonthTransactions, in: selectedMonthRange, scope: scope, currency: currencyCode, rates: rates), Palette.ink)
         }
         .monevaCard(padding: 16)
 

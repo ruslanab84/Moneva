@@ -36,16 +36,25 @@ struct SpendingFilter {
     var currency: String?
     var scope: Scope
     var kind: TransactionKind? = .expense
+    /// With a fixed `currency`, records in another currency count only when the user set a rate to it.
+    var rates: ExchangeRates = .empty
 
     func matches(_ tx: Transaction) -> Bool {
-        tx.scope == scope && (kind == nil || tx.kind == kind) &&
-        (range == nil || range!.contains(tx.date)) && (currency == nil || tx.currency == currency) &&
+        guard let total = value(tx.amount, of: tx) else { return false }
+        return tx.scope == scope && (kind == nil || tx.kind == kind) &&
+        (range == nil || range!.contains(tx.date)) &&
         (category == nil || tx.amount(in: category) > 0) &&
         (merchant.isEmpty || CategoryLibrary.fold(tx.merchant).contains(CategoryLibrary.fold(merchant))) &&
-        (minimum == nil || tx.amount >= minimum!) && (maximum == nil || tx.amount <= maximum!)
+        (minimum == nil || total >= minimum!) && (maximum == nil || total <= maximum!)
     }
 
-    func amount(_ tx: Transaction) -> Decimal { category == nil ? tx.amount : tx.amount(in: category) }
+    func amount(_ tx: Transaction) -> Decimal { value(category == nil ? tx.amount : tx.amount(in: category), of: tx) ?? 0 }
+
+    /// In `currency` when one is fixed (converted at the user's rate, nil without one), otherwise in the record's own.
+    private func value(_ amount: Decimal, of tx: Transaction) -> Decimal? {
+        guard let currency else { return amount }
+        return rates.convert(amount, from: tx.currency, to: currency)
+    }
     func results(_ transactions: [Transaction]) -> [Transaction] { transactions.filter(matches).sorted { $0.date > $1.date } }
 }
 

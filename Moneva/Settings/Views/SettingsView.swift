@@ -45,6 +45,7 @@ struct SettingsView: View {
                     } label: {
                         LabeledContent("Currency") { CurrencyLabel(code: currencyCode) }
                     }
+                    NavigationLink("Exchange rates") { ExchangeRatesView() }
                 } footer: {
                     Text("Ledgea shows every amount in this currency. Past transactions keep the code they were saved with.")
                 }
