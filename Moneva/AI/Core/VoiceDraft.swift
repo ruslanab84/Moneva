@@ -205,6 +205,12 @@ enum DraftResolver {
         let parsedDate = date(value.date, now: now)
         var questions = [value.clarification]
         if Money.parse(value.amount) == nil { questions.append("What is the amount?") }
+        // New entries always log in the budget currency; a different spoken one must stop auto-save
+        // so "5 USD" is never silently stored as 5 of the budget currency.
+        let stated = value.currency.uppercased()
+        if stated != Money.code, Money.pickerCodes.contains(stated) {
+            questions.append("You said \(stated). This will be saved in \(Money.code) — check the amount.")
+        }
         if parsedDate == nil { questions.append("Which date? Select it below.") }
         if category == nil { questions.append("Choose or create a category.") }
         return TransactionDraft(kind: kind,
@@ -336,7 +342,7 @@ final class TransactionDrafter {
         }
     }
 
-    private static let instructions = "Extract every expense or income as a separate draft. Resolve relative language into signed day offsets; explicit dates into year/month/day. If a transaction date is not mentioned, use today (offset 0). Never assume a currency; ask if absent. Flag ambiguous amounts and dates. Suggest an existing category before a new category."
+    private static let instructions = "Extract every expense or income as a separate draft. Resolve relative language into signed day offsets; explicit dates into year/month/day. If a transaction date is not mentioned, use today (offset 0). Copy a currency only when stated; never ask for one. Flag ambiguous amounts and dates. Suggest an existing category before a new category."
 
     /// Constrains the model's `category` choice to an existing name via a runtime `.anyOf` schema, so
     /// `DraftResolver` never needs fuzzy matching. Falls back to the static free-text schema when there

@@ -75,6 +75,14 @@ func aiFeaturesSelfCheck() {
             "merchant": "", "note": "", "category": "Other income", "symbol": "cart", "clarification": "",
         ]))
         assert(DraftResolver.resolve([phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "5 USD").allSatisfy { $0.currency == Money.code }, "a spoken foreign currency never overrides the active one")
+        let foreignCurrency = try DraftedTransaction(decoding: GeneratedContent(properties: [
+            "kind": DraftKind.expense, "amount": "5", "currency": Money.code == "USD" ? "EUR" : "USD",
+            "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
+            "merchant": "", "note": "", "category": "Food", "symbol": "cart", "clarification": "",
+        ]))
+        let foreignDraft = DraftResolver.resolve(foreignCurrency, categories: [food], rules: [], scope: .personal, source: .voice, input: "coffee 5 dollars")
+        assert(foreignDraft.currency == Money.code && !foreignDraft.clarification.isEmpty, "a stated foreign currency keeps the budget currency but raises a question, so the clean-draft auto-save never relabels it silently")
+        assert(DraftResolver.resolve(decodedDraft, categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN").clarification.contains("You said") == (Money.code != "AZN"), "the budget currency itself raises no currency question")
         let batchWithPhantom = DraftResolver.resolve([decodedDraft, phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN")
         assert(batchWithPhantom.count == 1, "a fully blank item the model hallucinated alongside a real one (no amount, no grounded merchant or note) is dropped, not surfaced as a second draft to review")
         let date = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!

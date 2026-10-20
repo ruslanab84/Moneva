@@ -135,7 +135,7 @@ struct VoiceCaptureView: View {
                         Button {
                             save()
                         } label: {
-                            Text("Confirm and save \(drafts.count) transactions")
+                            Text("Confirm and save")
                                 .font(.subheadline.weight(.semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 4)
@@ -198,8 +198,12 @@ struct VoiceCaptureView: View {
         task = Task {
             if speech.isRecording {
                 await speech.stop()
-                text = speech.text
-                source = .voice
+                // Append, so typed text or an earlier recording survives; an empty transcript changes nothing.
+                if !speech.text.isEmpty {
+                    let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    text = typed.isEmpty ? speech.text : typed + " " + speech.text
+                    source = .voice
+                }
             } else {
                 await speech.start()
             }
