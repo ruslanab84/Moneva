@@ -38,6 +38,8 @@ struct MonevaApp: App {
             catch { _startupError = State(initialValue: "Scheduled payments could not be saved. Open Subscriptions to retry. " + error.localizedDescription) }
             // No-op until a family share exists.
             FamilySyncEngine.shared.catchUp(in: container.mainContext)
+            // Budget alerts and the widget snapshot follow every save from here on.
+            BudgetWatch.start(container.mainContext)
         } catch {
             fatalError("Could not open the Moneva store: \(error)")
         }

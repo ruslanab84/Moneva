@@ -11,7 +11,7 @@ final class ProStore {
         "RuslanAbd.Moneva.pro.yearly",
         "RuslanAbd.Moneva.pro.lifetime",
     ]
-    private static let cacheKey = "pro.cachedIsPro"
+    nonisolated static let cacheKey = "pro.cachedIsPro"
 
     /// Starts from the last known answer so a Pro user sees no banner/lock flash at launch.
     private(set) var isPro = UserDefaults.standard.bool(forKey: ProStore.cacheKey)

@@ -11,6 +11,8 @@ struct SettingsView: View {
     @State private var shareError: String?
     @State private var isLeaving = false
     @State private var isPaywall = false
+    @AppStorage(BudgetAlerts.enabledKey) private var budgetAlerts = false
+    @State private var alertsDenied = false
     @Environment(ProStore.self) private var pro
     @Environment(AdsConsent.self) private var ads
     private var status = FamilySyncStatus.shared
@@ -48,6 +50,14 @@ struct SettingsView: View {
                     NavigationLink("Exchange rates") { ExchangeRatesView() }
                 } footer: {
                     Text("Ledgea shows every amount in this currency. Past transactions keep the code they were saved with.")
+                }
+
+                Section {
+                    Toggle("Budget alerts", systemImage: "bell.badge", isOn: Binding(get: { budgetAlerts }, set: setBudgetAlerts))
+                } footer: {
+                    Text(alertsDenied
+                         ? "Notifications are off for Ledgea. Turn them on in iOS Settings, then try again."
+                         : "Get a notification when a month's budget or a category limit reaches 75%, 90% and 100%.")
                 }
 
                 Section {
@@ -134,6 +144,17 @@ struct SettingsView: View {
 
     private var syncedLine: String? {
         status.lastSyncedAt.map { String(localized: "Last synced \($0.formatted(date: .omitted, time: .shortened)).") }
+    }
+
+    /// Permission is asked only here, when the user turns alerts on.
+    private func setBudgetAlerts(_ on: Bool) {
+        guard on else { budgetAlerts = false; return }
+        Task {
+            alertsDenied = !(await Reminders.authorize())
+            budgetAlerts = !alertsDenied
+            // Say where the month already stands, instead of waiting for the next expense.
+            if budgetAlerts { BudgetWatch.refresh() }
+        }
     }
 
     private func presentShare() {

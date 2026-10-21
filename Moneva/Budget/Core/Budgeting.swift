@@ -335,6 +335,52 @@ enum Budgeting {
         return result
     }
 
+    /// One limit the budget alerts and widgets watch: the month total (`category == nil`
+    /// and `isTotal`) or a single category limit with its rollover, matching BudgetView.
+    struct BudgetLine {
+        var key: String
+        var isTotal: Bool
+        var category: SpendingCategory?
+        var scope: Scope
+        var currency: String
+        var spent: Decimal
+        var limit: Decimal
+    }
+
+    static func monthKey(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month], from: date)
+        return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
+    }
+
+    /// The budget's total line first, then one per category limit — the same numbers
+    /// BudgetView's total card and limit rows show. Keys carry scope, currency and month,
+    /// so an alert fired in September never silences October.
+    static func lines(for budget: Budget, transactions: [Transaction], budgets: [Budget], rollover: Bool, calendar: Calendar = .current) -> [BudgetLine] {
+        let scope = budget.scope
+        let currency = budget.currency ?? Money.code
+        let range = monthRange(for: budget.monthStart, calendar: calendar)
+        let month = transactions.filter { $0.scope == scope && $0.currency == currency && range.contains($0.date) }
+        let expenses = month.filter { $0.kind == .expense }
+        let prefix = "\(scope.rawValue).\(currency).\(monthKey(range.lowerBound, calendar: calendar))"
+        let total = BudgetLine(key: prefix + ".total", isTotal: true, category: nil, scope: scope, currency: currency,
+                               spent: spent(month, in: range, scope: scope, currency: currency), limit: budget.total)
+        return [total] + budget.limits.map { limit in
+            let carried = rollover ? rolloverAmount(for: limit.category, transactions: transactions, budgets: budgets, monthStart: range.lowerBound, scope: scope, currency: currency, calendar: calendar) : 0
+            let id = limit.category.map { String(describing: $0.persistentModelID) } ?? "uncategorized"
+            return BudgetLine(key: prefix + "." + id, isTotal: false, category: limit.category, scope: scope, currency: currency,
+                              spent: expenses.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }, limit: limit.amount + carried)
+        }
+    }
+
+    static let alertThresholds = [75, 90, 100]
+
+    /// The highest threshold `spent` has reached that is above the one already sent.
+    /// A jump from 70% to 95% sends only 90%; Decimal math, so 74.99% stays quiet.
+    static func alertThreshold(spent: Decimal, limit: Decimal, alreadyFired: Int) -> Int? {
+        guard limit > 0 else { return nil }
+        let percent = spent * 100 / limit
+        return alertThresholds.last { Decimal($0) <= percent && $0 > alreadyFired }
+    }
 }
 
 #if DEBUG
@@ -941,5 +987,74 @@ func monevaSelfCheck() {
            "no budget and no money is no limit")
     assert(Budgeting.dailyLimit(mode: .custom, custom: 0, automatic: 50) == nil, "custom 0 means off")
     assert(Budgeting.dailyLimit(mode: .custom, custom: 30, automatic: 50) == 30 && Budgeting.dailyLimit(mode: .automatic, custom: 30, automatic: 50) == 50, "mode picks the source")
+
+    // Budget alerts 75 / 90 / 100%
+    assert(Budgeting.alertThreshold(spent: Decimal(string: "74.99")!, limit: 100, alreadyFired: 0) == nil, "74.99% is not 75%")
+    assert(Budgeting.alertThreshold(spent: 75, limit: 100, alreadyFired: 0) == 75, "exactly 75% fires")
+    assert(Budgeting.alertThreshold(spent: 95, limit: 100, alreadyFired: 0) == 90, "a jump past two thresholds sends only the higher")
+    assert(Budgeting.alertThreshold(spent: 95, limit: 100, alreadyFired: 90) == nil, "90% is not sent twice")
+    assert(Budgeting.alertThreshold(spent: 120, limit: 100, alreadyFired: 90) == 100, "over the limit sends 100%")
+    assert(Budgeting.alertThreshold(spent: 500, limit: 100, alreadyFired: 100) == nil, "nothing after 100%")
+    assert(Budgeting.alertThreshold(spent: 10, limit: 0, alreadyFired: 0) == nil, "a zero limit never alerts")
+    let baNow = calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 12))!
+    let baMonth = Budgeting.monthStart(for: baNow, calendar: calendar)
+    let baBudget = Budget(monthStart: baMonth, total: 200, scope: .personal)
+    baBudget.currency = "AZN"
+    baBudget.limits = [BudgetLimit(amount: 100, category: food)]
+    let baPrevious = Budget(monthStart: calendar.date(byAdding: .month, value: -1, to: baMonth)!, total: 200, scope: .personal)
+    baPrevious.currency = "AZN"
+    baPrevious.limits = [BudgetLimit(amount: 100, category: food)]
+    let baRows = [
+        Transaction(amount: 80, date: baNow, merchant: "ba", scope: .personal, category: food, currency: "AZN"),
+        Transaction(amount: 70, date: baNow, merchant: "ba", scope: .personal, category: nil, currency: "AZN"),
+        Transaction(amount: 500, date: baNow, merchant: "ba", scope: .shared, category: food, currency: "AZN"),
+        Transaction(amount: 500, date: baNow, merchant: "ba", scope: .personal, category: food, currency: "USD"),
+        Transaction(amount: 500, date: baNow, merchant: "ba", kind: .income, scope: .personal, category: food, currency: "AZN"),
+    ]
+    let baLines = Budgeting.lines(for: baBudget, transactions: baRows, budgets: [baPrevious, baBudget], rollover: false, calendar: calendar)
+    assert(baLines.count == 2 && baLines[0].isTotal && baLines[0].spent == 150 && baLines[0].limit == 200, "total line: personal AZN expenses only")
+    assert(baLines[1].category === food && baLines[1].spent == 80 && baLines[1].limit == 100, "category line: shared, USD and income rows stay out")
+    assert(baLines[0].key.hasPrefix("personal.AZN.2026-10.") && baLines[0].key != baLines[1].key, "keys carry scope, currency and month")
+    let baRolled = Budgeting.lines(for: baBudget, transactions: baRows, budgets: [baPrevious, baBudget], rollover: true, calendar: calendar)
+    assert(baRolled[1].limit == 200 && baRolled[0].limit == 200, "rollover lifts the category limit (100 unspent last month), never the total")
+    let baFirst = BudgetAlerts.due(baLines, fired: ["personal.AZN.2026-09.total": 100])
+    assert(baFirst.alerts.count == 2 && baFirst.alerts.map(\.threshold) == [75, 75], "150/200 and 80/100 both reach 75%")
+    assert(baFirst.fired.count == 2 && baFirst.fired["personal.AZN.2026-09.total"] == nil, "last month's fired keys are dropped")
+    assert(BudgetAlerts.due(baLines, fired: baFirst.fired).alerts.isEmpty, "the same state never alerts twice")
+    let baSnapshot = BudgetWatch.snapshot(baLines, monthStart: baMonth, now: baNow, calendar: calendar)!
+    assert(baSnapshot.progress == 0.75 && !baSnapshot.isOver && baSnapshot.categories.count == 1 && baSnapshot.categories[0].progress == 0.8, "widget snapshot mirrors the lines")
+    assert(BudgetWatch.snapshot([], monthStart: baMonth, now: baNow, calendar: calendar) == nil, "no budget, no snapshot")
+    let baDecoded = try? JSONDecoder().decode(BudgetSnapshot.self, from: JSONEncoder().encode(baSnapshot))
+    assert(baDecoded == baSnapshot, "the snapshot survives the trip through the App Group")
+    // The real fetch path: this month's budgets from a store, active scope and currency from defaults.
+    do {
+        let container = try ModelContainer(for: Budget.self, BudgetLimit.self, Transaction.self, SpendingCategory.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        let context = container.mainContext
+        let baDefaults = UserDefaults(suiteName: "moneva.selfcheck.budgetwatch")!
+        baDefaults.set(Scope.personal.rawValue, forKey: "scope")
+        baDefaults.set("AZN", forKey: Money.storageKey)
+        defer { baDefaults.removePersistentDomain(forName: "moneva.selfcheck.budgetwatch") }
+        let baFood = SpendingCategory(name: "Food", symbol: "fork.knife", tintHex: "B5813F", softHex: "F0E6D6")
+        context.insert(baFood)
+        let stored = Budget(monthStart: baMonth, total: 200, scope: .personal)
+        stored.currency = "AZN"
+        context.insert(stored)
+        stored.limits = [BudgetLimit(amount: 100, category: baFood)]
+        let old = Budget(monthStart: calendar.date(byAdding: .month, value: -2, to: baMonth)!, total: 50, scope: .personal)
+        old.currency = "AZN"
+        context.insert(old)
+        context.insert(Transaction(amount: 190, date: baNow, merchant: "ba", scope: .personal, category: baFood, currency: "AZN"))
+        context.insert(Transaction(amount: 900, date: calendar.date(byAdding: .month, value: -3, to: baNow)!, merchant: "ba", scope: .personal, category: baFood, currency: "AZN"))
+        try context.save()
+        let watched = BudgetWatch.evaluate(in: context, now: baNow, calendar: calendar, defaults: baDefaults)
+        assert(watched.lines.count == 2 && watched.lines[0].spent == 190, "only this month's budget is watched, old rows stay out")
+        assert(watched.snapshot?.state == .near && watched.snapshot?.progress == 0.95 && watched.snapshot?.categories.first?.progress == 1.9,
+               "95% with 16 days left is amber (red only inside the last 14); the food limit is at 190%")
+        baDefaults.set(Scope.shared.rawValue, forKey: "scope")
+        assert(BudgetWatch.evaluate(in: context, now: baNow, calendar: calendar, defaults: baDefaults).snapshot == nil, "no shared budget, no widget numbers")
+    } catch {
+        assertionFailure("Budget watch self-check failed: \(error)")
+    }
 }
 #endif

@@ -9,6 +9,9 @@ struct RootView: View {
     @State private var tab: AppTab = .home
     @State private var ads = AdsConsent()
     @Environment(ProStore.self) private var pro
+    @Environment(\.scenePhase) private var scenePhase
+    /// Raised by the Control Center button or a widget's "+" (`AddTransactionIntent`).
+    @AppStorage(BudgetSnapshot.quickAddKey, store: BudgetSnapshot.defaults) private var quickAdd = false
 
     var body: some View {
         TabView(selection: $tab) {
@@ -61,6 +64,13 @@ struct RootView: View {
         .task(id: pro.isPro) { if !pro.isPro { await ads.start() } }
         .sheet(isPresented: $isPaywall) { PaywallView() }
         .sheet(isPresented: $isAdding) { AddTransactionView() }
+        .onChange(of: quickAdd, initial: true) {
+            guard quickAdd else { return }
+            quickAdd = false
+            isAdding = true
+        }
+        // A scope or currency switch, or a new month, changes the widget without any save.
+        .onChange(of: scenePhase) { _, phase in if phase == .background { BudgetWatch.refresh() } }
         .sheet(isPresented: $isSpeaking) { VoiceCaptureView() }
         .sheet(isPresented: $isScanning) { ReceiptScanView() }
         .preferredColorScheme(AppTheme(rawValue: themeRaw)?.colorScheme)
