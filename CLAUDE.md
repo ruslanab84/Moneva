@@ -46,7 +46,9 @@ The one pattern that spans the AI-touching files (voice capture, receipt OCR, su
 - [SpeechCapture.swift](Moneva/AI/Core/SpeechCapture.swift) — on-device transcription feeding the same `TransactionDrafter` in `.spoken` mode.
 - [StatementImport.swift](Moneva/Settings/Core/StatementImport.swift) — the third draft source, and the one with no model in it: pure CSV/bank-statement parsing (encoding sniffing, delimiter detection from the header line, RFC 4180 quoting) that emits ordinary `TransactionDraft`s, so every downstream guard (`Money.valid`, `CategoryLibrary.isSelectable`, `DraftStore.save`) applies unchanged.
 
-Drafts from all three sources land in the same confirm-before-save UI; nothing from a model reaches the store un-reviewed.
+- [ApplePayCapture.swift](Moneva/Transactions/Core/ApplePayCapture.swift) — the fourth draft source, also model-free: `AddApplePayPaymentIntent` is the App Intent a Shortcuts "Transaction" automation calls on every Apple Pay tap. It runs in the background and only appends a clamped `CapturedPayment` to a local UserDefaults queue (`applePay.pending`, never synced or uploaded). `CapturedPaymentsView` (Home card / Settings) opens each one in `AddTransactionView(draft:)`, where `DraftFields` runs the merchant rule → `CategoryClassifier` pass on appear; the draft reuses the queue id, so `DraftStore.save`'s `draftID` check keeps repeat confirms idempotent and tells the queue what was saved.
+
+Drafts from all four sources land in the same confirm-before-save UI; nothing from a model or an automation reaches the store un-reviewed.
 
 ## Financial tool-calling layer (Ask/Search/Explain)
 

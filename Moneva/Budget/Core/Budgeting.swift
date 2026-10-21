@@ -744,6 +744,28 @@ func monevaSelfCheck() {
     assert(recent.contains(calendar.date(from: DateComponents(year: 2026, month: 7, day: 21))!))
     assert(!recent.contains(calendar.date(from: DateComponents(year: 2026, month: 7, day: 20, hour: 23))!))
 
+    // Apple Pay capture: untrusted Shortcut input is clamped, queued exactly, and only ever becomes an unreviewed draft.
+    assert(ApplePayCapture.capture(merchant: "X", amount: 0, currency: "USD") == nil, "a zero Apple Pay amount is rejected")
+    assert(ApplePayCapture.capture(merchant: "X", amount: -5, currency: "USD") == nil, "a negative Apple Pay amount is rejected")
+    let tap = ApplePayCapture.capture(merchant: "  " + String(repeating: "S", count: 150) + " ", amount: Decimal(string: "12.34")!, currency: "usd")!
+    assert(tap.merchant.count == 100 && tap.merchant.first == "S", "the captured merchant is trimmed and capped")
+    assert(tap.currency == "USD", "a lowercase currency code is normalized")
+    assert(ApplePayCapture.capture(merchant: "X", amount: 1, currency: "")?.currency == Money.code, "a missing currency falls back to the display currency")
+    let tapQueue = ApplePayCapture.appending(tap, to: "")
+    assert(ApplePayCapture.decode(tapQueue) == [tap] && ApplePayCapture.decode(tapQueue)[0].amount == Decimal(string: "12.34")!,
+        "a queued Apple Pay amount round-trips exactly")
+    var fullQueue = ""
+    for _ in 0..<ApplePayCapture.limit { fullQueue = ApplePayCapture.appending(ApplePayCapture.capture(merchant: "Old", amount: 1, currency: "USD")!, to: fullQueue) }
+    let overflowed = ApplePayCapture.decode(ApplePayCapture.appending(tap, to: fullQueue))
+    assert(overflowed.count == ApplePayCapture.limit && overflowed.last == tap, "a full queue drops its oldest payment, not the newest")
+    let cafeTap = ApplePayCapture.capture(merchant: "Cafe", amount: 3, currency: "USD")!
+    assert(ApplePayCapture.decode(ApplePayCapture.removing([tap.id], from: ApplePayCapture.appending(cafeTap, to: tapQueue))) == [cafeTap],
+        "removing drops only the given payments")
+    let tapDraft = ApplePayCapture.draft(tap, scope: .shared)
+    assert(tapDraft.id == tap.id && tapDraft.amount == tap.amount && tapDraft.currency == "USD" && tapDraft.scope == .shared && tapDraft.kind == .expense,
+        "an Apple Pay draft keeps the queued id, amount, currency and scope")
+    assert(!tapDraft.reviewed && !tapDraft.canSave, "an Apple Pay draft cannot be saved until the user reviews it")
+
     smartInsightsSelfCheck()
     aiFeaturesSelfCheck()
     merchantEmbeddingSelfCheck()

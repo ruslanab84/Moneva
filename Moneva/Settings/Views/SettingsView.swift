@@ -67,6 +67,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        CapturedPaymentsView()
+                    } label: {
+                        Label("Apple Pay to review", systemImage: "wallet.pass")
+                    }
+                } header: {
+                    Text("Apple Pay auto-capture")
+                } footer: {
+                    Text("In Shortcuts, open Automation, tap New, choose Transaction and your cards, then Run Immediately. Add the Ledgea action “Add Apple Pay payment” and set Merchant and Amount from the Shortcut Input. Each payment waits here until you confirm it.")
+                }
+
+                Section {
                     if status.role == nil {
                         Button("Invite someone", systemImage: "person.badge.plus") { presentShare() }
                             .proGated()

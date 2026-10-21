@@ -125,26 +125,10 @@ struct DraftFields: View {
             }
             .onChange(of: draft.merchant) { _, merchant in
                 draft.rememberCategory = false
-                if let category = CategoryLibrary.ruleCategory(merchant: merchant, scope: draft.scope, kind: draft.kind, rules: rules) {
-                    draft.category = category
-                    draft.categoryConfident = true
-                    return
-                }
-                // Cheap classifier pass only — never Foundation Models — so a returning merchant
-                // with no exact rule yet can still auto-fill without paying for a model call.
-                let scope = draft.scope
-                let kind = draft.kind
-                Task {
-                    let classification = await CategoryClassifier.classify(merchant: merchant, scope: scope,
-                        categories: CategoryLibrary.visible(categories, scope: scope, kind: kind), container: context.container)
-                    guard merchant == draft.merchant, scope == draft.scope, kind == draft.kind else { return }
-                    let resolution = DraftResolver.resolveCategory(merchant: merchant, scope: scope, kind: kind, categories: categories, rules: rules, classification: classification)
-                    if resolution.confident {
-                        draft.category = resolution.category
-                        draft.categoryConfident = true
-                    }
-                }
+                autoCategorize(merchant)
             }
+            // A prefilled merchant (Apple Pay capture) never fires onChange, so classify it once here.
+            .onAppear { if draft.category == nil, !draft.merchant.isEmpty { autoCategorize(draft.merchant) } }
             .sheet(isPresented: $picking) {
                 CategoryPickerView(selection: $draft.category, scope: draft.scope, kind: draft.kind, suggestedName: draft.suggestedName, suggestedSymbol: draft.suggestedSymbol)
             }
@@ -192,5 +176,27 @@ struct DraftFields: View {
                 Toggle("Remember this merchant\u{2019}s category", isOn: $draft.rememberCategory)
                 Text("Saving with this enabled creates or replaces your rule for this merchant in this scope.").font(.caption)
             }
+    }
+
+    private func autoCategorize(_ merchant: String) {
+        if let category = CategoryLibrary.ruleCategory(merchant: merchant, scope: draft.scope, kind: draft.kind, rules: rules) {
+            draft.category = category
+            draft.categoryConfident = true
+            return
+        }
+        // Cheap classifier pass only — never Foundation Models — so a returning merchant
+        // with no exact rule yet can still auto-fill without paying for a model call.
+        let scope = draft.scope
+        let kind = draft.kind
+        Task {
+            let classification = await CategoryClassifier.classify(merchant: merchant, scope: scope,
+                categories: CategoryLibrary.visible(categories, scope: scope, kind: kind), container: context.container)
+            guard merchant == draft.merchant, scope == draft.scope, kind == draft.kind else { return }
+            let resolution = DraftResolver.resolveCategory(merchant: merchant, scope: scope, kind: kind, categories: categories, rules: rules, classification: classification)
+            if resolution.confident {
+                draft.category = resolution.category
+                draft.categoryConfident = true
+            }
+        }
     }
 }

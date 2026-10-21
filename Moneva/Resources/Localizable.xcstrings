@@ -1,6 +1,42 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "^[%lld Apple Pay payment](inflect: true) to review" : {
+
+    },
+    "Apple Pay" : {
+
+    },
+    "Apple Pay to review" : {
+
+    },
+    "Apple Pay auto-capture" : {
+
+    },
+    "Nothing to review" : {
+
+    },
+    "Payments from your Apple Pay automation show up here." : {
+
+    },
+    "In Shortcuts, open Automation, tap New, choose Transaction and your cards, then Run Immediately. Add the Ledgea action “Add Apple Pay payment” and set Merchant and Amount from the Shortcut Input. Each payment waits here until you confirm it." : {
+
+    },
+    "Add Apple Pay payment" : {
+
+    },
+    "Merchant" : {
+
+    },
+    "Saved for review in Ledgea." : {
+
+    },
+    "The payment amount must be above zero." : {
+
+    },
+    "Queues a payment in Ledgea for you to review. Use it in a Shortcuts Transaction automation." : {
+
+    },
     "" : {
 
     },

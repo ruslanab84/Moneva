@@ -10,6 +10,7 @@ struct HomeView: View {
     @Query private var budgets: [Budget]
     @Query private var subscriptions: [Subscription]
     @Query private var accounts: [Account]
+    @AppStorage(ApplePayCapture.storageKey) private var capturedRaw = ""
     @State private var isSettingsOpen = false
     @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
     @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
@@ -39,6 +40,18 @@ struct HomeView: View {
                     .foregroundStyle(Palette.inkMuted)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .monevaCard()
+            }
+
+            let capturedCount = ApplePayCapture.decode(capturedRaw).count
+            if capturedCount > 0 {
+                NavigationLink { CapturedPaymentsView() } label: {
+                    Label("^[\(capturedCount) Apple Pay payment](inflect: true) to review", systemImage: "wallet.pass")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Palette.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .monevaCard()
+                }
+                .buttonStyle(.plain)
             }
 
             if let budget {
