@@ -224,7 +224,7 @@ struct ReceiptScanView: View {
                     let date = DraftResolver.date(result.date, allowRelative: false)
                     let currency = result.currency.uppercased()
                     receipt.draft.amount = Money.parse(result.total) ?? 0
-                    receipt.draft.currency = Money.pickerCodes.contains(currency) ? currency : Money.code
+                    receipt.draft.currency = Money.pickerCodes.contains(currency) ? currency : Trips.entryCurrency
                     receipt.draft.merchant = DraftResolver.grounded(result.merchant, in: ocr)
                     receipt.draft.date = date ?? .now
                     receipt.draft.clarification = [result.clarification, date == nil ? "Check the purchase date." : "", Money.pickerCodes.contains(currency) ? "" : "Choose the receipt currency.", "Verify the printed final total against the preview."].filter { !$0.isEmpty }.joined(separator: "\n")

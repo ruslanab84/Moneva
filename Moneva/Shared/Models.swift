@@ -150,6 +150,12 @@ final class Transaction {
     /// A per-expense split overriding the month's budget split: an encoded
     /// `FamilyBudget` with only `splitPercent` set. nil means "use the budget's".
     var splitJSON: String?
+    /// Which trip this belongs to. Optional and additive, like `account`:
+    /// older rows have none, and no total outside the trip screen reads it.
+    /// ponytail: local only — the tag never rides along in FamilySync; a
+    /// partner sees the shared expense untagged. Syncing it needs a Trip
+    /// record type plus a FamilySync mapping and assert.
+    var trip: Trip?
 
     func amount(in category: SpendingCategory?) -> Decimal {
         if allocations.isEmpty { return self.category?.persistentModelID == category?.persistentModelID ? amount : 0 }
@@ -497,6 +503,28 @@ final class Account {
 
     var symbol: String { kind.symbol }
     var tint: Color { Color(hex: tintHex) }
+}
+
+/// A trip tag. Its currency is only the default for new entries while the
+/// trip is active — tagged transactions keep whatever currency they were saved
+/// in, and trip totals stay per currency, never converted.
+@Model
+final class Trip {
+    var name: String = ""
+    var currency: String = "AZN"
+    var startDate: Date = Date.now
+    /// nil while the trip is still going.
+    var endDate: Date?
+    var cloudID: UUID = UUID()
+
+    @Relationship(deleteRule: .nullify, inverse: \Transaction.trip)
+    var transactions: [Transaction] = []
+
+    init(name: String, currency: String, startDate: Date = .now) {
+        self.name = name
+        self.currency = currency
+        self.startDate = startDate
+    }
 }
 
 /// Money moved between your own accounts. Deliberately not a `Transaction`, for

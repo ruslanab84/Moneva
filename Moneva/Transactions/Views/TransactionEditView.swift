@@ -9,6 +9,7 @@ struct TransactionEditView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var accounts: [Account]
+    @Query(sort: \Trip.startDate, order: .reverse) private var trips: [Trip]
 
     @State private var kind: TransactionKind
     @State private var amount: Decimal
@@ -18,6 +19,7 @@ struct TransactionEditView: View {
     @State private var category: SpendingCategory?
     @State private var subcategory: Subcategory?
     @State private var account: Account?
+    @State private var trip: Trip?
     @State private var payerID: String
     @State private var split: FamilyBudget?
     @State private var picking = false
@@ -38,6 +40,7 @@ struct TransactionEditView: View {
         _category = State(initialValue: transaction.category)
         _subcategory = State(initialValue: transaction.subcategory)
         _account = State(initialValue: transaction.account)
+        _trip = State(initialValue: transaction.trip)
         _payerID = State(initialValue: transaction.payerID)
         _split = State(initialValue: transaction.splitJSON.map { FamilyBudget.decode($0) })
     }
@@ -76,6 +79,13 @@ struct TransactionEditView: View {
                     Picker("Account", selection: $account) {
                         Text("None").tag(Account?.none)
                         ForEach(usableAccounts, id: \.persistentModelID) { Text($0.name).tag(Account?.some($0)) }
+                    }
+                }
+                // Retagging only: the stored amount keeps its own currency.
+                if !trips.isEmpty {
+                    Picker("Trip", selection: $trip) {
+                        Text("None").tag(Trip?.none)
+                        ForEach(trips, id: \.persistentModelID) { Text($0.name).tag(Trip?.some($0)) }
                     }
                 }
                 DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
@@ -161,6 +171,7 @@ struct TransactionEditView: View {
             transaction.category = category
             transaction.subcategory = isSplit ? nil : (CategoryLibrary.isSelectable(subcategory, under: category) ? subcategory : nil)
             transaction.account = account
+            transaction.trip = trip
             if scope == .shared && kind == .expense {
                 transaction.payerID = payerID
                 transaction.splitJSON = split?.encoded()

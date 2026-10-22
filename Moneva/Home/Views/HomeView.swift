@@ -11,6 +11,8 @@ struct HomeView: View {
     @Query private var subscriptions: [Subscription]
     @Query private var accounts: [Account]
     @AppStorage(ApplePayCapture.storageKey) private var capturedRaw = ""
+    @Query private var trips: [Trip]
+    @AppStorage(Trips.activeKey) private var activeTripRaw = ""
     @State private var isSettingsOpen = false
     @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
     @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
@@ -52,6 +54,10 @@ struct HomeView: View {
                         .monevaCard()
                 }
                 .buttonStyle(.plain)
+            }
+
+            if let trip = trips.first(where: { $0.cloudID.uuidString == activeTripRaw }) {
+                TripCard(trip: trip, scope: scope)
             }
 
             if let budget {

@@ -97,7 +97,9 @@ struct TransactionDraft: Identifiable {
     /// Optional on purpose: the model never picks an account, and a transaction
     /// without one is still a complete transaction.
     var account: Account?
-    var currency = Money.code
+    /// Trip mode: the active trip's currency and tag, or the display currency and none.
+    var currency = Trips.entryCurrency
+    var tripID = Trips.activeID
     var source: EntrySource = .manual
     var suggestedName = ""
     var suggestedSymbol = "cart"
@@ -197,7 +199,7 @@ enum DraftResolver {
             clarification: "On-device drafting could not finish. Review and fill in the details below.")
     }
 
-    static func resolve(_ value: DraftedTransaction, categories: [SpendingCategory], rules: [MerchantCategoryRule], scope: Scope, source: EntrySource, input: String, now: Date = .now, classification: ClassificationResult? = nil) -> TransactionDraft {
+    static func resolve(_ value: DraftedTransaction, categories: [SpendingCategory], rules: [MerchantCategoryRule], scope: Scope, source: EntrySource, input: String, now: Date = .now, classification: ClassificationResult? = nil, currency: String = Trips.entryCurrency) -> TransactionDraft {
         // Income and expense have separate category sets; the draft's own kind picks one.
         let kind: TransactionKind = value.kind == .income ? .income : .expense
         let visible = CategoryLibrary.visible(categories, scope: scope, kind: kind)
@@ -210,18 +212,18 @@ enum DraftResolver {
         let parsedDate = date(value.date, now: now)
         var questions = [value.clarification]
         if Money.parse(value.amount) == nil { questions.append("What is the amount?") }
-        // New entries always log in the budget currency; a different spoken one must stop auto-save
-        // so "5 USD" is never silently stored as 5 of the budget currency.
+        // New entries log in the entry currency (the active trip's, else the budget's); a different
+        // spoken one must stop auto-save so "5 USD" is never silently stored as 5 of that currency.
         let stated = value.currency.uppercased()
-        if stated != Money.code, Money.pickerCodes.contains(stated) {
-            questions.append("You said \(stated). This will be saved in \(Money.code) — check the amount.")
+        if stated != currency, Money.pickerCodes.contains(stated) {
+            questions.append("You said \(stated). This will be saved in \(currency) — check the amount.")
         }
         if parsedDate == nil { questions.append("Which date? Select it below.") }
         if category == nil { questions.append("Choose or create a category.") }
         return TransactionDraft(kind: kind,
             amount: Money.parse(value.amount) ?? 0, merchant: merchant,
             note: grounded(value.note, in: input), date: parsedDate ?? now, category: category,
-            scope: scope, currency: Money.code, source: source,
+            scope: scope, currency: currency, source: source,
             suggestedName: category == nil ? String(value.category.prefix(60)) : "",
             suggestedSymbol: CategoryLibrary.symbols.contains(value.symbol) ? value.symbol : "cart",
             clarification: questions.filter { !$0.isEmpty }.joined(separator: "\n"),
@@ -435,6 +437,9 @@ enum DraftStore {
                     category: allocations.isEmpty ? draft.category : nil, currency: draft.currency)
                 tx.draftID = draft.id.uuidString
                 tx.account = draft.account
+                if let tripID = draft.tripID {
+                    tx.trip = try context.fetch(FetchDescriptor<Trip>(predicate: #Predicate { $0.cloudID == tripID })).first
+                }
                 if draft.scope == .shared && draft.kind == .expense {
                     tx.payerID = draft.payerID
                     tx.splitJSON = draft.split?.encoded()

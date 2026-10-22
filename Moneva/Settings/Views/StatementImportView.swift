@@ -213,6 +213,7 @@ struct StatementImportView: View {
         guard let fallback else { return }
         let drafts: [TransactionDraft] = chosen.compactMap { row in
             var draft = TransactionDraft()
+            draft.tripID = nil // past rows never join the trip that happens to be active now
             draft.kind = row.kind
             draft.amount = row.amount
             draft.merchant = row.merchant

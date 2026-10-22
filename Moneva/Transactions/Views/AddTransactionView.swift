@@ -66,6 +66,7 @@ struct DraftFields: View {
     @Query private var rules: [MerchantCategoryRule]
     @Query private var categories: [SpendingCategory]
     @Query private var accounts: [Account]
+    @Query(sort: \Trip.startDate, order: .reverse) private var trips: [Trip]
     @State private var picking = false
     @State private var suggesting = false
     @State private var suggestionError: String?
@@ -96,6 +97,16 @@ struct DraftFields: View {
     private var ledgerFields: some View {
         Picker("Scope", selection: $draft.scope) {
             ForEach(Scope.allCases) { Text($0.title).tag($0) }
+        }
+        if !trips.isEmpty {
+            Picker("Trip", selection: $draft.tripID) {
+                Text("None").tag(UUID?.none)
+                ForEach(trips, id: \.cloudID) { Text($0.name).tag(UUID?.some($0.cloudID)) }
+            }
+            // A trip's spending is in its local currency; leaving it returns to the display one.
+            .onChange(of: draft.tripID) { _, id in
+                draft.currency = trips.first { $0.cloudID == id }?.currency ?? Money.code
+            }
         }
         // Only accounts held in this transaction's currency: a balance is never
         // converted, so an account in another currency could not hold it.

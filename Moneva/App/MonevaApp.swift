@@ -25,7 +25,7 @@ struct MonevaApp: App {
                 for: Transaction.self, SpendingCategory.self, Budget.self, BudgetLimit.self, Goal.self,
                 Subscription.self, SubscriptionPayment.self, TransactionAllocation.self, MerchantCategoryRule.self,
                 FamilyMember.self, Settlement.self, Account.self, Transfer.self,
-                MerchantEmbedding.self, CategoryExemplar.self, Subcategory.self,
+                MerchantEmbedding.self, CategoryExemplar.self, Subcategory.self, Trip.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: false, cloudKitDatabase: .none)
             )
             // Legacy budgets had no currency. Capture the current setting once; never relabel them later.

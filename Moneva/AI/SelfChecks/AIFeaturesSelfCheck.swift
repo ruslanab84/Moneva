@@ -8,7 +8,7 @@ import FoundationModels
 func aiFeaturesSelfCheck() {
     do {
         let container = try ModelContainer(for: Transaction.self, SpendingCategory.self, TransactionAllocation.self,
-            MerchantCategoryRule.self, Subscription.self, SubscriptionPayment.self, CategoryExemplar.self,
+            MerchantCategoryRule.self, Subscription.self, SubscriptionPayment.self, CategoryExemplar.self, Trip.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let context = container.mainContext
         context.autosaveEnabled = false
@@ -68,21 +68,34 @@ func aiFeaturesSelfCheck() {
         let batchDrafts = DraftResolver.resolve([nearMiss, decodedDraft], categories: [food], rules: [], scope: .personal, source: .text, input: "")
         assert(batchDrafts.count == 2, "batch resolve returns one draft per item")
         assert(batchDrafts[0].category == nil && batchDrafts[0].suggestedName == "Foods extra", "batch resolve preserves each item's own resolution")
-        assert(batchDrafts[1].currency == "AZN" && batchDrafts[1].scope == .personal, "batch resolve takes scope from the caller's context, not the drafted item")
+        assert(batchDrafts[1].currency == Trips.entryCurrency && batchDrafts[1].scope == .personal, "batch resolve takes scope from the caller's context, not the drafted item")
         let phantomBlank = try DraftedTransaction(decoding: GeneratedContent(properties: [
             "kind": DraftKind.income, "amount": "", "currency": "USD",
             "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
             "merchant": "", "note": "", "category": "Other income", "symbol": "cart", "clarification": "",
         ]))
-        assert(DraftResolver.resolve([phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "5 USD").allSatisfy { $0.currency == Money.code }, "a spoken foreign currency never overrides the active one")
+        assert(DraftResolver.resolve([phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "5 USD").allSatisfy { $0.currency == Trips.entryCurrency }, "a spoken foreign currency never overrides the active one")
         let foreignCurrency = try DraftedTransaction(decoding: GeneratedContent(properties: [
-            "kind": DraftKind.expense, "amount": "5", "currency": Money.code == "USD" ? "EUR" : "USD",
+            "kind": DraftKind.expense, "amount": "5", "currency": Trips.entryCurrency == "USD" ? "EUR" : "USD",
             "date": DraftDate(offsetDays: 0, year: nil, month: nil, day: nil),
             "merchant": "", "note": "", "category": "Food", "symbol": "cart", "clarification": "",
         ]))
         let foreignDraft = DraftResolver.resolve(foreignCurrency, categories: [food], rules: [], scope: .personal, source: .voice, input: "coffee 5 dollars")
-        assert(foreignDraft.currency == Money.code && !foreignDraft.clarification.isEmpty, "a stated foreign currency keeps the budget currency but raises a question, so the clean-draft auto-save never relabels it silently")
-        assert(DraftResolver.resolve(decodedDraft, categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN").clarification.contains("You said") == (Money.code != "AZN"), "the budget currency itself raises no currency question")
+        assert(foreignDraft.currency == Trips.entryCurrency && !foreignDraft.clarification.isEmpty, "a stated foreign currency keeps the budget currency but raises a question, so the clean-draft auto-save never relabels it silently")
+        assert(DraftResolver.resolve(decodedDraft, categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN").clarification.contains("You said") == (Trips.entryCurrency != "AZN"), "the budget currency itself raises no currency question")
+        let tripDraft = DraftResolver.resolve(foreignCurrency, categories: [food], rules: [], scope: .personal, source: .voice, input: "coffee 5", currency: foreignCurrency.currency)
+        assert(tripDraft.currency != foreignDraft.currency && !tripDraft.clarification.contains("You said"), "on a trip, the trip's own currency is the entry currency and raises no question")
+        let trip = Trip(name: "Self-check trip", currency: "EUR")
+        context.insert(trip)
+        var tripEntry = TransactionDraft(amount: 4, merchant: "Trip cafe", category: food, currency: "EUR", reviewed: true)
+        tripEntry.tripID = trip.cloudID
+        try DraftStore.save([tripEntry], in: context)
+        let savedTripEntry = try context.fetch(FetchDescriptor<Transaction>()).first { $0.draftID == tripEntry.id.uuidString }
+        assert(savedTripEntry?.trip === trip, "a draft carrying a trip id saves tagged with that trip")
+        // Leave the store empty for the batch-save asserts below.
+        savedTripEntry.map(context.delete)
+        context.delete(trip)
+        try context.save()
         let batchWithPhantom = DraftResolver.resolve([decodedDraft, phantomBlank], categories: [food], rules: [], scope: .personal, source: .text, input: "Today pizza 8 AZN")
         assert(batchWithPhantom.count == 1, "a fully blank item the model hallucinated alongside a real one (no amount, no grounded merchant or note) is dropped, not surfaced as a second draft to review")
         let date = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!
