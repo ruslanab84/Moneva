@@ -10,7 +10,7 @@ struct HomeView: View {
     @Query private var budgets: [Budget]
     @Query private var subscriptions: [Subscription]
     @Query private var accounts: [Account]
-    @AppStorage(ApplePayCapture.storageKey) private var capturedRaw = ""
+    @AppStorage(ApplePayCapture.storageKey, store: ApplePayCapture.defaults) private var capturedRaw = ""
     @Query private var trips: [Trip]
     @AppStorage(Trips.activeKey) private var activeTripRaw = ""
     @State private var isSettingsOpen = false

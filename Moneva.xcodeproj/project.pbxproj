@@ -7,12 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AF000000000000000000000C /* MonevaIntents.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = AF0000000000000000000004 /* MonevaIntents.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AD0000000000000000000005 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000003 /* GoogleMobileAds */; };
 		AD0000000000000000000006 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000004 /* GoogleUserMessagingPlatform */; };
 		EE000000000000000000000C /* MonevaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000004 /* MonevaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		AF000000000000000000000E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B7707DCC3049DDE600BAC428 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AF0000000000000000000005;
+			remoteInfo = MonevaIntents;
+		};
 		EE000000000000000000000E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = B7707DCC3049DDE600BAC428 /* Project object */;
@@ -23,6 +31,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		AF000000000000000000000D /* Embed ExtensionKit Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				AF000000000000000000000C /* MonevaIntents.appex in Embed ExtensionKit Extensions */,
+			);
+			name = "Embed ExtensionKit Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EE000000000000000000000D /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -37,11 +56,27 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AF0000000000000000000004 /* MonevaIntents.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = MonevaIntents.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7707DD43049DDE600BAC428 /* Moneva.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Moneva.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B788280D3078BC6700994DBD /* Moneva.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = Moneva.storekit; path = Config/Moneva.storekit; sourceTree = "<group>"; };
 		EE0000000000000000000004 /* MonevaWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MonevaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AF0000000000000000000003 /* Exceptions for "MonevaIntents" folder in "MonevaIntents" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AF0000000000000000000005 /* MonevaIntents */;
+		};
+		AF0000000000000000000010 /* Exceptions for "MonevaShared" folder in "MonevaIntents" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AddTransactionIntent.swift,
+			);
+			target = AF0000000000000000000005 /* MonevaIntents */;
+		};
 		CD0000000000000000000001 /* Exceptions for "Moneva" folder in "Moneva" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -52,7 +87,6 @@
 			);
 			target = B7707DD33049DDE600BAC428 /* Moneva */;
 		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		EE0000000000000000000003 /* Exceptions for "MonevaWidgets" folder in "MonevaWidgets" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -60,8 +94,17 @@
 			);
 			target = EE0000000000000000000005 /* MonevaWidgets */;
 		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		AF0000000000000000000002 /* MonevaIntents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AF0000000000000000000003 /* Exceptions for "MonevaIntents" folder in "MonevaIntents" target */,
+			);
+			path = MonevaIntents;
+			sourceTree = "<group>";
+		};
 		B7707DD63049DDE600BAC428 /* Moneva */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -70,9 +113,11 @@
 			path = Moneva;
 			sourceTree = "<group>";
 		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 		EE0000000000000000000001 /* MonevaShared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AF0000000000000000000010 /* Exceptions for "MonevaShared" folder in "MonevaIntents" target */,
+			);
 			path = MonevaShared;
 			sourceTree = "<group>";
 		};
@@ -84,8 +129,16 @@
 			path = MonevaWidgets;
 			sourceTree = "<group>";
 		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		AF0000000000000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B7707DD13049DDE600BAC428 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -95,7 +148,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXFrameworksBuildPhase section */
 		EE0000000000000000000007 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -103,30 +155,55 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		B7707DCB3049DDE600BAC428 = {
 			isa = PBXGroup;
 			children = (
+				B788280D3078BC6700994DBD /* Moneva.storekit */,
 				B7707DD63049DDE600BAC428 /* Moneva */,
-				B7707DD53049DDE600BAC428 /* Products */,
-			);
 				EE0000000000000000000001 /* MonevaShared */,
 				EE0000000000000000000002 /* MonevaWidgets */,
+				AF0000000000000000000002 /* MonevaIntents */,
+				B7707DD53049DDE600BAC428 /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 		B7707DD53049DDE600BAC428 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				B7707DD43049DDE600BAC428 /* Moneva.app */,
+				EE0000000000000000000004 /* MonevaWidgets.appex */,
+				AF0000000000000000000004 /* MonevaIntents.appex */,
 			);
 			name = Products;
-				EE0000000000000000000004 /* MonevaWidgets.appex */,
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		AF0000000000000000000005 /* MonevaIntents */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AF0000000000000000000009 /* Build configuration list for PBXNativeTarget "MonevaIntents" */;
+			buildPhases = (
+				AF0000000000000000000006 /* Sources */,
+				AF0000000000000000000007 /* Frameworks */,
+				AF0000000000000000000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				EE0000000000000000000001 /* MonevaShared */,
+				AF0000000000000000000002 /* MonevaIntents */,
+			);
+			name = MonevaIntents;
+			productName = MonevaIntents;
+			productReference = AF0000000000000000000004 /* MonevaIntents.appex */;
+			productType = "com.apple.product-type.extensionkit-extension";
+		};
 		B7707DD33049DDE600BAC428 /* Moneva */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B7707DDF3049DDE700BAC428 /* Build configuration list for PBXNativeTarget "Moneva" */;
@@ -134,18 +211,20 @@
 				B7707DD03049DDE600BAC428 /* Sources */,
 				B7707DD13049DDE600BAC428 /* Frameworks */,
 				B7707DD23049DDE600BAC428 /* Resources */,
+				EE000000000000000000000D /* Embed Foundation Extensions */,
+				AF000000000000000000000D /* Embed ExtensionKit Extensions */,
 			);
 			buildRules = (
-				EE000000000000000000000D /* Embed Foundation Extensions */,
 			);
 			dependencies = (
+				EE000000000000000000000F /* PBXTargetDependency */,
+				AF000000000000000000000F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				EE000000000000000000000F /* PBXTargetDependency */,
 				B7707DD63049DDE600BAC428 /* Moneva */,
+				EE0000000000000000000001 /* MonevaShared */,
 			);
 			name = Moneva;
-				EE0000000000000000000001 /* MonevaShared */,
 			packageProductDependencies = (
 				AD0000000000000000000003 /* GoogleMobileAds */,
 				AD0000000000000000000004 /* GoogleUserMessagingPlatform */,
@@ -154,8 +233,6 @@
 			productReference = B7707DD43049DDE600BAC428 /* Moneva.app */;
 			productType = "com.apple.product-type.application";
 		};
-/* End PBXNativeTarget section */
-
 		EE0000000000000000000005 /* MonevaWidgets */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = EE0000000000000000000009 /* Build configuration list for PBXNativeTarget "MonevaWidgets" */;
@@ -177,6 +254,8 @@
 			productReference = EE0000000000000000000004 /* MonevaWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+/* End PBXNativeTarget section */
+
 /* Begin PBXProject section */
 		B7707DCC3049DDE600BAC428 /* Project object */ = {
 			isa = PBXProject;
@@ -188,11 +267,14 @@
 					B7707DD33049DDE600BAC428 = {
 						CreatedOnToolsVersion = 26.6;
 					};
-				};
-			};
 					EE0000000000000000000005 = {
 						CreatedOnToolsVersion = 26.6;
 					};
+					AF0000000000000000000005 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+				};
+			};
 			buildConfigurationList = B7707DCF3049DDE600BAC428 /* Build configuration list for PBXProject "Moneva" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -212,13 +294,28 @@
 			projectRoot = "";
 			targets = (
 				B7707DD33049DDE600BAC428 /* Moneva */,
+				EE0000000000000000000005 /* MonevaWidgets */,
+				AF0000000000000000000005 /* MonevaIntents */,
 			);
 		};
-				EE0000000000000000000005 /* MonevaWidgets */,
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		AF0000000000000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B7707DD23049DDE600BAC428 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE0000000000000000000008 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -227,15 +324,22 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-		EE0000000000000000000008 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
+/* Begin PBXSourcesBuildPhase section */
+		AF0000000000000000000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* Begin PBXSourcesBuildPhase section */
 		B7707DD03049DDE600BAC428 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE0000000000000000000006 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -244,16 +348,12 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-		EE0000000000000000000006 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* Begin XCBuildConfiguration section */
-		B7707DDD3049DDE700BAC428 /* Debug */ = {
 /* Begin PBXTargetDependency section */
+		AF000000000000000000000F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AF0000000000000000000005 /* MonevaIntents */;
+			targetProxy = AF000000000000000000000E /* PBXContainerItemProxy */;
+		};
 		EE000000000000000000000F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = EE0000000000000000000005 /* MonevaWidgets */;
@@ -261,6 +361,8 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin XCBuildConfiguration section */
+		B7707DDD3049DDE700BAC428 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -469,8 +571,6 @@
 			};
 			name = Release;
 		};
-/* End XCBuildConfiguration section */
-
 		EE000000000000000000000A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -533,7 +633,80 @@
 			};
 			name = Release;
 		};
+		AF000000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MonevaIntents/MonevaIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = 58ZSRJHNGW;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MonevaIntents/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Ledgea;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = RuslanAbd.Moneva.Intents;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		AF000000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MonevaIntents/MonevaIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = 58ZSRJHNGW;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MonevaIntents/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Ledgea;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = RuslanAbd.Moneva.Intents;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
 /* Begin XCConfigurationList section */
+		AF0000000000000000000009 /* Build configuration list for PBXNativeTarget "MonevaIntents" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF000000000000000000000A /* Debug */,
+				AF000000000000000000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B7707DCF3049DDE600BAC428 /* Build configuration list for PBXProject "Moneva" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -552,8 +725,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-/* End XCConfigurationList section */
-
 		EE0000000000000000000009 /* Build configuration list for PBXNativeTarget "MonevaWidgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -563,6 +734,8 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+/* End XCConfigurationList section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		AD0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
 			isa = XCRemoteSwiftPackageReference;

@@ -32,6 +32,7 @@ struct MonevaApp: App {
             for budget in try container.mainContext.fetch(FetchDescriptor<Budget>()) where budget.currency == nil { budget.currency = Money.code }
             try container.mainContext.save()
             SeedData.installIfNeeded(in: container.mainContext)
+            ApplePayCapture.migrateLegacyQueue()
             SeedData.installSubcategoriesIfNeeded(in: container.mainContext)
             // A launch after a quiet week is when overdue charges get caught up.
             do { try SubscriptionEngine.catchUp(in: container.mainContext) }

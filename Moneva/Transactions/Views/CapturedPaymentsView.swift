@@ -4,7 +4,7 @@ import SwiftData
 /// Apple Pay payments the Shortcuts automation queued. Each one opens in the normal
 /// confirm screen; nothing is saved until the user reviews it there.
 struct CapturedPaymentsView: View {
-    @AppStorage(ApplePayCapture.storageKey) private var pendingRaw = ""
+    @AppStorage(ApplePayCapture.storageKey, store: ApplePayCapture.defaults) private var pendingRaw = ""
     @AppStorage("scope") private var scopeRaw = Scope.personal.rawValue
     @Query private var transactions: [Transaction]
     @State private var reviewing: TransactionDraft?

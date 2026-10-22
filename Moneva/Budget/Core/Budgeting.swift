@@ -818,7 +818,15 @@ func monevaSelfCheck() {
     let tap = ApplePayCapture.capture(merchant: "  " + String(repeating: "S", count: 150) + " ", amount: Decimal(string: "12.34")!, currency: "usd")!
     assert(tap.merchant.count == 100 && tap.merchant.first == "S", "the captured merchant is trimmed and capped")
     assert(tap.currency == "USD", "a lowercase currency code is normalized")
-    assert(ApplePayCapture.capture(merchant: "X", amount: 1, currency: "")?.currency == Money.code, "a missing currency falls back to the display currency")
+    let codeless = ApplePayCapture.capture(merchant: "X", amount: 1, currency: "XYZ")!
+    assert(codeless.currency.isEmpty && ApplePayCapture.draft(codeless, scope: .personal).currency == Money.code, "an unknown currency is left blank by the extension and becomes the display currency in the draft")
+    let legacyDefaults = UserDefaults(suiteName: "moneva.selfcheck.applepay")!
+    let savedQueue = ApplePayCapture.defaults.string(forKey: ApplePayCapture.storageKey)
+    legacyDefaults.set(ApplePayCapture.appending(tap, to: ""), forKey: ApplePayCapture.storageKey)
+    ApplePayCapture.migrateLegacyQueue(from: legacyDefaults)
+    assert(legacyDefaults.string(forKey: ApplePayCapture.storageKey) == nil && ApplePayCapture.decode(ApplePayCapture.defaults.string(forKey: ApplePayCapture.storageKey) ?? "").last == tap,
+        "a pre-extension queue moves into the App Group once")
+    ApplePayCapture.defaults.set(savedQueue, forKey: ApplePayCapture.storageKey)
     let tapQueue = ApplePayCapture.appending(tap, to: "")
     assert(ApplePayCapture.decode(tapQueue) == [tap] && ApplePayCapture.decode(tapQueue)[0].amount == Decimal(string: "12.34")!,
         "a queued Apple Pay amount round-trips exactly")
