@@ -106,6 +106,9 @@ struct DraftFields: View {
                 ForEach(usable, id: \.persistentModelID) { Text($0.name).tag(Account?.some($0)) }
             }
         }
+        if draft.scope == .shared && draft.kind == .expense {
+            SplitFields(payerID: $draft.payerID, split: $draft.split, author: FamilySyncEngine.shared.meID)
+        }
     }
 
     /// Its own builder: the Group above is already at SwiftUI's ten-child limit.

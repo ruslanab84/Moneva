@@ -8,7 +8,6 @@ struct BudgetView: View {
     @Environment(\.modelContext) private var context
     @Query private var budgets: [Budget]
     @Query private var members: [FamilyMember]
-    @Query private var settlements: [Settlement]
     @State private var isEditing = false
     @AppStorage(Budgeting.rolloverKey(.personal)) private var rolloverPersonal = true
     @AppStorage(Budgeting.rolloverKey(.shared)) private var rolloverShared = true
@@ -40,7 +39,6 @@ struct BudgetView: View {
                 totalCard(budget)
                 if isFamily {
                     contributionsCard(budget)
-                    balanceCard(budget)
                 }
                 if !budget.limits.isEmpty {
                     Eyebrow("Category limits").padding(.top, 4)
@@ -165,47 +163,6 @@ struct BudgetView: View {
         familyIDs
             .map { "\(FamilyMembers.displayName(for: $0, in: members)) \(split.percent(for: $0, members: familyIDs))%" }
             .joined(separator: " · ")
-    }
-
-    /// The one number the two of them actually argue about.
-    @ViewBuilder
-    private func balanceCard(_ budget: Budget) -> some View {
-        let balances = Budgeting.balances(
-            monthTransactions, settlements: settlements, in: range, currency: currencyCode,
-            split: family(budget), members: familyIDs, meID: meID
-        )
-        let plan = Budgeting.settlementPlan(balances, currency: currencyCode)
-
-        VStack(alignment: .leading, spacing: 12) {
-            Eyebrow("Settling up")
-            if plan.isEmpty {
-                Label("Everyone is square this month.", systemImage: "checkmark.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.inkMuted)
-            } else {
-                ForEach(plan.indices, id: \.self) { index in
-                    let transfer = plan[index]
-                    HStack {
-                        Text("\(FamilyMembers.displayName(for: transfer.from, in: members)) owes \(FamilyMembers.displayName(for: transfer.to, in: members)) \(transfer.amount.money(currencyCode))")
-                            .font(.money(.title3))
-                            .foregroundStyle(Palette.ink)
-                        Spacer()
-                        Button("Settle up", systemImage: "arrow.left.arrow.right") {
-                            settle(amount: transfer.amount, from: transfer.from, to: transfer.to)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(Palette.accent)
-                    }
-                }
-            }
-        }
-        .monevaCard()
-    }
-
-    /// Recorded as a `Settlement`, never as a transaction — moving money
-    /// between the two of you is not household spending.
-    private func settle(amount: Decimal, from debtor: String, to creditor: String) {
-        context.insert(Settlement(amount: amount, currency: currencyCode, date: .now, fromMemberID: debtor, toMemberID: creditor))
     }
 
     private func color(_ state: Budgeting.LimitState) -> Color {

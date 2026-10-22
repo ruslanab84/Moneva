@@ -18,6 +18,8 @@ struct TransactionEditView: View {
     @State private var category: SpendingCategory?
     @State private var subcategory: Subcategory?
     @State private var account: Account?
+    @State private var payerID: String
+    @State private var split: FamilyBudget?
     @State private var picking = false
     @State private var confirmingDelete = false
 
@@ -36,10 +38,13 @@ struct TransactionEditView: View {
         _category = State(initialValue: transaction.category)
         _subcategory = State(initialValue: transaction.subcategory)
         _account = State(initialValue: transaction.account)
+        _payerID = State(initialValue: transaction.payerID)
+        _split = State(initialValue: transaction.splitJSON.map { FamilyBudget.decode($0) })
     }
 
     private var canSave: Bool {
         Money.valid(amount, currency: currency) && (isSplit || CategoryLibrary.isSelectable(category, scope: scope, kind: kind))
+            && (split.map { $0.splitPercent.values.reduce(0, +) == 100 } ?? true)
     }
 
     var body: some View {
@@ -77,6 +82,13 @@ struct TransactionEditView: View {
                 TextField("Note", text: $note, axis: .vertical)
             }
             .listRowBackground(Palette.card)
+
+            if scope == .shared && kind == .expense {
+                Section {
+                    SplitFields(payerID: $payerID, split: $split, author: Budgeting.author(of: transaction, meID: FamilySyncEngine.shared.meID))
+                }
+                .listRowBackground(Palette.card)
+            }
 
             if isSplit {
                 Section("Saved category split") {
@@ -149,6 +161,10 @@ struct TransactionEditView: View {
             transaction.category = category
             transaction.subcategory = isSplit ? nil : (CategoryLibrary.isSelectable(subcategory, under: category) ? subcategory : nil)
             transaction.account = account
+            if scope == .shared && kind == .expense {
+                transaction.payerID = payerID
+                transaction.splitJSON = split?.encoded()
+            }
         }
         dismiss()
     }

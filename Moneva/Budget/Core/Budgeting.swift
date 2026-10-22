@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
-#if DEBUG
 import SwiftData
+#if DEBUG
 import UserNotifications
 #endif
 
@@ -230,8 +230,29 @@ enum Budgeting {
         transactions
             .filter { $0.kind == .expense && $0.scope == .shared && $0.currency == currency && range.contains($0.date) }
             .reduce(into: [String: Decimal]()) { totals, transaction in
-                totals[author(of: transaction, meID: meID), default: 0] += transaction.amount
+                totals[payer(of: transaction, meID: meID), default: 0] += transaction.amount
             }
+    }
+
+    /// Who actually paid: the explicit payer when one was picked, else the author.
+    static func payer(of transaction: Transaction, meID: String) -> String {
+        transaction.payerID.isEmpty ? author(of: transaction, meID: meID) : transaction.payerID
+    }
+
+    /// The split one shared expense follows: its own override, else the split
+    /// of the shared budget for its month and currency, else an even one.
+    static func split(for transaction: Transaction, budgets: [Budget], calendar: Calendar = .current) -> FamilyBudget {
+        if let json = transaction.splitJSON { return FamilyBudget.decode(json) }
+        let month = monthRange(for: transaction.date, calendar: calendar).lowerBound
+        let budget = budgets.first { $0.scope == .shared && ($0.currency ?? Money.code) == transaction.currency && $0.monthStart == month }
+        return FamilyBudget.decode(budget?.familyJSON)
+    }
+
+    /// Every currency the family has a running balance in. Balances are never
+    /// converted, so each one is settled on its own.
+    static func balanceCurrencies(_ transactions: [Transaction], settlements: [Settlement]) -> [String] {
+        let spent = transactions.filter { $0.kind == .expense && $0.scope == .shared }.map(\.currency)
+        return Array(Set(spent + settlements.map(\.currency))).sorted()
     }
 
     /// Splits one shared expense between the members. Each share is rounded at
@@ -252,18 +273,19 @@ enum Budgeting {
     }
 
     /// Positive means the family owes this member, negative means they owe it.
-    /// Every balance in the map sums to zero, settlements included.
-    static func balances(_ transactions: [Transaction], settlements: [Settlement], in range: Range<Date>, currency: String = Money.code, split: FamilyBudget, members: [String], meID: String) -> [String: Decimal] {
+    /// A running balance over all time — debt does not lapse at month end — and
+    /// strictly one currency. Every balance in the map sums to zero, settlements included.
+    static func balances(_ transactions: [Transaction], settlements: [Settlement], currency: String = Money.code, budgets: [Budget], members: [String], meID: String, calendar: Calendar = .current) -> [String: Decimal] {
         var balance = members.reduce(into: [String: Decimal]()) { $0[$1] = 0 }
-        for transaction in transactions where transaction.kind == .expense && transaction.scope == .shared
-            && transaction.currency == currency && range.contains(transaction.date) {
-            let payer = author(of: transaction, meID: meID)
+        for transaction in transactions where transaction.kind == .expense && transaction.scope == .shared && transaction.currency == currency {
+            let payer = payer(of: transaction, meID: meID)
             balance[payer, default: 0] += transaction.amount
+            let split = split(for: transaction, budgets: budgets, calendar: calendar)
             for (member, share) in shares(of: transaction.amount, currency: currency, split: split, members: members, payer: payer) {
                 balance[member, default: 0] -= share
             }
         }
-        for settlement in settlements where settlement.currency == currency && range.contains(settlement.date) {
+        for settlement in settlements where settlement.currency == currency {
             balance[settlement.fromMemberID.isEmpty ? meID : settlement.fromMemberID, default: 0] += settlement.amount
             balance[settlement.toMemberID.isEmpty ? meID : settlement.toMemberID, default: 0] -= settlement.amount
         }
@@ -830,16 +852,51 @@ func monevaSelfCheck() {
     let spent = Budgeting.spentByMember([lunch, groceries, mine], in: month, currency: "AZN", meID: meID)
     assert(spent[meID] == 80 && spent[partnerID] == 20, "personal spending never leaks into the family breakdown")
 
-    let open = Budgeting.balances([lunch, groceries, mine], settlements: [], in: month, currency: "AZN", split: FamilyBudget(), members: members, meID: meID)
+    let open = Budgeting.balances([lunch, groceries, mine], settlements: [], currency: "AZN", budgets: [], members: members, meID: meID)
     assert(open[meID] == 30 && open[partnerID] == -30, "paying 80 of a 100 split evenly leaves 30 owed")
     assert(open.values.reduce(Decimal.zero, +) == 0, "balances always net to zero")
 
     let settled = Budgeting.balances(
         [lunch, groceries, mine],
         settlements: [Settlement(amount: 30, currency: "AZN", date: .now, fromMemberID: partnerID, toMemberID: meID)],
-        in: month, currency: "AZN", split: FamilyBudget(), members: members, meID: meID
+        currency: "AZN", budgets: [], members: members, meID: meID
     )
     assert(settled[meID] == 0 && settled[partnerID] == 0, "settling the exact balance clears it")
+
+    // Who paid, per-expense splits, and a balance that outlives the month.
+    let paidByPartner = Transaction(amount: 60, date: .now, merchant: "Dinner", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    paidByPartner.payerID = partnerID
+    assert(Budgeting.payer(of: paidByPartner, meID: meID) == partnerID && Budgeting.payer(of: lunch, meID: meID) == meID, "an explicit payer wins, otherwise the author paid")
+    let flipped = Budgeting.balances([paidByPartner], settlements: [], currency: "AZN", budgets: [], members: members, meID: meID)
+    assert(flipped[partnerID] == 30 && flipped[meID] == -30, "I typed it in but the partner paid, so I owe them")
+
+    let forPartner = Transaction(amount: 40, date: .now, merchant: "Her gift", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    forPartner.splitJSON = FamilyBudget(splitPercent: [partnerID: 100]).encoded()
+    assert(FamilyBudget(splitPercent: [partnerID: 100]).percent(for: meID, members: members) == 0, "a member left out of an explicit split owes nothing")
+    let onlyHers = Budgeting.balances([forPartner], settlements: [], currency: "AZN", budgets: [], members: members, meID: meID)
+    assert(onlyHers[meID] == 40 && onlyHers[partnerID] == -40, "paying for something that is only theirs is owed back in full")
+
+    let tiltedShared = Transaction(amount: 100, date: .now, merchant: "Rent", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    tiltedShared.splitJSON = FamilyBudget(splitPercent: [meID: 70, partnerID: 30]).encoded()
+    let sharedBudget = Budget(monthStart: month.lowerBound, total: 1000, scope: .shared)
+    sharedBudget.currency = "AZN"
+    sharedBudget.familyJSON = FamilyBudget(splitPercent: [meID: 60, partnerID: 40]).encoded()
+    assert(Budgeting.split(for: tiltedShared, budgets: [sharedBudget]).percent(for: meID, members: members) == 70, "a per-expense split beats the budget's")
+    assert(Budgeting.split(for: lunch, budgets: [sharedBudget]).percent(for: meID, members: members) == 60, "no override follows the month's budget split")
+    assert(Budgeting.split(for: lunch, budgets: []).percent(for: meID, members: members) == 50, "no budget at all is an even split")
+    let custom = Budgeting.balances([tiltedShared], settlements: [], currency: "AZN", budgets: [sharedBudget], members: members, meID: meID)
+    assert(custom[partnerID] == -30 && custom[meID] == 30, "a 70/30 expense I paid leaves the partner owing their 30")
+
+    let lastMonth = Transaction(amount: 50, date: Calendar.current.date(byAdding: .month, value: -1, to: .now)!, merchant: "Old", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    let carried = Budgeting.balances([lastMonth], settlements: [], currency: "AZN", budgets: [], members: members, meID: meID)
+    assert(carried[partnerID] == -25, "an unsettled debt does not lapse when the month turns")
+    let partial = Budgeting.balances([lastMonth], settlements: [Settlement(amount: 10, currency: "AZN", fromMemberID: partnerID, toMemberID: meID)], currency: "AZN", budgets: [], members: members, meID: meID)
+    assert(partial[partnerID] == -15 && partial[meID] == 15, "a partial settlement leaves the rest owed")
+
+    let inDollars = Transaction(amount: 70, date: .now, merchant: "Abroad", kind: .expense, scope: .shared, category: nil, currency: "USD")
+    let aznOnly = Budgeting.balances([lastMonth, inDollars], settlements: [], currency: "AZN", budgets: [], members: members, meID: meID)
+    assert(aznOnly[partnerID] == -25, "another currency never leaks into a balance")
+    assert(Budgeting.balanceCurrencies([lastMonth, inDollars, mine], settlements: []) == ["AZN", "USD"], "each currency is its own balance")
 
     // Multi-member settlement: three people, one owes two others different amounts.
     let threeWay = ["a": Decimal(50), "b": Decimal(-30), "c": Decimal(-20)]

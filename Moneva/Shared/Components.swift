@@ -89,9 +89,10 @@ struct TransactionRow: View {
         var parts = [transaction.allocations.isEmpty ? ([transaction.category?.name ?? uncategorised, transaction.subcategory?.name].compactMap { $0 }.joined(separator: " · ")) : transaction.allocations.map { "\($0.category?.name ?? uncategorised): \($0.amount.money(transaction.currency))" }.joined(separator: ", ")]
         parts.append(transaction.date.formatted(date: .omitted, time: .shortened))
         if transaction.scope == .shared {
-            // Who entered it beats the bare word "Shared": in a family budget
-            // that is the part nobody can infer from the amount.
-            parts.append(FamilySyncEngine.shared.memberName(for: transaction.authorID) ?? String(localized: "Shared"))
+            // Who paid beats the bare word "Shared": in a family budget that
+            // is the part nobody can infer from the amount.
+            let payer = transaction.payerID.isEmpty ? transaction.authorID : transaction.payerID
+            parts.append(FamilySyncEngine.shared.memberName(for: payer) ?? String(localized: "Shared"))
         }
         if transaction.source != .manual { parts.append(transaction.source.rawValue) }
         return parts.joined(separator: " · ")

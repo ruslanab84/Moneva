@@ -4,7 +4,7 @@
 
 Flow: Settings → Family → Invite someone creates a zone-wide `CKShare` in the owner's private database; the partner opens the link, `SceneDelegate` hands the metadata to `FamilySyncEngine.accept`, and their engine syncs the same zone through the shared database under the owner's name.
 
-What travels (shared scope only): `Transaction` (category denormalized by name/symbol/tint), the `Budget` (limits, `FamilyBudget` split/allowances), `Settlement`, `Goal`, `Subscription`, `Account`, and any `Transfer` touching a shared account. Links to accounts (`accountID`, transfer `fromID`/`toID`) are written only for shared accounts — a personal account never leaves the device, so the partner sees "no account" on that side. What never travels: anything personal, receipt images, voice transcripts, OCR text, a subscription's `reminderDays` and its `payments` ledger.
+What travels (shared scope only): `Transaction` (category denormalized by name/symbol/tint; `payerID` and a per-expense `split` — written as `""` when cleared so going back to the budget's split reaches the partner), the `Budget` (limits, `FamilyBudget` split/allowances), `Settlement`, `Goal`, `Subscription`, `Account`, and any `Transfer` touching a shared account. Links to accounts (`accountID`, transfer `fromID`/`toID`) are written only for shared accounts — a personal account never leaves the device, so the partner sees "no account" on that side. What never travels: anything personal, receipt images, voice transcripts, OCR text, a subscription's `reminderDays` and its `payments` ledger.
 
 Rules that keep two phones consistent:
 - Every synced model conforms to `FamilySynced` (record name, `isFamilyShared`, `ckSystemFields`); a new synced type adds a conformance, a `record(from:)`/`make…`/`apply` trio in `FamilySync`, a case in the engine's `record(for:)`/`model(named:)`/`applyFetched`, and self-check asserts. Record names are prefixed (`goal-`, `subscription-`, `account-`, `transfer-`, `budget-`, `settlement-`); bare UUIDs are transactions.
@@ -13,3 +13,5 @@ Rules that keep two phones consistent:
 - The send batch re-checks `isFamilyShared`, so a row flipped back to personal after being queued never leaves the device.
 
 Verification: the simulator only proves no crash and that `familySyncSelfCheck()` passes — sync code is inert without a share. A real round trip needs two physical iPhones on different Apple IDs. Debug builds hit the CloudKit Development environment (schema auto-created); before TestFlight/App Store, deploy the schema (Transaction, Budget, Settlement, Goal, Subscription, Account, Transfer) to Production in CloudKit Console.
+
+Balances (`Budgeting.balances`) are a running all-time total per currency, not per month: payer = `payerID` or else the author, split = the expense's own `splitJSON`, else its month's shared Budget split, else even. Settle-up lives on Home (`SettleUpCard` → `SettleUpView`); a `Settlement` is never a `Transaction`.

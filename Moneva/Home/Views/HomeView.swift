@@ -64,6 +64,10 @@ struct HomeView: View {
                 )
             }
 
+            if scope == .shared {
+                SettleUpCard(transactions: transactions, currencyCode: currencyCode)
+            }
+
             DailyLimitCard(scope: scope, transactions: transactions, subscriptions: subscriptions, accounts: accounts, budgetTotal: budget?.total, currencyCode: currencyCode)
                 .id(scope) // AppStorage keys are fixed at init, so rebuild on scope change
                 .proGated()

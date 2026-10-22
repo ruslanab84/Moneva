@@ -57,6 +57,9 @@ struct FamilyBudget: Codable, Equatable {
     /// answer never depends on dictionary ordering.
     func percent(for member: String, members: [String]) -> Int {
         if let explicit = splitPercent[member] { return explicit }
+        // An explicit split names everyone who pays; "only Aysel" is {aysel: 100},
+        // not 100% plus an even share for whoever was left out.
+        if !splitPercent.isEmpty { return 0 }
         let sorted = members.sorted()
         guard !sorted.isEmpty, sorted.contains(member) else { return 0 }
         let even = 100 / sorted.count
@@ -140,6 +143,9 @@ enum FamilySync {
         record["kind"] = transaction.kind.rawValue as CKRecordValue
         record["source"] = transaction.source.rawValue as CKRecordValue
         record["authorID"] = transaction.authorID as CKRecordValue
+        record["payerID"] = transaction.payerID as CKRecordValue
+        // "" rather than nil, so going back to the budget's split reaches the partner too.
+        record["split"] = (transaction.splitJSON ?? "") as CKRecordValue
         record["accountID"] = sharedAccountID(transaction.account) as CKRecordValue
         writeCategory(transaction.category, to: record)
         return record
@@ -221,6 +227,8 @@ enum FamilySync {
         )
         transaction.cloudID = cloudID
         transaction.authorID = (record["authorID"] as? String) ?? ""
+        transaction.payerID = (record["payerID"] as? String) ?? ""
+        transaction.splitJSON = (record["split"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         transaction.ckSystemFields = systemFields(from: record)
         return transaction
     }
@@ -234,6 +242,8 @@ enum FamilySync {
         if let kindRaw = record["kind"] as? String, let kind = TransactionKind(rawValue: kindRaw) { transaction.kind = kind }
         if let sourceRaw = record["source"] as? String, let source = EntrySource(rawValue: sourceRaw) { transaction.source = source }
         if let authorID = record["authorID"] as? String { transaction.authorID = authorID }
+        if let payerID = record["payerID"] as? String { transaction.payerID = payerID }
+        if let split = record["split"] as? String { transaction.splitJSON = split.isEmpty ? nil : split }
         transaction.ckSystemFields = systemFields(from: record)
     }
 
@@ -600,6 +610,7 @@ enum FamilyMembers {
         var ids = Set(members.map(\.memberID))
         for transaction in transactions where transaction.scope == .shared {
             ids.insert(transaction.authorID.isEmpty ? meID : transaction.authorID)
+            if !transaction.payerID.isEmpty { ids.insert(transaction.payerID) }
         }
         ids.insert(meID)
         return ids.filter { !$0.isEmpty }.sorted()
@@ -1226,6 +1237,17 @@ func familySyncSelfCheck() {
     let newer = CKRecord(recordType: FamilySync.transactionRecordType, recordID: CKRecord.ID(recordName: "bbbb", zoneID: zoneID))
     assert(!FamilySync.isNewer(older, than: newer) || older.modificationDate == newer.modificationDate, "an unsaved record has no modification date; the tie-break must still be deterministic")
     assert(FamilySync.isNewer(newer, than: older) == (newer.recordID.recordName > older.recordID.recordName), "equal (nil) modification dates break the tie on record name")
+
+    // Who paid and a per-expense split travel; clearing the split travels too.
+    let dinner = Transaction(amount: 60, date: .now, merchant: "Dinner", kind: .expense, scope: .shared, category: nil, currency: "AZN")
+    dinner.payerID = "partner"
+    dinner.splitJSON = FamilyBudget(splitPercent: ["partner": 100]).encoded()
+    let dinnerRecord = FamilySync.record(from: dinner, zoneID: zoneID)
+    let dinnerBack = FamilySync.makeTransaction(from: dinnerRecord, cloudID: dinner.cloudID)
+    assert(dinnerBack?.payerID == "partner" && dinnerBack?.splitJSON == dinner.splitJSON, "payer and split round-trip")
+    dinner.splitJSON = nil
+    FamilySync.apply(FamilySync.record(from: dinner, zoneID: zoneID), to: dinnerBack!)
+    assert(dinnerBack?.splitJSON == nil, "going back to the budget's split reaches the partner as no override")
 
     // Goals, subscriptions, accounts, transfers: exact money, every field back.
     let goal = Goal(name: "Trip", symbol: "airplane", tintHex: "24544A", target: Decimal(string: "1500.10")!, saved: Decimal(string: "320.55")!, scope: .shared)

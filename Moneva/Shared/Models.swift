@@ -144,6 +144,12 @@ final class Transaction {
     /// as `cloudID`, not the `scopeRaw` enum-backfill landmine. Personal-scope
     /// rows keep it empty: there is nobody to attribute them to.
     var authorID: String = ""
+    /// Who actually paid, when that is not the author ("Aysel paid, I typed it
+    /// in"). Empty means the author paid — same additive-default shape.
+    var payerID: String = ""
+    /// A per-expense split overriding the month's budget split: an encoded
+    /// `FamilyBudget` with only `splitPercent` set. nil means "use the budget's".
+    var splitJSON: String?
 
     func amount(in category: SpendingCategory?) -> Decimal {
         if allocations.isEmpty { return self.category?.persistentModelID == category?.persistentModelID ? amount : 0 }

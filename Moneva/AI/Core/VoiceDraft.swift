@@ -109,10 +109,15 @@ struct TransactionDraft: Identifiable {
     /// until an automated source resolves it); confirm-UI uses this to flag a guess for review.
     var categoryConfident = true
     var categoryMargin: Float?
+    /// Shared expenses only, and only ever set by hand: who paid (empty = me)
+    /// and a split overriding the budget's (nil = the budget's).
+    var payerID = ""
+    var split: FamilyBudget?
 
     var canSave: Bool {
         reviewed && Money.valid(amount, currency: currency) &&
-        CategoryLibrary.isSelectable(category, scope: scope, kind: kind)
+        CategoryLibrary.isSelectable(category, scope: scope, kind: kind) &&
+        (split.map { $0.splitPercent.values.reduce(0, +) == 100 } ?? true)
     }
 }
 
@@ -430,6 +435,10 @@ enum DraftStore {
                     category: allocations.isEmpty ? draft.category : nil, currency: draft.currency)
                 tx.draftID = draft.id.uuidString
                 tx.account = draft.account
+                if draft.scope == .shared && draft.kind == .expense {
+                    tx.payerID = draft.payerID
+                    tx.splitJSON = draft.split?.encoded()
+                }
                 if allocations.isEmpty, CategoryLibrary.isSelectable(draft.subcategory, under: draft.category) { tx.subcategory = draft.subcategory }
                 tx.receiptImage = receiptImage
                 tx.receiptItems = receiptItems
