@@ -6,6 +6,7 @@ struct MonevaApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var startupError: String?
     @State private var pro = ProStore()
+    @State private var showIntro = true
     private let container: ModelContainer
 
     init() {
@@ -53,6 +54,9 @@ struct MonevaApp: App {
                 #if DEBUG
                 .task { await financialToolModelSelfCheck() }
                 #endif
+                .overlay {
+                    if showIntro { LaunchIntroView { showIntro = false } }
+                }
                 .alert("Scheduled payments", isPresented: Binding(get: { startupError != nil }, set: { if !$0 { startupError = nil } })) {
                     Button("OK") { startupError = nil }
                 } message: { Text(startupError ?? "") }
