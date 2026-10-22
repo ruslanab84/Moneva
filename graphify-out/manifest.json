@@ -1,0 +1,842 @@
+{
+  "/Users/ruslanabdulov/Desktop/Moneva/.impeccable/config.json": {
+    "mtime": 1788795929.0869112,
+    "ast_hash": "0b71c753e04d4a2a3240cd0c584d4104",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.impeccable/hook.cache.json": {
+    "mtime": 1788798025.4347036,
+    "ast_hash": "a572922080dae6963797b1000ff25f57",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/tmp/last-ndc.ts": {
+    "mtime": 1792685586.7427573,
+    "ast_hash": "9925c8c7925417f27d7427a18f85c9d1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/tmp/last-save.json": {
+    "mtime": 1792685982.490575,
+    "ast_hash": "07973b5b86b4250c6f97c5e230a8bef7",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/tmp/unread-envelope.json": {
+    "mtime": 1789222943.9947395,
+    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Core/AskTools.swift": {
+    "mtime": 1792520350.7938645,
+    "ast_hash": "be98632ff6e46d2787742c8c628d769d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Core/ReceiptDraft.swift": {
+    "mtime": 1792428251.842051,
+    "ast_hash": "d6edc0017c843544260a99e4812ef4e6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Core/ReceiptScan.swift": {
+    "mtime": 1791350916.506296,
+    "ast_hash": "452e10bcf4478bea304626ee3dbcc489",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Core/SpeechCapture.swift": {
+    "mtime": 1791351295.8575795,
+    "ast_hash": "f50e13646bda3e7856e01a4069509185",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Core/SpendingSearch.swift": {
+    "mtime": 1792520338.6249382,
+    "ast_hash": "d6d804d769bafb297e0477654c402df0",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Core/VoiceDraft.swift": {
+    "mtime": 1792685946.1907046,
+    "ast_hash": "15fea9b43a3f7e03aaa79deb79c050af",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/SelfChecks/AIFeaturesSelfCheck.swift": {
+    "mtime": 1792686149.3732963,
+    "ast_hash": "f6cc8ece5f94fa6be17cb70ce69787f9",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/SelfChecks/FinancialToolsSelfCheck.swift": {
+    "mtime": 1792520471.8193946,
+    "ast_hash": "88f1548b12c370e2ea951a6c68adebc5",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Views/ReceiptScanView.swift": {
+    "mtime": 1792685982.0194223,
+    "ast_hash": "3753d83918d2300018ad1c6f02d5576d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Views/SpendingAssistantView.swift": {
+    "mtime": 1792520387.3169348,
+    "ast_hash": "e62d295fef5a66587d740c18eb4fcfb1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/AI/Views/VoiceCaptureView.swift": {
+    "mtime": 1792518451.0817232,
+    "ast_hash": "f12b3ebdd87c09eb0b4df56ded1de1db",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Accounts/Core/Accounts.swift": {
+    "mtime": 1791350916.5091794,
+    "ast_hash": "686baa80de3d251ea87f505b8ed1b6fc",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Accounts/Views/AccountsView.swift": {
+    "mtime": 1792519809.2079973,
+    "ast_hash": "f9a0462b064ffe67b880508a199bb920",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/App/AppDelegate.swift": {
+    "mtime": 1792600935.6344218,
+    "ast_hash": "37421f722e09b58b0137ab4be8f45f9e",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/App/MonevaApp.swift": {
+    "mtime": 1792685900.5676384,
+    "ast_hash": "89008331a64940d0dc9f7d1d7d33a5c0",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/App/RootView.swift": {
+    "mtime": 1792600947.1246295,
+    "ast_hash": "be8c824f76abdde9ac0f46bcc624b7dd",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Assets.xcassets/AccentColor.colorset/Contents.json": {
+    "mtime": 1788454502.5530121,
+    "ast_hash": "55019f7265dde0a78318b0807f98e847",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Assets.xcassets/AppIcon.appiconset/Contents.json": {
+    "mtime": 1788708165.9323406,
+    "ast_hash": "e3d58e857d79c24442b250080229fd02",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Assets.xcassets/Contents.json": {
+    "mtime": 1788454502.554067,
+    "ast_hash": "9deb2ada1cc834bbebf8bbad9c8978a1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Budget/Core/BudgetAlerts.swift": {
+    "mtime": 1792600882.8767614,
+    "ast_hash": "cdc8b5e6d5d2da5611ab7b3332144d8b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Budget/Core/BudgetWatch.swift": {
+    "mtime": 1792601255.9555886,
+    "ast_hash": "5c5f508543384ffa61aa44caddbcd9e7",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Budget/Core/Budgeting.swift": {
+    "mtime": 1792685924.6954868,
+    "ast_hash": "88ec997208cb25080f2523b5d11fd6d9",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Budget/Views/BudgetView.swift": {
+    "mtime": 1792637845.1738894,
+    "ast_hash": "ead356f2e5bcc12d6b0188589726e4d7",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Budget/Views/SettleUpView.swift": {
+    "mtime": 1792637821.1165588,
+    "ast_hash": "239b54c031cf115f6f03a264bbe20a07",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Core/Categories.swift": {
+    "mtime": 1791350916.5115466,
+    "ast_hash": "a6b248d7403c7d82ff051d034337b749",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Core/CategoryClassifier.swift": {
+    "mtime": 1791350916.5117743,
+    "ast_hash": "89ce93829be2ae9f0fd2393660265afa",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Core/MerchantEmbedding.swift": {
+    "mtime": 1791350916.5121896,
+    "ast_hash": "aaf3ab8d50923ffa99c5d813aa89b0ce",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Core/MerchantSeeds.swift": {
+    "mtime": 1791350916.5123093,
+    "ast_hash": "5a157557e093fda5c25e80c84b817892",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Views/CategoryEditorView.swift": {
+    "mtime": 1791525747.727837,
+    "ast_hash": "d2f15239d12749903819090ec48e85ac",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Views/CategoryManagerView.swift": {
+    "mtime": 1791350916.5127876,
+    "ast_hash": "2e6e5bf30652951c604859bbd96041b1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/Views/CategoryPickerView.swift": {
+    "mtime": 1791525747.728069,
+    "ast_hash": "67a93bca570550c232aa245d4861096c",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Goals/Views/GoalsView.swift": {
+    "mtime": 1791525747.7284892,
+    "ast_hash": "d27d904cfab77feae3b28df83e50debd",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Core/SmartInsights.swift": {
+    "mtime": 1792429991.0495346,
+    "ast_hash": "3e27b5cced539266883e53b6f85ae292",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Views/DailyLimitView.swift": {
+    "mtime": 1792429396.1838598,
+    "ast_hash": "bde1fbb266fa537c7aeaa88b845dece6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Views/FinancialForecastView.swift": {
+    "mtime": 1792519483.9159267,
+    "ast_hash": "2d2f9c00b94225dc995b06c4d8006baa",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Views/HomeAskCard.swift": {
+    "mtime": 1792520360.3539267,
+    "ast_hash": "da33a3c2297cf9f7fabe0fbb50855655",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Views/HomeView.swift": {
+    "mtime": 1792686056.6808834,
+    "ast_hash": "3c3526d79dcae4e877690e3f4e6603fa",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Views/MoneyTips.swift": {
+    "mtime": 1791827104.919222,
+    "ast_hash": "b66d89ae13bae027b8ea9cb1d3420b44",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/Views/SmartInsightsView.swift": {
+    "mtime": 1791350916.514226,
+    "ast_hash": "ff4594aeff890d729fd812326188dfa4",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Core/AIUsage.swift": {
+    "mtime": 1791525747.729085,
+    "ast_hash": "1e71b4fc36601b35aee5a7002ae9407d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Core/AdsConsent.swift": {
+    "mtime": 1791525747.7293458,
+    "ast_hash": "05bb828b3646ec9eae4f31b77155fcb0",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Core/BannerHeights.swift": {
+    "mtime": 1791525747.729637,
+    "ast_hash": "36fde0aa2c90b8a765e2a8a0a55b872d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Core/ProLimits.swift": {
+    "mtime": 1791525747.7299864,
+    "ast_hash": "1ca7864dd124df36a15b849151929a44",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Core/ProSelfCheck.swift": {
+    "mtime": 1791525747.7302039,
+    "ast_hash": "49238e4ed9884b4a8669cbdcb4c1c136",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Core/ProStore.swift": {
+    "mtime": 1792600927.2922227,
+    "ast_hash": "74784c42916dc6c59964c7001251d48a",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Views/AdBanner.swift": {
+    "mtime": 1791525747.7306871,
+    "ast_hash": "9ca023787b8e5baff335b886578db3a1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Views/PaywallView.swift": {
+    "mtime": 1791525747.7309551,
+    "ast_hash": "26d1ca1988c4eaf9cf518187791c703e",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Pro/Views/ProGate.swift": {
+    "mtime": 1791525747.7311292,
+    "ast_hash": "cf2ac4ff006434017e247803b5d8d635",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Resources/merchant-seeds.json": {
+    "mtime": 1789057965.179111,
+    "ast_hash": "b6cdbc5e75fdb4f430d2f3ca083a5d4a",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Settings/Core/StatementImport.swift": {
+    "mtime": 1791350916.5152583,
+    "ast_hash": "03779a326eb711a8fe35439b5ce7bd8b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Settings/Core/TransactionExport.swift": {
+    "mtime": 1791350916.5153418,
+    "ast_hash": "84d3ade316193033f5bc1b73e333ad0d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Settings/Views/ExchangeRatesView.swift": {
+    "mtime": 1792520406.6103506,
+    "ast_hash": "047e24826175e4d0df85bf32ca68fc7b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Settings/Views/SettingsView.swift": {
+    "mtime": 1792686056.6812217,
+    "ast_hash": "d7b96af7559130ea52682c0dfb092bee",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Settings/Views/StatementExportView.swift": {
+    "mtime": 1791350916.515639,
+    "ast_hash": "ea8de33e7d2ef45914e4a34edc81eda6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Settings/Views/StatementImportView.swift": {
+    "mtime": 1792685982.0344415,
+    "ast_hash": "3ffc3c113036d9ffbe7991623e7d3166",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Shared/Components.swift": {
+    "mtime": 1792637845.1732213,
+    "ast_hash": "3cdc8eeed5ea0c3f294ce56d3cb65527",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Shared/ExchangeRates.swift": {
+    "mtime": 1792520291.1789339,
+    "ast_hash": "d9c5cfaadf21124f9948ceec6ebdb082",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Shared/Models.swift": {
+    "mtime": 1792685897.791805,
+    "ast_hash": "012a7c1a66acfc6590411294bde9391f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Shared/SeedData.swift": {
+    "mtime": 1791350916.5167143,
+    "ast_hash": "4d047b884b529d24e45dcf93a1141e59",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Shared/Theme.swift": {
+    "mtime": 1791350916.516808,
+    "ast_hash": "60bc5b600a3a892ac935cc04d0b8af40",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Subscriptions/Core/Reminders.swift": {
+    "mtime": 1791351295.859981,
+    "ast_hash": "40dff040b2bf169ab784a5568ed477f1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Subscriptions/Core/SubscriptionInsight.swift": {
+    "mtime": 1791351295.86209,
+    "ast_hash": "f70a73bb54a9339ef79c9a34dc22d1be",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Subscriptions/Core/Subscriptions.swift": {
+    "mtime": 1792519503.6232088,
+    "ast_hash": "aafb786294b341f9cf81f383438ed160",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Subscriptions/Views/SubscriptionEditorView.swift": {
+    "mtime": 1791525747.731648,
+    "ast_hash": "efb984141b41a06445df572880377267",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Subscriptions/Views/SubscriptionsView.swift": {
+    "mtime": 1792427994.4696748,
+    "ast_hash": "4408ea22194af2441478370d37b354e1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Sync/CloudSharingSheet.swift": {
+    "mtime": 1791351295.867503,
+    "ast_hash": "6930d1d741150737a3795759df23acd2",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Sync/FamilySync.swift": {
+    "mtime": 1792637739.6884959,
+    "ast_hash": "fc093c3fce4be1da3fc24442a1aa1b7f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Transactions/Core/ApplePayCapture.swift": {
+    "mtime": 1792599959.4915414,
+    "ast_hash": "0e5042321094cbc2c912eb12bb6992a4",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Transactions/Views/AddTransactionView.swift": {
+    "mtime": 1792685993.9286623,
+    "ast_hash": "0740f8c8a97f183b88c0448f11845d06",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Transactions/Views/CapturedPaymentsView.swift": {
+    "mtime": 1792599962.1777751,
+    "ast_hash": "4e03047f58d5962e4514f50a23146e52",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Transactions/Views/CategorySpendingChart.swift": {
+    "mtime": 1792232076.0485914,
+    "ast_hash": "28c76980b129b579707369ddb012c8d1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Transactions/Views/TransactionEditView.swift": {
+    "mtime": 1792685993.92912,
+    "ast_hash": "f7edb9f36530346ed97238a60e382112",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Transactions/Views/TransactionsView.swift": {
+    "mtime": 1792520394.5937927,
+    "ast_hash": "3f15246406857fc9be67e1235373f828",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Trips/Core/Trips.swift": {
+    "mtime": 1792686043.0666432,
+    "ast_hash": "76b9d8f96aa5242940f08c29961324d2",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Trips/Views/TripsView.swift": {
+    "mtime": 1792686045.6771984,
+    "ast_hash": "6080482e5b7f615baed9287b0c8ca310",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/MonevaShared/AddTransactionIntent.swift": {
+    "mtime": 1792600913.476491,
+    "ast_hash": "8f899ba5bc6a080d1569a11df431ee0d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/MonevaShared/BudgetSnapshot.swift": {
+    "mtime": 1792600910.809752,
+    "ast_hash": "692117e713f2486112c4c3a15d401930",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/MonevaWidgets/BudgetWidget.swift": {
+    "mtime": 1792601045.070894,
+    "ast_hash": "a35ae0f9629414eb0c7bf95497151e9b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/MonevaWidgets/MonevaWidgetsBundle.swift": {
+    "mtime": 1792601042.3828824,
+    "ast_hash": "bf4a556b8ab3b9b66758b38b990c148d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/_icons.sh": {
+    "mtime": 1788454763.6025615,
+    "ast_hash": "86fa26f9a6dd03fbe50c52f87b0b5914",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/canvas.json": {
+    "mtime": 1788455168.2403798,
+    "ast_hash": "6bbc8ea801104d48144df7d5b419da28",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/canvas.json": {
+    "mtime": 1788707966.6586483,
+    "ast_hash": "96b833bc6a3c21bdf45f10e3eefa3d93",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/spend-chart/canvas.json": {
+    "mtime": 1788709570.3051338,
+    "ast_hash": "6a34fdfb9ea45eb06a01d1beeeb17539",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/archive.md": {
+    "mtime": 1792685597.408546,
+    "ast_hash": "1e0e272705c2c7ec7a0ec18fd9d8a497",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/now.md": {
+    "mtime": 1792685982.4455383,
+    "ast_hash": "f5062e7e430bfb3d3ca71f2f133c86c6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/recent.md": {
+    "mtime": 1792685597.4038815,
+    "ast_hash": "8e8439df18f433dd4222b567e8d29c96",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-03.done.md": {
+    "mtime": 1788489711.940974,
+    "ast_hash": "b37fb6e847acb0d713212113fcd2d5bb",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-04.done.md": {
+    "mtime": 1788979457.9565964,
+    "ast_hash": "93e2ee514748e09a9b300ba8481516cd",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-09.done.md": {
+    "mtime": 1789010677.9400089,
+    "ast_hash": "933e3830238f703cbccedd6c336c308b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-10.done.md": {
+    "mtime": 1789093858.322059,
+    "ast_hash": "c73d39c778d4d116015aeb2d06631d2f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-11.done.md": {
+    "mtime": 1789194034.877251,
+    "ast_hash": "ceb1f5a9b89afad4b42696092d3c6133",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-12.done.md": {
+    "mtime": 1789278862.3997073,
+    "ast_hash": "2aba88befa4e780d1b08fdce35086e70",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-13.done.md": {
+    "mtime": 1789488653.6907568,
+    "ast_hash": "cac79bdb72ab9d6bebf522158d9ee6d6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-15.done.md": {
+    "mtime": 1789527052.6261046,
+    "ast_hash": "a209fa7408e4591bced92b86c9a2d0ce",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-16.done.md": {
+    "mtime": 1789661436.4321356,
+    "ast_hash": "8d6401c13b6cb1c6ac42436136a05e44",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-17.done.md": {
+    "mtime": 1789702781.86603,
+    "ast_hash": "6fc51b7f51f39b070eacf49dcec7638d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-18.done.md": {
+    "mtime": 1789755722.9624295,
+    "ast_hash": "694b15998bf79e873fd2c272252102b2",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-19.done.md": {
+    "mtime": 1789833986.4281456,
+    "ast_hash": "ac52b400186d560a4301ee13c273f48f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-20.done.md": {
+    "mtime": 1789929622.6029775,
+    "ast_hash": "583633d28092af9e17c7ea969f60e7ff",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-21.done.md": {
+    "mtime": 1789958838.9937606,
+    "ast_hash": "c8762d8e051f6b7c1c9a48a7b5cbd56c",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-22.done.md": {
+    "mtime": 1790130549.8471735,
+    "ast_hash": "8fa5bcce382298ea151d61a30fec464d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-23.done.md": {
+    "mtime": 1790450701.0594764,
+    "ast_hash": "d9c28d648c7128dce445b0bddda101b0",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-26.done.md": {
+    "mtime": 1790484060.461412,
+    "ast_hash": "d6ba8c22f6e5171672918a9279f235bb",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-28.done.md": {
+    "mtime": 1790703729.4552782,
+    "ast_hash": "967096e04f94b163d14fa1bbcbfd5293",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-09-29.done.md": {
+    "mtime": 1790882645.5287497,
+    "ast_hash": "70a4314e49e4c993472ab9e88fef52f5",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-01.done.md": {
+    "mtime": 1790917956.857778,
+    "ast_hash": "443f1eb128ca09b4648b5a2ffbf38616",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-02.done.md": {
+    "mtime": 1791523263.715836,
+    "ast_hash": "db04ec249b681d2f0795ad920333c044",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-07.done.md": {
+    "mtime": 1791523258.5970888,
+    "ast_hash": "45f76c1577e16863dc9a40882a06bfda",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-09.done.md": {
+    "mtime": 1791549668.1440368,
+    "ast_hash": "335429375d3fb9ccdd97a934e35886c9",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-14.done.md": {
+    "mtime": 1791997106.9335806,
+    "ast_hash": "ea08ee4c92472edd1039bdce53748b6d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-15.done.md": {
+    "mtime": 1792427915.4299762,
+    "ast_hash": "fa30be78971f2e5d480cf26b40adab47",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-17.done.md": {
+    "mtime": 1792428195.6076376,
+    "ast_hash": "43a3c5381b399695e5a947b7a5394fd5",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-19.done.md": {
+    "mtime": 1792518708.0446858,
+    "ast_hash": "aa246552326140f09adc5174b7b2bdf6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-20.done.md": {
+    "mtime": 1792536405.6237164,
+    "ast_hash": "738fd8d9924fb19f733cc2d7f32324d1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-21.done.md": {
+    "mtime": 1792685597.468133,
+    "ast_hash": "e57150e41b9001d2056e0f2ca6007037",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/.remember/today-2026-10-22.md": {
+    "mtime": 1792685595.8628097,
+    "ast_hash": "3418a51bc7293a746455be6211f1755e",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/AGENTS.md": {
+    "mtime": 1792601391.4718642,
+    "ast_hash": "0b98ea3f3ce1b1025459ae102cea36b4",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/CLAUDE.md": {
+    "mtime": 1792686203.0896077,
+    "ast_hash": "361acfbd7c3fc2751ed4f9f6bcd8cd21",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Accounts/CLAUDE.md": {
+    "mtime": 1792519912.5980508,
+    "ast_hash": "8659cf14c6d037dc0f269f83b4484789",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Categories/CLAUDE.md": {
+    "mtime": 1792081715.6071167,
+    "ast_hash": "7b0c1a6e8c497eea2d0af8cbaf3fdf5c",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Home/CLAUDE.md": {
+    "mtime": 1792081715.606894,
+    "ast_hash": "7988e2c7143fd91c6a17ad32ab8b9be9",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Sync/CLAUDE.md": {
+    "mtime": 1792637984.8804204,
+    "ast_hash": "fc6266f34a3d68f816bef42ffd3e135a",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/category-spending-chart.html": {
+    "mtime": 1788795885.576938,
+    "ast_hash": "01094e15c883bd494cda13799e0b5874",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design-qa.md": {
+    "mtime": 1789494286.572692,
+    "ast_hash": "868f778193ddfdcfd12e5d5e5282293b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Assistant.dc.html": {
+    "mtime": 1788455098.678717,
+    "ast_hash": "d8e6e3b5b5b2c1a471ff13b4631c2505",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Budget.dc.html": {
+    "mtime": 1788455098.6798449,
+    "ast_hash": "4a51fa961dd2a1e11ef4218bcd5ba48f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Foundations.dc.html": {
+    "mtime": 1788455168.227054,
+    "ast_hash": "a022fb4d9a717b55b3dffd67c1a1eeb4",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Goals.dc.html": {
+    "mtime": 1788455098.6805594,
+    "ast_hash": "1aad1d816ada47d124828102cd472a7e",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/HomeDark.dc.html": {
+    "mtime": 1788455098.68107,
+    "ast_hash": "fb8fb859f2d570610d4c7cec124f5012",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Main.dc.html": {
+    "mtime": 1788455098.6817558,
+    "ast_hash": "5ce8f4d91791aa14f9204f5ac31a9f4a",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Privacy.dc.html": {
+    "mtime": 1788455098.6826117,
+    "ast_hash": "734b951bca65cedb4afac3e67c297498",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/ReceiptScan.dc.html": {
+    "mtime": 1788455098.6832302,
+    "ast_hash": "f615e9cb4a64796ae86ad41cf373948a",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Subscriptions.dc.html": {
+    "mtime": 1788455098.6843228,
+    "ast_hash": "5266647ca9d8d8071a5bfc234e1c78b4",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/Transactions.dc.html": {
+    "mtime": 1788455098.6848392,
+    "ast_hash": "03edf9e57ab25b3f4900c80d3746e79f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/VoiceCapture.dc.html": {
+    "mtime": 1788455098.6854515,
+    "ast_hash": "916ce18d633519aa9a67c9d2ff8be3dd",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/category-chart/Main.dc.html": {
+    "mtime": 1788795828.8534174,
+    "ast_hash": "242f22b3e5dc02250f8aa52e5d872167",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/Bars.dc.html": {
+    "mtime": 1788707948.4785748,
+    "ast_hash": "3d48d2b3c5ade5cfdd2fd3a9c0caa11c",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/Coin.dc.html": {
+    "mtime": 1788707941.0185785,
+    "ast_hash": "eab26f284f5bfe1b4ff4902785f14fa4",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/Main.dc.html": {
+    "mtime": 1788707933.3932006,
+    "ast_hash": "17f9a936b4beecd1b197fb7e50df061f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/Wallet.dc.html": {
+    "mtime": 1788707957.9678118,
+    "ast_hash": "8df8b1c01ae27be3ee08f467a7bd29bf",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/moneva-app-icon-variants.html": {
+    "mtime": 1788707975.259109,
+    "ast_hash": "7530c8f596a620bde84a17e2e1f80df8",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/moneva-app-design.html": {
+    "mtime": 1788455168.2889986,
+    "ast_hash": "96c9e61020616cb2ec4007368fdec9d1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/spend-chart/Cumulative.dc.html": {
+    "mtime": 1788710528.5735393,
+    "ast_hash": "6c2434d3b5449c9e0d89d93c272fb694",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/spend-chart/Main.dc.html": {
+    "mtime": 1788709486.0351982,
+    "ast_hash": "f73460f77cb0133558fe256933df6877",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/spend-chart/spending-chart-directions.html": {
+    "mtime": 1788709577.8620605,
+    "ast_hash": "9c353081de41141c6877f6bec72ed40b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/AI_FEATURES.md": {
+    "mtime": 1790938532.8350308,
+    "ast_hash": "565ac27314fc427e7a24ab769f60da60",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/AI_TOOL_LAYER.md": {
+    "mtime": 1792520638.8557909,
+    "ast_hash": "54574564bafb9ecf07686ca4438065a9",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/RECEIPT_WORKFLOW.md": {
+    "mtime": 1791350917.2395866,
+    "ast_hash": "7c15ffde71f90ac0f7784f67241999a2",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/SCREENS.html": {
+    "mtime": 1790919815.308979,
+    "ast_hash": "ba0f590e90df969c313f975a21ef3b18",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/README.md": {
+    "mtime": 1791350930.3759277,
+    "ast_hash": "67b79b552b89a34de30148a6c1515857",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/superpowers/plans/2026-10-09-free-tier-ads.md": {
+    "mtime": 1791524162.642384,
+    "ast_hash": "937f364923fcefb62e7d386bbf52f5dd",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/superpowers/specs/2026-10-09-free-tier-ads-design.md": {
+    "mtime": 1791523898.4694989,
+    "ast_hash": "c3485ac1202c17e2f9f5f9c20babc27b",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Assets.xcassets/AppIcon.appiconset/AppIcon-dark.png": {
+    "mtime": 1792599151.7735496,
+    "ast_hash": "13c8ea97481075223e033c4aac2ca8f5",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Assets.xcassets/AppIcon.appiconset/AppIcon-tinted.png": {
+    "mtime": 1792599151.775652,
+    "ast_hash": "2c6726af35bbbeed840c61d1c53594d6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/Moneva/Assets.xcassets/AppIcon.appiconset/AppIcon.png": {
+    "mtime": 1788708157.395502,
+    "ast_hash": "c9941eb3cd55bb312550f80e3db871c8",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/design/icons/wallet-1024.png": {
+    "mtime": 1788708145.034603,
+    "ast_hash": "c9941eb3cd55bb312550f80e3db871c8",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/screenshots/receipt-split-review.jpg": {
+    "mtime": 1788801844.792297,
+    "ast_hash": "63a03993a2f720de802837ae9f3959d6",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/home-accessibility.png": {
+    "mtime": 1789407308.4484491,
+    "ast_hash": "db74b02cd0b9c50dd5ee90041c4f7e64",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/home-empty-dark.png": {
+    "mtime": 1789407089.54271,
+    "ast_hash": "cacc139b571dc14fccb2739467fa1dc1",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/home-empty-light.png": {
+    "mtime": 1789406984.5967965,
+    "ast_hash": "484e019047a25f27c4df05e7be49ad34",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/home-signal-compact.png": {
+    "mtime": 1789407406.9479246,
+    "ast_hash": "1751382b57675c285cfc5000148ffe6f",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/home-signal-dark.png": {
+    "mtime": 1789407274.0691502,
+    "ast_hash": "307e2a12541c8c796ff8775c0d09a36d",
+    "semantic_hash": ""
+  },
+  "/Users/ruslanabdulov/Desktop/Moneva/docs/smart-insights/home-signal-light.png": {
+    "mtime": 1789407282.915101,
+    "ast_hash": "9040b1f7dbe0766e00a18aa268e05263",
+    "semantic_hash": ""
+  }
+}
