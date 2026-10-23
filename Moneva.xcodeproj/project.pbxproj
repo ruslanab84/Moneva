@@ -490,7 +490,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Moneva/Moneva.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -534,7 +534,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Moneva/Moneva.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -576,7 +576,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MonevaWidgets/MonevaWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonevaWidgets/Info.plist;
@@ -607,7 +607,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MonevaWidgets/MonevaWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonevaWidgets/Info.plist;
@@ -638,7 +638,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MonevaIntents/MonevaIntents.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonevaIntents/Info.plist;
@@ -669,7 +669,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MonevaIntents/MonevaIntents.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 58ZSRJHNGW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonevaIntents/Info.plist;
