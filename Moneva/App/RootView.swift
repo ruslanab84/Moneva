@@ -61,7 +61,7 @@ struct RootView: View {
             .padding(.bottom, 96 + (ProLimits.showsBanner(tab: tab, isPro: pro.isPro) ? ads.bannerHeight : 0))
         }
         .environment(ads)
-        .task(id: pro.isPro) { if !pro.isPro { await ads.start() } }
+        // .task(id: pro.isPro) { if !pro.isPro { await ads.start() } }
         .sheet(isPresented: $isPaywall) { PaywallView() }
         .sheet(isPresented: $isAdding) { AddTransactionView() }
         .onChange(of: quickAdd, initial: true) {

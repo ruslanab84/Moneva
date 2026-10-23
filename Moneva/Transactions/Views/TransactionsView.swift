@@ -59,7 +59,7 @@ struct TransactionsView: View {
     }
 
     var body: some View {
-        transactionsContent.adSupported()
+        transactionsContent // .adSupported()
     }
 
     @ViewBuilder

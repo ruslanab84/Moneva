@@ -28,7 +28,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        homeContent.adSupported()
+        homeContent // .adSupported()
     }
 
     @ViewBuilder
