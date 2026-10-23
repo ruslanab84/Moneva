@@ -44,6 +44,8 @@ struct HomeView: View {
                     .monevaCard()
             }
 
+            // Apple Pay Shortcuts capture is disabled until the automation works on device.
+            /*
             let capturedCount = ApplePayCapture.decode(capturedRaw).count
             if capturedCount > 0 {
                 NavigationLink { CapturedPaymentsView() } label: {
@@ -55,6 +57,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
             }
+            */
 
             if let trip = trips.first(where: { $0.cloudID.uuidString == activeTripRaw }) {
                 TripCard(trip: trip, scope: scope)

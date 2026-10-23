@@ -7,6 +7,8 @@ import Foundation
 @main
 nonisolated struct MonevaIntentsExtension: AppIntentsExtension {}
 
+// Disabled until the Shortcuts automation works on device; uncomment to bring the action back.
+/*
 nonisolated struct AddApplePayPaymentIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Apple Pay payment"
     static let description = IntentDescription("Queues a payment in Ledgea for you to review. Use it in a Shortcuts Transaction automation.")
@@ -27,3 +29,4 @@ nonisolated struct AddApplePayPaymentIntent: AppIntent {
         return .result(dialog: "Saved for review in Ledgea.")
     }
 }
+*/

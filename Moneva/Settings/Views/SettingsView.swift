@@ -77,6 +77,8 @@ struct SettingsView: View {
                     Text("Read a CSV export from your bank, tick what to keep, and save it as transactions. Or export your own transactions back out to CSV.")
                 }
 
+                // Apple Pay Shortcuts capture is disabled until the automation works on device.
+                /*
                 Section {
                     NavigationLink {
                         CapturedPaymentsView()
@@ -88,6 +90,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("In Shortcuts, open Automation, tap New, choose Transaction and your cards, then Run Immediately. Add the Ledgea action “Add Apple Pay payment” and set Merchant and Amount from the Shortcut Input. Each payment waits here until you confirm it.")
                 }
+                */
 
                 Section {
                     if status.role == nil {
