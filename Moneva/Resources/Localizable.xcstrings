@@ -1,6 +1,21 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ less than %@" : {
+
+    },
+    "%@ more than %@" : {
+
+    },
+    "%lld%% of %@ limit" : {
+
+    },
+    "Same as %@" : {
+
+    },
+    "Share of spending" : {
+
+    },
     "^[%lld Apple Pay payment](inflect: true) to review" : {
 
     },

@@ -403,6 +403,25 @@ enum Budgeting {
         let percent = spent * 100 / limit
         return alertThresholds.last { Decimal($0) <= percent && $0 > alreadyFired }
     }
+
+    /// The category lines (no total) of the budget BudgetView shows for this
+    /// scope, currency and month — what the Transactions chart marks per row.
+    static func categoryLines(budgets: [Budget], transactions: [Transaction], scope: Scope, currency: String, monthStart: Date, rollover: Bool, calendar: Calendar = .current) -> [BudgetLine] {
+        guard let budget = budgets.first(where: { $0.scope == scope && ($0.currency ?? currency) == currency && $0.monthStart == monthStart }) else { return [] }
+        return lines(for: budget, transactions: transactions, budgets: budgets, rollover: rollover, calendar: calendar).filter { !$0.isTotal }
+    }
+
+    /// The stretch of the previous month that matches `range` so far: the whole
+    /// previous month once `range` is over, else its first N days, N being the
+    /// days of `range` elapsed through today — Oct 1–23 compares with Sep 1–23,
+    /// never a partial October against a full September.
+    static func comparablePreviousRange(to range: Range<Date>, now: Date = .now, calendar: Calendar = .current) -> Range<Date> {
+        let start = calendar.date(byAdding: .month, value: -1, to: range.lowerBound) ?? range.lowerBound
+        guard now < range.upperBound else { return start..<range.lowerBound }
+        let elapsed = (calendar.dateComponents([.day], from: range.lowerBound, to: calendar.startOfDay(for: now)).day ?? 0) + 1
+        let end = calendar.date(byAdding: .day, value: max(elapsed, 1), to: start) ?? range.lowerBound
+        return start..<min(end, range.lowerBound)
+    }
 }
 
 #if DEBUG
@@ -1083,6 +1102,17 @@ func monevaSelfCheck() {
     assert(baLines[0].key.hasPrefix("personal.AZN.2026-10.") && baLines[0].key != baLines[1].key, "keys carry scope, currency and month")
     let baRolled = Budgeting.lines(for: baBudget, transactions: baRows, budgets: [baPrevious, baBudget], rollover: true, calendar: calendar)
     assert(baRolled[1].limit == 200 && baRolled[0].limit == 200, "rollover lifts the category limit (100 unspent last month), never the total")
+    let baChartLines = Budgeting.categoryLines(budgets: [baPrevious, baBudget], transactions: baRows, scope: .personal, currency: "AZN", monthStart: baMonth, rollover: false, calendar: calendar)
+    assert(baChartLines.count == 1 && baChartLines[0].category === food && baChartLines[0].spent == 80 && baChartLines[0].limit == 100, "chart lines are the month's category limits, no total")
+    assert(Budgeting.categoryLines(budgets: [baPrevious, baBudget], transactions: baRows, scope: .shared, currency: "AZN", monthStart: baMonth, rollover: false, calendar: calendar).isEmpty, "no shared budget, no shared markers")
+    assert(Budgeting.categoryLines(budgets: [baPrevious, baBudget], transactions: baRows, scope: .personal, currency: "USD", monthStart: baMonth, rollover: false, calendar: calendar).isEmpty, "an AZN budget never marks USD rows")
+
+    let cmpOct = Budgeting.monthRange(for: baNow, calendar: calendar)
+    let cmpSepStart = calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+    assert(Budgeting.comparablePreviousRange(to: cmpOct, now: baNow, calendar: calendar) == cmpSepStart..<calendar.date(from: DateComponents(year: 2026, month: 9, day: 16))!, "Oct 1–15 compares with Sep 1–15")
+    assert(Budgeting.comparablePreviousRange(to: cmpOct, now: calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!, calendar: calendar) == cmpSepStart..<cmpOct.lowerBound, "a finished month compares with the whole previous month")
+    assert(Budgeting.comparablePreviousRange(to: cmpOct, now: calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 9))!, calendar: calendar).upperBound == cmpOct.lowerBound, "Oct 31 clamps to September's end, never into October")
+    assert(Budgeting.comparablePreviousRange(to: cmpOct, now: cmpOct.lowerBound, calendar: calendar) == cmpSepStart..<calendar.date(from: DateComponents(year: 2026, month: 9, day: 2))!, "day one compares with day one")
     let baFirst = BudgetAlerts.due(baLines, fired: ["personal.AZN.2026-09.total": 100])
     assert(baFirst.alerts.count == 2 && baFirst.alerts.map(\.threshold) == [75, 75], "150/200 and 80/100 both reach 75%")
     assert(baFirst.fired.count == 2 && baFirst.fired["personal.AZN.2026-09.total"] == nil, "last month's fired keys are dropped")

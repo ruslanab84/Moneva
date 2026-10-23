@@ -7,9 +7,16 @@ import Charts
 struct CategorySpendingChart: View {
     let data: [(category: SpendingCategory, total: Decimal)]
     let currencyCode: String
+    /// The month's category limits (strict per-currency, like BudgetView) —
+    /// the List view marks each row that has one.
+    var limits: [Budgeting.BudgetLine] = []
+    var daysRemaining: Int = .max
+    /// Same-length stretch of last month, for the List view's delta chip; nil
+    /// when last month had no spending, so the chip never reads "vs 0".
+    var previous: (total: Decimal, range: Range<Date>)?
 
     enum ChartKind: String, CaseIterable, Identifiable {
-        case petal = "Flower", donut = "Donut", pie = "Pie", bar = "Bar", horizontalBar = "Horizontal", stackedBar = "Stacked"
+        case ranked = "List", petal = "Flower", donut = "Donut", pie = "Pie", bar = "Bar", horizontalBar = "Horizontal", stackedBar = "Stacked"
         var id: String { rawValue }
     }
     enum LabelMode: String, CaseIterable, Identifiable {
@@ -26,7 +33,7 @@ struct CategorySpendingChart: View {
     }
 
     // Persisted so the chosen view survives leaving the tab and relaunching.
-    @AppStorage("chart.kind") private var chartKind: ChartKind = .petal
+    @AppStorage("chart.kind") private var chartKind: ChartKind = .ranked
     @AppStorage("chart.labels") private var labelMode: LabelMode = .percent
     @AppStorage("chart.sort") private var sort: CategorySort = .descending
     @AppStorage("chart.palette") private var paletteMode: PaletteMode = .categoryTint
@@ -138,8 +145,12 @@ struct CategorySpendingChart: View {
                 }
             }
 
-            chart
-                .frame(height: chartKind == .stackedBar ? 36 : chartKind == .bar || chartKind == .horizontalBar ? 160 : chartKind == .petal ? 330 : 190)
+            VStack(alignment: .leading, spacing: 14) {
+                if chartKind == .ranked, let previous { deltaChip(previous) }
+                chart
+                    .frame(height: chartKind == .ranked ? 12 : chartKind == .stackedBar ? 36 : chartKind == .bar || chartKind == .horizontalBar ? 160 : chartKind == .petal ? 330 : 190)
+                if chartKind == .ranked { rankedRows }
+            }
                 // Overlay, not onTapGesture on the chart: Swift Charts selection
                 // gestures swallow taps, so only the Canvas petal chart opened.
                 .overlay {
@@ -178,7 +189,7 @@ struct CategorySpendingChart: View {
                 .foregroundStyle(slice.color)
                 .opacity(dimmed ? 0.35 : 1)
                 .cornerRadius(6)
-        case .stackedBar:
+        case .stackedBar, .ranked:
             BarMark(x: .value("Total", slice.value), y: .value("Spending", "This month"))
                 .foregroundStyle(slice.color)
                 .opacity(dimmed ? 0.35 : 1)
@@ -274,7 +285,89 @@ struct CategorySpendingChart: View {
                 .onChange(of: stackSelection) { _, value in
                     if let value { selectedID = slice(atCumulative: value)?.id }
                 }
+        case .ranked:
+            // Share strip only — the amounts live in `rankedRows` right below.
+            Chart(barSlices) { mark(for: $0) }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .clipShape(.capsule)
         }
+    }
+
+    /// Ranked list under the share strip: top 5 + Others (same cap as the bar
+    /// chart), each row's bar scaled to the largest category, not the total,
+    /// so the leader fills the row and the rest read as relative size.
+    private var rankedRows: some View {
+        let rows = barSlices
+        let top = rows.map(\.value).max() ?? 0
+        return VStack(spacing: 12) {
+            ForEach(rows) { slice in
+                HStack(spacing: 12) {
+                    Image(systemName: slice.category.symbol)
+                        .font(.subheadline)
+                        .foregroundStyle(slice.color)
+                        .frame(width: 36, height: 36)
+                        .background(slice.category.soft, in: .circle)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(slice.category.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                            Spacer()
+                            Text(slice.share.formatted(.percent.precision(.fractionLength(0))))
+                                .font(.caption).foregroundStyle(Palette.inkMuted)
+                            Text(slice.amount.money(currencyCode)).font(.money(.subheadline))
+                        }
+                        let line = limits.first { $0.category === slice.category && $0.limit > 0 }
+                        ProgressBar(progress: top > 0 ? slice.value / top : 0, tint: slice.color, height: 4, accessibilityLabel: "Share of spending")
+                            .overlay(alignment: .leading) {
+                                // Tick where the limit sits on this row's scale; only
+                                // drawn when it fits, i.e. the limit is under the top row.
+                                if let line, top > 0, line.limit.doubleValue <= top {
+                                    GeometryReader { geo in
+                                        Capsule().fill(Palette.ink)
+                                            .frame(width: 2, height: 10)
+                                            .offset(x: geo.size.width * line.limit.doubleValue / top - 1, y: -3)
+                                    }
+                                    .accessibilityHidden(true)
+                                }
+                            }
+                        if let line {
+                            let progress = Budgeting.progress(spent: line.spent, limit: line.limit)
+                            Text("\(Int((progress * 100).rounded()))% of \(line.limit.money(currencyCode)) limit")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(limitColor(Budgeting.LimitState(progress: progress, daysRemaining: daysRemaining)))
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    private func limitColor(_ state: Budgeting.LimitState) -> Color {
+        switch state {
+        case .ok: Palette.inkMuted
+        case .nearingLimit: Palette.warning
+        case .atLimit: Palette.over
+        }
+    }
+
+    private func deltaChip(_ previous: (total: Decimal, range: Range<Date>)) -> some View {
+        let diff = total - previous.total
+        let last = Calendar.current.date(byAdding: .day, value: -1, to: previous.range.upperBound) ?? previous.range.lowerBound
+        let start = previous.range.lowerBound.formatted(.dateTime.month(.abbreviated).day())
+        let period = Calendar.current.isDate(last, inSameDayAs: previous.range.lowerBound) ? start : start + "–" + last.formatted(.dateTime.day())
+        let amount = abs(diff).money(currencyCode)
+        let less = diff <= 0
+        return Label {
+            if diff == 0 { Text("Same as \(period)") } else if less { Text("\(amount) less than \(period)") } else { Text("\(amount) more than \(period)") }
+        } icon: {
+            Image(systemName: diff == 0 ? "equal" : less ? "arrow.down" : "arrow.up")
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(less ? Palette.accent : Palette.over)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(less ? Palette.accentSoft : Palette.over.opacity(0.12), in: .capsule)
     }
 
     private func legendRow(_ slice: Slice) -> some View {
@@ -336,7 +429,7 @@ struct CategorySpendingChart: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     chart
-                        .frame(height: chartKind == .stackedBar ? 48 : chartKind == .bar || chartKind == .horizontalBar ? 200 : 240)
+                        .frame(height: chartKind == .ranked ? 12 : chartKind == .stackedBar ? 48 : chartKind == .bar || chartKind == .horizontalBar ? 200 : 240)
 
                     VStack(spacing: 10) {
                         ForEach(slices) { slice in

@@ -14,6 +14,7 @@ struct TransactionsView: View {
     @AppStorage(ExchangeRates.storageKey) private var ratesRaw = ""
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query(sort: \SpendingCategory.name) private var allCategories: [SpendingCategory]
+    @Query private var budgets: [Budget]
 
     @State private var assistantOpen = false
     @State private var selectedTransaction: Transaction?
@@ -52,10 +53,19 @@ struct TransactionsView: View {
             .filter { $0.scope == scope && Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
             .sorted { $0.date > $1.date }
     }
+    private var chartRange: Range<Date> { mode == .monthly ? selectedMonthRange : currentMonthRange }
     private var categorySpending: [(category: SpendingCategory, total: Decimal)] {
         let items = mode == .monthly ? selectedMonthTransactions : currentMonthTransactions
-        let chartRange = mode == .monthly ? selectedMonthRange : currentMonthRange
         return Budgeting.spendingByCategory(items, categories: CategoryLibrary.visible(allCategories, scope: scope), in: chartRange, scope: scope, currency: currencyCode, rates: rates)
+    }
+    private var chartLimits: [Budgeting.BudgetLine] {
+        Budgeting.categoryLines(budgets: budgets, transactions: transactions, scope: scope, currency: currencyCode, monthStart: chartRange.lowerBound, rollover: BudgetWatch.rolloverOn(scope, defaults: .standard))
+    }
+    private var previousSpending: (total: Decimal, range: Range<Date>)? {
+        let previous = Budgeting.comparablePreviousRange(to: chartRange, now: today)
+        let total = Budgeting.spendingByCategory(transactions, categories: CategoryLibrary.visible(allCategories, scope: scope), in: previous, scope: scope, currency: currencyCode, rates: rates)
+            .reduce(Decimal.zero) { $0 + $1.total }
+        return total > 0 ? (total, previous) : nil
     }
 
     var body: some View {
@@ -88,7 +98,9 @@ struct TransactionsView: View {
             .pickerStyle(.segmented)
 
             if !categorySpending.isEmpty {
-                CategorySpendingChart(data: categorySpending, currencyCode: currencyCode)
+                CategorySpendingChart(data: categorySpending, currencyCode: currencyCode, limits: chartLimits,
+                                      daysRemaining: chartRange.contains(today) ? Budgeting.daysRemaining(in: chartRange, from: today) : .max,
+                                      previous: previousSpending)
             }
 
             switch mode {
