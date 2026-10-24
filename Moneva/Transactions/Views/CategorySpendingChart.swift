@@ -327,11 +327,16 @@ struct CategorySpendingChart: View {
                             Text(slice.amount.money(currencyCode)).font(.money(.subheadline))
                         }
                         let line = limits.first { $0.category === slice.category && $0.limit > 0 }
+                        // The row total converts other currencies (rates); the limit
+                        // counts only its own currency, like BudgetView. When they
+                        // differ, the tick would mislead, so the caption names the
+                        // same-currency spend instead.
+                        let converted = line.map { $0.spent != slice.amount } ?? false
                         ProgressBar(progress: top > 0 ? slice.value / top : 0, tint: slice.color, height: 4, accessibilityLabel: "Share of spending")
                             .overlay(alignment: .leading) {
                                 // Tick where the limit sits on this row's scale; only
                                 // drawn when it fits, i.e. the limit is under the top row.
-                                if let line, top > 0, line.limit.doubleValue <= top {
+                                if let line, !converted, top > 0, line.limit.doubleValue <= top {
                                     GeometryReader { geo in
                                         Capsule().fill(Palette.ink)
                                             .frame(width: 2, height: 10)
@@ -342,7 +347,13 @@ struct CategorySpendingChart: View {
                             }
                         if let line {
                             let progress = Budgeting.progress(spent: line.spent, limit: line.limit)
-                            Text("\(Int((progress * 100).rounded()))% of \(line.limit.money(currencyCode)) limit")
+                            Group {
+                                if converted {
+                                    Text("\(line.spent.money(currencyCode)) in \(currencyCode) · \(Int((progress * 100).rounded()))% of \(line.limit.money(currencyCode)) limit")
+                                } else {
+                                    Text("\(Int((progress * 100).rounded()))% of \(line.limit.money(currencyCode)) limit")
+                                }
+                            }
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(limitColor(Budgeting.LimitState(progress: progress, daysRemaining: daysRemaining)))
                         }
