@@ -77,7 +77,10 @@ enum FamilySync {
     /// Deterministic record names keep one record per month per currency —
     /// no cloudID column on `Budget`, no duplicate-budget merge problem.
     static func budgetRecordName(monthStart: Date, currency: String, calendar: Calendar = .current) -> String {
-        let parts = calendar.dateComponents([.year, .month], from: monthStart)
+        // budgetMonth, not the raw instant: monthStart is midnight in the zone the
+        // budget was made in, so a partner (or a trip) in a zone behind would read
+        // Oct 1 as Sep 30 and push a second "budget-…-09" record.
+        let parts = calendar.dateComponents([.year, .month], from: Budgeting.budgetMonth(monthStart, calendar: calendar))
         return String(format: "budget-%@-%04d-%02d", currency, parts.year ?? 0, parts.month ?? 0)
     }
 
@@ -1186,6 +1189,13 @@ func familySyncSelfCheck() {
     assert(FamilySync.decodeAmount(FamilySync.encode(Decimal(string: "42.50")!)) == Decimal(string: "42.50")!, "amount must round-trip exactly through the CKRecord string encoding")
     assert(FamilySync.decodeAmount(FamilySync.encode(Decimal(string: "9.99")!)) == Decimal(string: "9.99")!)
     assert(FamilySync.decodeAmount("not a number") == nil, "malformed CKRecord amount must not silently become zero")
+
+    var bakuCalendar = Calendar(identifier: .gregorian), newYorkCalendar = bakuCalendar
+    bakuCalendar.timeZone = TimeZone(identifier: "Asia/Baku")!
+    newYorkCalendar.timeZone = TimeZone(identifier: "America/New_York")!
+    let bakuOctober = bakuCalendar.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+    assert(FamilySync.budgetRecordName(monthStart: bakuOctober, currency: "AZN", calendar: bakuCalendar) == "budget-AZN-2026-10")
+    assert(FamilySync.budgetRecordName(monthStart: bakuOctober, currency: "AZN", calendar: newYorkCalendar) == "budget-AZN-2026-10", "a partner a zone behind names the same record, not budget-AZN-2026-09")
 
     assert(!FamilySync.shouldDeleteRemote(hadSystemFields: false, scope: .personal), "never synced, stays personal: nothing to delete")
     assert(!FamilySync.shouldDeleteRemote(hadSystemFields: false, scope: .shared), "never synced yet, will be pushed, not deleted")
