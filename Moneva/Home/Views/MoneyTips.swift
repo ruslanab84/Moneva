@@ -109,9 +109,9 @@ struct MoneyTipCard: View {
 
             Divider().overlay(Palette.line)
 
-            Text("Tip \(number) of \(MoneyTips.all.count) · a new one every day")
-                .font(.caption)
-                .foregroundStyle(Palette.inkMuted)
+            //Text("Tip \(number) of \(MoneyTips.all.count) · a new one every day")
+              //  .font(.caption)
+                //.foregroundStyle(Palette.inkMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .monevaCard()
