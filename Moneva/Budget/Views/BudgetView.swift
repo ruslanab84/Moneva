@@ -17,7 +17,7 @@ struct BudgetView: View {
     /// Carry-over is a Pro feature; the stored preference is kept so it resumes on upgrade.
     private var rolloverOn: Bool { pro.isPro && (scope == .personal ? rolloverPersonal : rolloverShared) }
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
-    private var budget: Budget? { budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound } }
+    private var budget: Budget? { budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && Budgeting.isSameMonth($0.monthStart, range.lowerBound) } }
     private var monthTransactions: [Transaction] {
         transactions.filter { $0.scope == scope && $0.currency == currencyCode && range.contains($0.date) }
     }

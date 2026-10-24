@@ -166,7 +166,7 @@ enum SpendingReport {
                     add("\(category.name): \(used.money(currency)) this month so far versus \(before.money(currency)) in the previous month; \(difference >= 0 ? "increase" : "decrease") of \(abs(difference).money(currency)). The difference reflects the linked recorded purchases, not a known change in habits or prices.", (month + prior).filter { $0.amount(in: category) > 0 }, category: category)
                 }
             }
-            if let budget = budgets.first(where: { $0.scope == scope && $0.monthStart == current.lowerBound && ($0.currency ?? Money.code) == currency }) {
+            if let budget = budgets.first(where: { $0.scope == scope && Budgeting.isSameMonth($0.monthStart, current.lowerBound) && ($0.currency ?? Money.code) == currency }) {
                 add("Budget: \(total.money(currency)) used of \(budget.total.money(currency)); \(max(budget.total - total, 0).money(currency)) remaining.", month)
                 for limit in budget.limits {
                     let used = month.reduce(Decimal.zero) { $0 + $1.amount(in: limit.category) }

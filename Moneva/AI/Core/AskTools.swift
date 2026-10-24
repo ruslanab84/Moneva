@@ -328,7 +328,7 @@ final class FinancialToolService {
             guard (1900...2200).contains(a.year), (1...12).contains(a.month),
                   let date = calendar.date(from: DateComponents(year: a.year, month: a.month, day: 1)) else { throw Invalid.arguments }
             let month = Budgeting.monthStart(for: date, calendar: calendar)
-            let budgets = try context.fetch(FetchDescriptor<Budget>()).filter { $0.scope == scope && $0.currency == currency && $0.monthStart == month }
+            let budgets = try context.fetch(FetchDescriptor<Budget>()).filter { $0.scope == scope && $0.currency == currency && Budgeting.isSameMonth($0.monthStart, month) }
             guard budgets.count <= 1 else { return result(.unavailable) }
             guard let budget = budgets.first else { return result(.empty) }
             let dates = FinancialPeriod(period: .custom, start: day(month), end: day(calendar.date(byAdding: .day, value: -1, to: Budgeting.monthRange(for: month, calendar: calendar).upperBound)!))

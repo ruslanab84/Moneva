@@ -24,7 +24,7 @@ struct HomeView: View {
     private var range: Range<Date> { Budgeting.monthRange(for: .now) }
     private var spent: Decimal { Budgeting.spent(transactions, in: range, scope: scope) }
     private var budget: Budget? {
-        budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && $0.monthStart == range.lowerBound }
+        budgets.first { $0.scope == scope && ($0.currency ?? currencyCode) == currencyCode && Budgeting.isSameMonth($0.monthStart, range.lowerBound) }
     }
 
     var body: some View {

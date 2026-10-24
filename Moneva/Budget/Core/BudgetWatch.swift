@@ -39,7 +39,7 @@ enum BudgetWatch {
         let budgets = (try? context.fetch(FetchDescriptor<Budget>())) ?? []
         let transactions = (try? context.fetch(FetchDescriptor<Transaction>(predicate: #Predicate { $0.date >= since }))) ?? []
 
-        let current = budgets.filter { $0.monthStart == month }.map { budget in
+        let current = budgets.filter { Budgeting.isSameMonth($0.monthStart, month) }.map { budget in
             (budget: budget, lines: Budgeting.lines(for: budget, transactions: transactions, budgets: budgets, rollover: rolloverOn(budget.scope, defaults: defaults), calendar: calendar))
         }
         let scope = defaults.string(forKey: "scope").flatMap(Scope.init(rawValue:)) ?? .personal

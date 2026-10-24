@@ -124,6 +124,19 @@ enum Budgeting {
         calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
     }
 
+    /// The month a stored `Budget.monthStart` means in `calendar`'s time zone.
+    /// That instant is midnight where the budget was made, so after a time-zone
+    /// change (a trip) it can read as Sep 30 or Oct 2 locally; zones differ by
+    /// at most 26 h, so two days in always lands inside the intended month.
+    static func budgetMonth(_ stored: Date, calendar: Calendar = .current) -> Date {
+        monthStart(for: calendar.date(byAdding: .day, value: 2, to: stored) ?? stored, calendar: calendar)
+    }
+
+    /// Match a budget to a month by calendar month, never by exact instant.
+    static func isSameMonth(_ stored: Date, _ monthStart: Date, calendar: Calendar = .current) -> Bool {
+        budgetMonth(stored, calendar: calendar) == self.monthStart(for: monthStart, calendar: calendar)
+    }
+
     static func monthRange(for date: Date, calendar: Calendar = .current) -> Range<Date> {
         let start = monthStart(for: date, calendar: calendar)
         let end = calendar.date(byAdding: .month, value: 1, to: start) ?? date
@@ -191,7 +204,7 @@ enum Budgeting {
     static func rolloverAmount(for category: SpendingCategory?, transactions: [Transaction], budgets: [Budget], monthStart: Date, scope: Scope, currency: String = Money.code, calendar: Calendar = .current) -> Decimal {
         guard let category else { return 0 }
         let prevStart = calendar.date(byAdding: .month, value: -1, to: monthStart) ?? monthStart
-        guard let prevBudget = budgets.first(where: { $0.scope == scope && ($0.currency ?? currency) == currency && $0.monthStart == prevStart }),
+        guard let prevBudget = budgets.first(where: { $0.scope == scope && ($0.currency ?? currency) == currency && Budgeting.isSameMonth($0.monthStart, prevStart) }),
               let prevLimit = prevBudget.limits.first(where: { $0.category == category }) else { return 0 }
         let prevRange = monthRange(for: prevStart, calendar: calendar)
         let spent = spendingByCategory(transactions, categories: [category], in: prevRange, scope: scope, currency: currency).first?.total ?? 0
@@ -244,7 +257,7 @@ enum Budgeting {
     static func split(for transaction: Transaction, budgets: [Budget], calendar: Calendar = .current) -> FamilyBudget {
         if let json = transaction.splitJSON { return FamilyBudget.decode(json) }
         let month = monthRange(for: transaction.date, calendar: calendar).lowerBound
-        let budget = budgets.first { $0.scope == .shared && ($0.currency ?? Money.code) == transaction.currency && $0.monthStart == month }
+        let budget = budgets.first { $0.scope == .shared && ($0.currency ?? Money.code) == transaction.currency && Budgeting.isSameMonth($0.monthStart, month) }
         return FamilyBudget.decode(budget?.familyJSON)
     }
 
@@ -380,7 +393,7 @@ enum Budgeting {
     static func lines(for budget: Budget, transactions: [Transaction], budgets: [Budget], rollover: Bool, calendar: Calendar = .current) -> [BudgetLine] {
         let scope = budget.scope
         let currency = budget.currency ?? Money.code
-        let range = monthRange(for: budget.monthStart, calendar: calendar)
+        let range = monthRange(for: budgetMonth(budget.monthStart, calendar: calendar), calendar: calendar)
         let month = transactions.filter { $0.scope == scope && $0.currency == currency && range.contains($0.date) }
         let expenses = month.filter { $0.kind == .expense }
         let prefix = "\(scope.rawValue).\(currency).\(monthKey(range.lowerBound, calendar: calendar))"
@@ -407,7 +420,7 @@ enum Budgeting {
     /// The category lines (no total) of the budget BudgetView shows for this
     /// scope, currency and month — what the Transactions chart marks per row.
     static func categoryLines(budgets: [Budget], transactions: [Transaction], scope: Scope, currency: String, monthStart: Date, rollover: Bool, calendar: Calendar = .current) -> [BudgetLine] {
-        guard let budget = budgets.first(where: { $0.scope == scope && ($0.currency ?? currency) == currency && $0.monthStart == monthStart }) else { return [] }
+        guard let budget = budgets.first(where: { $0.scope == scope && ($0.currency ?? currency) == currency && Budgeting.isSameMonth($0.monthStart, monthStart) }) else { return [] }
         return lines(for: budget, transactions: transactions, budgets: budgets, rollover: rollover, calendar: calendar).filter { !$0.isTotal }
     }
 
@@ -1113,6 +1126,17 @@ func monevaSelfCheck() {
     assert(Budgeting.comparablePreviousRange(to: cmpOct, now: calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!, calendar: calendar) == cmpSepStart..<cmpOct.lowerBound, "a finished month compares with the whole previous month")
     assert(Budgeting.comparablePreviousRange(to: cmpOct, now: calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 9))!, calendar: calendar).upperBound == cmpOct.lowerBound, "Oct 31 clamps to September's end, never into October")
     assert(Budgeting.comparablePreviousRange(to: cmpOct, now: cmpOct.lowerBound, calendar: calendar) == cmpSepStart..<calendar.date(from: DateComponents(year: 2026, month: 9, day: 2))!, "day one compares with day one")
+
+    var tzBaku = Calendar(identifier: .gregorian), tzNewYork = tzBaku, tzKiritimati = tzBaku
+    tzBaku.timeZone = TimeZone(identifier: "Asia/Baku")!
+    tzNewYork.timeZone = TimeZone(identifier: "America/New_York")!
+    tzKiritimati.timeZone = TimeZone(identifier: "Pacific/Kiritimati")!
+    let tzStored = Budgeting.monthStart(for: tzBaku.date(from: DateComponents(year: 2026, month: 10, day: 10))!, calendar: tzBaku)
+    let tzOctNY = tzNewYork.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+    assert(tzStored != tzOctNY && Budgeting.isSameMonth(tzStored, tzOctNY, calendar: tzNewYork), "a Baku October budget is still October in New York, though Oct 1 midnight differs")
+    assert(!Budgeting.isSameMonth(tzStored, tzNewYork.date(from: DateComponents(year: 2026, month: 9, day: 1))!, calendar: tzNewYork), "…and never September, where its instant (Sep 30, 16:00) falls")
+    assert(Budgeting.budgetMonth(tzStored, calendar: tzKiritimati) == tzKiritimati.date(from: DateComponents(year: 2026, month: 10, day: 1))!, "a +14 h zone reads it as October too")
+    assert(Budgeting.isSameMonth(tzStored, tzStored, calendar: tzBaku), "same zone matches as before")
     let baFirst = BudgetAlerts.due(baLines, fired: ["personal.AZN.2026-09.total": 100])
     assert(baFirst.alerts.count == 2 && baFirst.alerts.map(\.threshold) == [75, 75], "150/200 and 80/100 both reach 75%")
     assert(baFirst.fired.count == 2 && baFirst.fired["personal.AZN.2026-09.total"] == nil, "last month's fired keys are dropped")
