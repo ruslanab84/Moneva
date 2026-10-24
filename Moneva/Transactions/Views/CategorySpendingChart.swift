@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import SwiftData
 
 /// This month's spending broken down by category, with a settings sheet for
 /// how to see it — chart kind, per-slice labels, sort, and color source.
@@ -68,7 +69,9 @@ struct CategorySpendingChart: View {
         return ordered.enumerated().map { rank, entry in
             let value = entry.total.doubleValue
             return Slice(
-                id: entry.category.name,
+                // Model ID, not name: Shared shows Personal categories too, so
+                // a personal and a shared "Food" would collide in ForEach.
+                id: String(describing: entry.category.persistentModelID),
                 category: entry.category,
                 amount: entry.total,
                 value: value,
@@ -269,12 +272,12 @@ struct CategorySpendingChart: View {
                 }
         case .bar:
             Chart(barSlices) { mark(for: $0) }
-                .chartXSelection(value: Binding(get: { selectedID }, set: { selectedID = $0 }))
+                .chartXSelection(value: nameSelection(in: barSlices))
                 .chartYAxis(.hidden)
                 .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.caption2).foregroundStyle(Palette.inkFaint) } }
         case .horizontalBar:
             Chart(slices) { mark(for: $0) }
-                .chartYSelection(value: Binding(get: { selectedID }, set: { selectedID = $0 }))
+                .chartYSelection(value: nameSelection(in: slices))
                 .chartXAxis(.hidden)
                 .chartYAxis { AxisMarks { _ in AxisValueLabel().font(.caption2).foregroundStyle(Palette.inkFaint) } }
         case .stackedBar:
@@ -292,6 +295,13 @@ struct CategorySpendingChart: View {
                 .chartYAxis(.hidden)
                 .clipShape(.capsule)
         }
+    }
+
+    /// Bar axes plot category names while `selectedID` holds the slice ID —
+    /// this maps between the two for the bar charts' selection.
+    private func nameSelection(in pool: [Slice]) -> Binding<String?> {
+        Binding(get: { pool.first { $0.id == selectedID }?.category.name },
+                set: { name in selectedID = name.flatMap { name in pool.first { $0.category.name == name }?.id } })
     }
 
     /// Ranked list under the share strip: top 5 + Others (same cap as the bar

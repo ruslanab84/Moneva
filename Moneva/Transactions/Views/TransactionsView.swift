@@ -97,8 +97,9 @@ struct TransactionsView: View {
             }
             .pickerStyle(.segmented)
 
-            if !categorySpending.isEmpty {
-                CategorySpendingChart(data: categorySpending, currencyCode: currencyCode, limits: chartLimits,
+            let spending = categorySpending
+            if !spending.isEmpty {
+                CategorySpendingChart(data: spending, currencyCode: currencyCode, limits: chartLimits,
                                       daysRemaining: chartRange.contains(today) ? Budgeting.daysRemaining(in: chartRange, from: today) : .max,
                                       previous: previousSpending)
             }
