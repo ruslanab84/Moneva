@@ -396,7 +396,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Ads-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Ledgea;
-				INFOPLIST_KEY_CKSharingSupported = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Ledgea uses the camera only while you scan a receipt. The photo is read on this iPhone, saved only if you choose to keep it, and never sent to a server.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ledgea listens only while you hold the voice screen open, so you can speak a transaction instead of typing it.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech is transcribed on this iPhone to turn what you say into a transaction draft. Nothing is sent to a server.";
@@ -440,7 +439,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Ads-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Ledgea;
-				INFOPLIST_KEY_CKSharingSupported = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Ledgea uses the camera only while you scan a receipt. The photo is read on this iPhone, saved only if you choose to keep it, and never sent to a server.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ledgea listens only while you hold the voice screen open, so you can speak a transaction instead of typing it.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech is transcribed on this iPhone to turn what you say into a transaction draft. Nothing is sent to a server.";
