@@ -963,6 +963,14 @@ func monevaSelfCheck() {
     assert(AmountField.editable(0).isEmpty, "an empty amount field never seeds a leading zero to type around")
     assert(AmountField.editable(Decimal(string: "1250.75")!) == "1250.75", "an existing amount comes back editable, unrounded and ungrouped")
 
+    let librarySymbols = CategoryLibrary.symbols
+    assert(Set(librarySymbols).count == librarySymbols.count, "a symbol listed twice breaks the picker's ForEach identity")
+    assert(librarySymbols.allSatisfy { UIImage(systemName: $0) != nil }, "every library symbol must exist in SF Symbols: \(librarySymbols.filter { UIImage(systemName: $0) == nil })")
+    assert(Set(CategoryLibrary.palette.map(\.tint)).count == CategoryLibrary.palette.count, "palette tints are ForEach ids and must be unique")
+    let seedLooks = SeedData.defaultCategories + SeedData.defaultIncomeCategories
+    assert(seedLooks.allSatisfy { librarySymbols.contains($0.symbol) }, "a built-in's icon must be pickable when editing it")
+    assert(SeedData.lateAdditions.allSatisfy { name in seedLooks.contains { $0.name == name } }, "every late addition must be a real built-in")
+
     let merchantSeeds = MerchantSeeds.load()
     assert(!merchantSeeds.isEmpty, "merchant-seeds.json must parse into at least one seed")
     let expenseCatalogue = SeedData.defaultCategories.map { SpendingCategory(name: $0.name, symbol: $0.symbol, tintHex: $0.tint, softHex: $0.soft, kind: .expense) }

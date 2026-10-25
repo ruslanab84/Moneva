@@ -7,14 +7,15 @@ import FoundationModels
 /// both themes, which emoji do none of.
 enum CategoryLibrary {
     static let symbolGroups: [(name: String, symbols: [String])] = [
-        ("Everyday", ["fork.knife", "cart", "bag", "takeoutbag.and.cup.and.straw", "wineglass", "cup.and.saucer", "birthday.cake", "popcorn", "carrot"]),
-        ("Getting around", ["car", "bus", "tram", "bicycle", "fuelpump", "airplane", "ferry", "parkingsign", "figure.walk"]),
-        ("Home & bills", ["house", "bolt", "drop", "wifi", "receipt", "wrench.and.screwdriver", "sofa", "lightbulb", "shower"]),
-        ("People", ["heart", "gift", "person.2", "figure.2.and.child.holdinghands", "pawprint", "bubble.left.and.bubble.right", "figure.and.child.holdinghands", "party.popper", "envelope"]),
-        ("Body & mind", ["cross.case", "pills", "dumbbell", "figure.run", "scissors", "graduationcap", "stethoscope", "brain.head.profile", "figure.yoga"]),
-        ("Life", ["gamecontroller", "film", "music.note", "book", "tshirt", "beach.umbrella", "paintpalette", "camera", "guitars"]),
-        ("Other", ["creditcard", "banknote", "briefcase", "square.grid.2x2", "star", "flag", "shippingbox", "wallet.pass", "puzzlepiece"]),
-        ("Money in", ["chart.line.uptrend.xyaxis", "arrow.down.circle", "building.columns", "hands.clap", "sparkles", "dollarsign.circle", "banknote.fill", "briefcase.fill", "percent"]),
+        ("Everyday", ["fork.knife", "cart", "bag", "takeoutbag.and.cup.and.straw", "wineglass", "cup.and.saucer", "birthday.cake", "popcorn", "carrot", "fish", "basket", "mug", "frying.pan", "leaf"]),
+        ("Getting around", ["car", "bus", "tram", "bicycle", "fuelpump", "airplane", "ferry", "parkingsign", "figure.walk", "scooter", "sailboat", "train.side.front.car", "ev.charger", "road.lanes"]),
+        ("Home & bills", ["house", "bolt", "drop", "wifi", "receipt", "wrench.and.screwdriver", "sofa", "lightbulb", "shower", "flame", "key", "hammer", "washer", "trash", "phone", "tv"]),
+        ("People", ["heart", "gift", "person.2", "figure.2.and.child.holdinghands", "pawprint", "bubble.left.and.bubble.right", "figure.and.child.holdinghands", "party.popper", "envelope", "teddybear", "stroller", "balloon", "dog", "cat", "hand.raised"]),
+        ("Body & mind", ["cross.case", "pills", "dumbbell", "figure.run", "scissors", "graduationcap", "stethoscope", "brain.head.profile", "figure.yoga", "bandage", "eye", "figure.pool.swim", "tennisball", "bed.double"]),
+        ("Life", ["gamecontroller", "film", "music.note", "book", "tshirt", "beach.umbrella", "paintpalette", "camera", "guitars", "theatermasks", "ticket", "headphones", "tent", "mountain.2", "soccerball"]),
+        ("Work & tech", ["laptopcomputer", "iphone", "desktopcomputer", "printer", "keyboard", "app.badge", "icloud", "server.rack"]),
+        ("Other", ["creditcard", "banknote", "briefcase", "square.grid.2x2", "star", "flag", "shippingbox", "wallet.pass", "puzzlepiece", "arrow.triangle.2.circlepath", "lock.shield", "doc.text", "building.2", "globe", "tag"]),
+        ("Money in", ["chart.line.uptrend.xyaxis", "arrow.down.circle", "building.columns", "hands.clap", "sparkles", "dollarsign.circle", "banknote.fill", "briefcase.fill", "percent", "chart.pie", "bitcoinsign.circle", "trophy", "storefront", "arrow.uturn.backward.circle"]),
     ]
 
     static var symbols: [String] { symbolGroups.flatMap(\.symbols) }
@@ -27,7 +28,10 @@ enum CategoryLibrary {
         ("6B5BA6", "E1DDF0"), ("A85A2E", "F4E1D4"), ("78746A", "E4E2DB"),
         ("3F8F8A", "DCEBE9"), ("9E4F7C", "EEDCE6"), ("9C3F3F", "EDD9D9"),
         ("3F6B4A", "DCE7DE"), ("3F5B8F", "DCE2EF"), ("C97355", "F5E1D9"),
-        ("8672B8", "E9E3F2"), ("8A6E5B", "EAE2DC"),
+        ("8672B8", "E9E3F2"), ("8A6E5B", "EAE2DC"), ("C25B7A", "F6DEE6"),
+        ("2E7D6B", "D7EAE5"), ("A68A2E", "F0E8CF"), ("566573", "DFE3E7"),
+        ("6E3F6B", "E8DCE7"), ("2B4A6F", "D8DFE8"), ("5E8F3F", "E0EBD6"),
+        ("4F8FB5", "DCEAF2"), ("B57A9E", "F2E2EC"),
     ]
 
     /// What the picker shows: never archived, personal before shared, and only
